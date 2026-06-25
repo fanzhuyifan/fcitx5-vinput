@@ -2,6 +2,301 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.1) — 2026-06-25
+
+### CI
+
+- Split nix cachix cache workflow (#96)
+
+### Documentation
+
+- Add archlinuxcn install instructions
+- Add Codex project map
+
+### Miscellaneous
+
+- **deps:** Bump nixpkgs (#98)
+- **deps:** Bump sherpa-onnx to v1.13.3 (#104)
+
+### Refactor
+
+- Use XML tags for prompt data isolation, matching interpolation variable names
+
+### Packaging
+
+- PKGBUILD improvements (#102)
+
+## [2.3.0](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.0) — 2026-05-25
+
+### Features
+
+- **daemon:** Support file:// prompts and {{result}}/{{context}} interpolation
+
+### Refactor
+
+- **daemon:** Single user message, add {{asr}}/{{selected}}, dump request
+
+### I18n
+
+- **zh_CN:** Translate prompt_file_load_failed messages
+
+### Release
+
+- V2.3.0
+## [2.2.4](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.4) — 2026-05-24
+
+### Bug Fixes
+
+- **ci:** Quote nixpkgs commit-message to satisfy YAML parser
+- **addon:** Suppress OS auto-repeat across daemon-initiated session end
+- **audio:** Treat "default" as sentinel and shorten device labels
+
+### Miscellaneous
+
+- **deps:** Bump nixpkgs (#95)
+
+### Release
+
+- V2.2.4
+## [2.2.3](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.3) — 2026-05-24
+
+### CI
+
+- Add nightly sherpa-onnx upstream sync workflow
+
+### Documentation
+
+- Add Contributors section to README
+
+### Features
+
+- **remote:** Show LAN endpoints in ASR list and drop env fallback
+- **daemon:** Add RemoteTextService for remote ASR backend support
+- **addon:** Add Tap/Hold/Both trigger mode option
+
+### Miscellaneous
+
+- **deps:** Bump sherpa-onnx to v1.13.2 (#92)
+- **deps:** Bump sherpa-onnx to v1.13.1 (#91)
+- **deps:** Add nixpkgs update workflow (#90)
+- **deps:** Bump sherpa-onnx-flake (#89)
+- **deps:** Bump sherpa-onnx to v1.13.0 (#88)
+- **sherpa:** Drop unused 1.12.31 sha256 entry
+
+### Refactor
+
+- **config:** Move TriggerMode option to top of config dialog
+- **cmake:** Rename targets to short semantic names
+
+### Release
+
+- V2.2.3
+## [2.2.2](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.2) — 2026-05-03
+
+### Bug Fixes
+
+- **build:** Move VinputConfigDir/VinputDataDir out of anonymous namespace
+- Extract shared URL path joining to fix double-slash in models fetch
+- Trim all user-input string fields that get persisted to config
+- **debian:** Make docker network overrides optional
+
+### Features
+
+- **i18n:** Support local i18n overrides via i18n.local.json
+- Trim api_key when adding for convenience (#87)
+- **debian:** Implement automated multi-arch docker build workflow
+
+### Nix
+
+- Wrap binaries with python3 and libopus for command providers
+
+### Release
+
+- V2.2.2
+## [2.2.1](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.1) — 2026-04-18
+
+### Bug Fixes
+
+- **i18n:** Move Extra body strings to vinput::gui::LlmPage context
+
+### Release
+
+- V2.2.1
+## [2.2.0](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.0) — 2026-04-18
+
+### Bug Fixes
+
+- Rm unused import
+- **nix:** Bump sherpa-onnx in flake.lock and revert CI update step
+
+### CI
+
+- **channels:** Update sherpa-onnx flake input before nix build
+
+### Features
+
+- **llm:** Support extra_body passthrough per provider (#77)
+
+### Miscellaneous
+
+- Bump version to 2.2.0
+
+### Refactor
+
+- **cli:** Drop custom CLI11 formatter labels
+- **flake:** Use system variable directly instead of pkgs.stdenv
+## [2.1.9](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.9) — 2026-04-15
+
+### Bug Fixes
+
+- **cli:** Localize help output labels
+- **ci:** Remove aarch64 from nix-cachix job
+
+### CI
+
+- **nix:** Add cachix publishing to channels workflow
+
+### Documentation
+
+- Document scene context lines in site
+
+### Features
+
+- **daemon:** Pass model provider to VAD for GPU support
+- **addon:** Buffer user commit strings before writing context
+
+### Refactor
+
+- **scene:** Remove context_lines upper limit and cap file dynamically
+
+### Addon
+
+- Record context entry source and timestamp
+
+### Release
+
+- V2.1.9
+## [2.1.8](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.8) — 2026-04-13
+
+### Bug Fixes
+
+- Add missing Qt translation for context lines
+- Expose context lines in GUI and normalize notification locales
+- Add xdg-cache Flatpak permission for input context sharing
+- Make hero image responsive instead of fixed size
+- Use media query for mobile hero centering, revert header change
+- Center hero and show header controls on mobile
+- Prevent horizontal scroll on mobile hero page
+
+### Documentation
+
+- Add Star History to README
+- Add sponsor section to README and simplify sponsor page text
+- Update CONTRIBUTING with docs site links and registry guide
+
+### Features
+
+- Input context injection for LLM auto-correction + GUI notifications
+- Add SEO optimization (robots.txt, OG meta, JSON-LD)
+
+### Miscellaneous
+
+- Remove deprecated builtin fields from default config
+- Add FUNDING.yml with afdian sponsor link
+
+### Refactor
+
+- Drop deprecated scene builtin config field
+
+### Release
+
+- V2.1.8
+
+### Site
+
+- Add sponsor page with donate QR code
+## [2.1.7](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.7) — 2026-04-11
+
+### Bug Fixes
+
+- Use shebang scripts in justfile release/channels recipes
+- Prevent Fcitx5 crash by delaying DBus slot destruction in async callbacks
+
+### CI
+
+- Fix checkout action version v5 -> v4
+- Add docs pages workflow
+
+### Documentation
+
+- Add Cachix config and other distro downloads to README
+- Restore install sections in README, fix license to GPL-3.0
+- Slim READMEs to overview + links to documentation site
+- Unify icon color to #7c93ee and add Space Grotesk heading font
+- Add landing page gradient, hero image, and tsconfig alias
+- Redesign favicon to minimal mic outline
+- Add OneDark/OneLight theme and site logo
+- Delete unused custom.css
+- Remove custom CSS, use Starlight default theme
+- Rewrite homepage with real feature content (en + zh-cn)
+- Scaffold starlight site
+
+### Miscellaneous
+
+- Split release and channels in justfile
+- Bump version to 2.1.7
+
+### Site
+
+- Document LLM adapter response format contract
+- Translate zh-cn sidebar titles for ASR and Registry
+- Clarify registry scripts are language-agnostic, stdlib-only
+- Add registry contribution guide
+- Fix table to display:table for full-width row borders
+- Add full-width row separators to tables
+- Make tables full-width
+- Move config file paths to quick start, add provider/adapter paths
+- Add ASR, scenes & LLM, and settings concept pages
+- Add fcitx5 restart step to load addon after install
+- Rename guide page to Quick Start / 快速上手
+- Fix video embed to responsive 16:9 aspect ratio
+- Slim guide to quick-start with embedded video
+- Add configuration guide with GUI screenshots
+- Expand install page with full Nix and build-from-source details
+- Split install page into repo/local sections with dynamic downloads
+- Restore Get Started / 快速上手 hero button text
+- Replace placeholder pages with install page
+- Refresh homepage product messaging
+- Target header title font with site-title hook
+- Update docs title font
+## [2.1.6](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.6) — 2026-04-10
+
+### Miscellaneous
+
+- **release:** Bump version to 2.1.6
+## [2.1.5](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.5) — 2026-04-10
+
+### CI
+
+- **channels:** Remove blocking publish verification
+
+### Miscellaneous
+
+- **release:** Bump version to 2.1.5
+## [2.1.4](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.4) — 2026-04-10
+
+### Bug Fixes
+
+- **addon:** Avoid newer dispatcher helper api
+- **addon:** Use local event dispatcher for async menu refresh
+- **addon:** Refresh ASR menu state off-thread
+- **addon:** Avoid blocking ASR menu refresh
+- **channels:** Verify exact ppa revision and copr publish
+
+### Miscellaneous
+
+- **release:** Bump version to 2.1.4
+
 ## [2.1.3](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.1.3) — 2026-04-10
 
 ### Bug Fixes

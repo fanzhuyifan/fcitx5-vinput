@@ -1,13 +1,13 @@
 {
-  "id": 1,
-  "timestamp": 1744531200,
+  "id": 2,
+  "timestamp": 1782384889,
   "title": {
-    "en_US": "New: Adaptive ASR correction via input context",
-    "zh_CN": "新功能：输入上下文自适应纠错"
+    "en_US": "Vinput 2.3.1 is available",
+    "zh_CN": "Vinput 2.3.1 已发布"
   },
   "text": {
-    "en_US": "New context_lines field in scene config. When enabled, LLM uses your recent input history to auto-correct ASR errors.",
-    "zh_CN": "场景配置新增 context_lines 字段，开启后 LLM 会利用最近的输入历史自动纠正 ASR 错误。"
+    "en_US": "This release updates sherpa-onnx to v1.13.3, improves Arch packaging, and refines LLM prompt isolation for post-processing.",
+    "zh_CN": "本次发布将 sherpa-onnx 更新到 v1.13.3，改进 Arch 打包，并优化后处理的 LLM 提示词隔离。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.2.0"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.1"
 }
