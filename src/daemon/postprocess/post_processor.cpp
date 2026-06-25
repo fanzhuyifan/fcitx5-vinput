@@ -189,39 +189,20 @@ std::vector<std::string> ExtractCandidates(const json &response) {
   return candidates;
 }
 
-void AppendMarkdownCodeBlock(std::string *out, std::string_view text) {
-  if (!out) {
-    return;
-  }
-  out->append("```text\n");
-  out->append(text);
+std::string WrapXmlBlock(std::string_view tag, std::string_view text) {
+  std::string out;
+  out.reserve(tag.size() * 2 + text.size() + 12);
+  out.push_back('<');
+  out.append(tag);
+  out.append(">\n");
+  out.append(text);
   if (text.empty() || text.back() != '\n') {
-    out->push_back('\n');
+    out.push_back('\n');
   }
-  out->append("```\n");
-}
-
-void AppendMarkdownTextSection(std::string *out, std::string_view heading,
-                               std::string_view body) {
-  if (!out) {
-    return;
-  }
-  if (!out->empty() && out->back() != '\n') {
-    out->push_back('\n');
-  }
-  if (!out->empty()) {
-    out->push_back('\n');
-  }
-  out->append("## ");
-  out->append(heading);
-  out->append("\n\n");
-  AppendMarkdownCodeBlock(out, body);
-}
-
-std::string BuildUserInputMarkdown(std::string_view source_text) {
-  std::string markdown = "# Input\n";
-  AppendMarkdownTextSection(&markdown, "Source Text", source_text);
-  return markdown;
+  out.append("</");
+  out.append(tag);
+  out.push_back('>');
+  return out;
 }
 
 std::string BuildContextPrefix(int max_lines) {
@@ -308,7 +289,6 @@ RewriteWithOpenAiCompatible(const std::string &text,
                             const LlmProvider &provider, int candidate_count,
                             std::string *error_out,
                             const std::string &task_prompt = {},
-                            bool use_markdown_user_input = true,
                             const std::atomic<bool> *cancel_flag = nullptr,
                             std::string_view asr_var = {},
                             std::string_view selected_var = {}) {
@@ -365,20 +345,22 @@ RewriteWithOpenAiCompatible(const std::string &text,
     };
     user_content = vinput::prompt_template::Interpolate(base_prompt, vars);
   } else {
-    // No interpolation — keep legacy data layout but flatten it into one
-    // user message: prompt header + history block + raw input + constraints.
+    // No interpolation — wrap data in XML tags (<asr>, <context>) matching
+    // the interpolation variable names so the two paths are consistent.
     user_content = std::move(base_prompt);
-    const std::string data_part =
-        use_markdown_user_input ? BuildUserInputMarkdown(text) : text;
     if (!user_content.empty() && user_content.back() != '\n') {
       user_content.append("\n\n");
     } else if (!user_content.empty()) {
       user_content.push_back('\n');
     }
     if (!context_prefix.empty()) {
-      user_content.append(context_prefix);
+      user_content.append(WrapXmlBlock("context", context_prefix));
+      user_content.push_back('\n');
     }
-    user_content.append(data_part);
+    if (!text.empty()) {
+      user_content.append(WrapXmlBlock("asr", text));
+      user_content.push_back('\n');
+    }
   }
   user_content.append(constraints_suffix);
 
@@ -567,7 +549,7 @@ PostProcessor::Process(const std::string &raw_text,
 
   auto rewritten =
       RewriteWithOpenAiCompatible(normalized, scene, *provider, candidate_count,
-                                  error_out, {}, true, &shutting_down_);
+                                  error_out, {}, &shutting_down_);
   if (!rewritten.has_value()) {
     return fallback;
   }
@@ -616,9 +598,8 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     return fallback;
   }
 
-  // task prompt: scene prompt header + raw voice command. Resolve any
-  // `file:///` reference up front so the URI does not get concatenated with
-  // the ASR text (which would prevent the downstream IsFileUri check).
+  // Resolve any `file:///` reference up front so the URI is not
+  // accidentally concatenated with data text.
   std::string task_prompt = command_scene.prompt;
   if (vinput::prompt_template::IsFileUri(task_prompt)) {
     std::string load_err;
@@ -634,10 +615,9 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     task_prompt = std::move(*loaded);
   }
 
-  // When the author opts into templating, they place the ASR command via
-  // `{{asr}}` and the selected source via `{{selected}}`. Otherwise we keep
-  // the legacy header behavior: append the ASR command after the prompt so
-  // the trailing `## Task` section gets populated.
+  // Interpolation mode ({{asr}}/{{selected}}/{{context}}): author owns layout.
+  // Legacy mode: wrap ASR command and selected text in <asr>/<selected> XML
+  // tags so data is clearly separated from prompt instructions.
   const bool use_template =
       vinput::prompt_template::HasInterpolation(task_prompt);
   std::string_view asr_var;
@@ -646,16 +626,24 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     asr_var = normalized_asr;
     selected_var = selected_text;
   } else {
+    // Legacy mode: wrap data in <asr>/<selected> XML tags.
     if (!task_prompt.empty() && task_prompt.back() != '\n') {
       task_prompt.push_back('\n');
     }
+    task_prompt += "\n<asr>\n";
     task_prompt += normalized_asr;
+    task_prompt += "\n</asr>\n\n<selected>\n";
+    task_prompt += selected_text;
+    task_prompt += "\n</selected>\n";
   }
 
+  // Data is already embedded in task_prompt (legacy XML tags) or will be
+  // substituted via {{asr}}/{{selected}} (interpolation). Pass empty text to
+  // avoid double-appending.
   auto rewritten =
-      RewriteWithOpenAiCompatible(selected_text, command_scene, *provider,
+      RewriteWithOpenAiCompatible("", command_scene, *provider,
                                   command_candidate_count, error_out,
-                                  task_prompt, false, &shutting_down_,
+                                  task_prompt, &shutting_down_,
                                   asr_var, selected_var);
 
   vinput::result::Payload payload;
