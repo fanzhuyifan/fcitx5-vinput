@@ -7,7 +7,15 @@ import ReleaseDownloads from '~/components/ReleaseDownloads.astro';
 
 ## 仓库安装
 
-### Arch Linux (AUR)
+### Arch Linux（[archlinuxcn](https://www.archlinuxcn.org/archlinux-cn-repo-and-mirror/) / AUR）
+
+如果已启用 [archlinuxcn](https://www.archlinuxcn.org/archlinux-cn-repo-and-mirror/) 仓库，可以直接安装仓库构建包：
+
+```bash
+sudo pacman -S fcitx5-vinput
+```
+
+也可以使用 AUR 二进制包：
 
 ```bash
 yay -S fcitx5-vinput-bin

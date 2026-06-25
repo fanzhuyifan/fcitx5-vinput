@@ -27,7 +27,15 @@ https://github.com/user-attachments/assets/5a548a68-153c-4842-bab6-926f30bb720e
 
 ## 安装
 
-### Arch Linux (AUR)
+### Arch Linux（[archlinuxcn](https://www.archlinuxcn.org/archlinux-cn-repo-and-mirror/) / AUR）
+
+如果已启用 [archlinuxcn](https://www.archlinuxcn.org/archlinux-cn-repo-and-mirror/) 仓库，可以直接安装仓库构建包：
+
+```bash
+sudo pacman -S fcitx5-vinput
+```
+
+也可以使用 AUR 二进制包：
 
 ```bash
 yay -S fcitx5-vinput-bin
@@ -89,6 +97,9 @@ flatpak override --user --filesystem=xdg-run/pipewire-0 org.fcitx.Fcitx5
 flatpak override --user --filesystem=xdg-config/systemd:create org.fcitx.Fcitx5
 flatpak override --user --filesystem=xdg-cache org.fcitx.Fcitx5
 flatpak kill org.fcitx.Fcitx5
+```
+
+### GitHub Releases
 
 从 [GitHub Releases](https://github.com/xifan2333/fcitx5-vinput/releases/latest) 下载对应安装包：
 
