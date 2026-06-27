@@ -174,7 +174,7 @@ vinput adapter stop <id>        # 停止
 
 操作流程：选中文本 → 按住 `Control_R` → 说出指令 → 松开 → 完成。
 
-底层使用内置的 `__command__` 场景，它的 prompt 模板在运行时拼接你说的指令。
+底层使用内置的 `__command__` 场景。默认 prompt 模板通过 `{{selected}}` 和 `{{asr}}` 接收选中文本与语音指令，并用 Vinput 专用 XML 标签（`<vinput-selected>` 和 `<vinput-asr>`）隔离数据。
 
 **示例：**
 - 选中中文 → 说 *"翻译成英文"* → 替换为英文译文

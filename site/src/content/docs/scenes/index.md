@@ -174,7 +174,7 @@ Command mode is a special scene usage: select existing text, then use a voice in
 
 Flow: select text → hold `Control_R` → speak your instruction → release → done.
 
-Under the hood it uses the built-in `__command__` scene, whose prompt template is concatenated with your spoken instruction at runtime.
+Under the hood it uses the built-in `__command__` scene. The default prompt template receives the selected text and spoken instruction through `{{selected}}` and `{{asr}}`, wrapped in Vinput-scoped XML tags (`<vinput-selected>` and `<vinput-asr>`).
 
 **Examples:**
 - Select Chinese text → say *"translate to English"* → replaced with translation

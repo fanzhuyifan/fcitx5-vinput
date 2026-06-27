@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  SCCACHE_CACHE_SIZE: 2G
+
+jobs:
+  build:
+    name: build-linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate bundled JSON
+        run: |
+          python3 -m json.tool data/default-config.json >/dev/null
+          python3 -m json.tool notification.json >/dev/null
+
+      - name: Install build dependencies
+        run: ./scripts/ci-install-build-deps.sh ubuntu24.04
+
+      - name: Install sherpa-onnx build runtime
+        run: |
+          prefix="${RUNNER_TEMP}/sherpa-onnx-install"
+          source scripts/sherpa-onnx-vars.sh
+          bash scripts/build-sherpa-onnx.sh "${SHERPA_ONNX_VERSION}" "${prefix}"
+          echo "VINPUT_CMAKE_PREFIX_PATH=${prefix}" >> "${GITHUB_ENV}"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.SCCACHE_DIR }}
+          key: sccache-ci-linux-${{ github.ref_name }}
+          restore-keys: |
+            sccache-ci-linux-
+
+      - name: Configure
+        run: |
+          cmake --preset ci-clang-mold \
+            -DVINPUT_PACKAGE_HOMEPAGE_URL="${{ github.server_url }}/${{ github.repository }}" \
+            -DVINPUT_RUNTIME_MODE=bundled
+
+      - name: Build all targets
+        run: cmake --build --preset ci-clang-mold

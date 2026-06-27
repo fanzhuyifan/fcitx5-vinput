@@ -189,6 +189,10 @@ std::vector<std::string> ExtractCandidates(const json &response) {
   return candidates;
 }
 
+constexpr std::string_view kXmlTagAsr = "vinput-asr";
+constexpr std::string_view kXmlTagSelected = "vinput-selected";
+constexpr std::string_view kXmlTagContext = "vinput-context";
+
 std::string WrapXmlBlock(std::string_view tag, std::string_view text) {
   std::string out;
   out.reserve(tag.size() * 2 + text.size() + 12);
@@ -345,8 +349,8 @@ RewriteWithOpenAiCompatible(const std::string &text,
     };
     user_content = vinput::prompt_template::Interpolate(base_prompt, vars);
   } else {
-    // No interpolation — wrap data in XML tags (<asr>, <context>) matching
-    // the interpolation variable names so the two paths are consistent.
+    // No interpolation — wrap data in Vinput-scoped XML tags so prompt
+    // instructions and user-provided data remain clearly separated.
     user_content = std::move(base_prompt);
     if (!user_content.empty() && user_content.back() != '\n') {
       user_content.append("\n\n");
@@ -354,11 +358,11 @@ RewriteWithOpenAiCompatible(const std::string &text,
       user_content.push_back('\n');
     }
     if (!context_prefix.empty()) {
-      user_content.append(WrapXmlBlock("context", context_prefix));
+      user_content.append(WrapXmlBlock(kXmlTagContext, context_prefix));
       user_content.push_back('\n');
     }
     if (!text.empty()) {
-      user_content.append(WrapXmlBlock("asr", text));
+      user_content.append(WrapXmlBlock(kXmlTagAsr, text));
       user_content.push_back('\n');
     }
   }
@@ -616,8 +620,8 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   }
 
   // Interpolation mode ({{asr}}/{{selected}}/{{context}}): author owns layout.
-  // Legacy mode: wrap ASR command and selected text in <asr>/<selected> XML
-  // tags so data is clearly separated from prompt instructions.
+  // Legacy mode: wrap ASR command and selected text in Vinput-scoped XML tags
+  // so data is clearly separated from prompt instructions.
   const bool use_template =
       vinput::prompt_template::HasInterpolation(task_prompt);
   std::string_view asr_var;
@@ -626,15 +630,15 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
     asr_var = normalized_asr;
     selected_var = selected_text;
   } else {
-    // Legacy mode: wrap data in <asr>/<selected> XML tags.
+    // Legacy mode: wrap data in Vinput-scoped XML tags.
     if (!task_prompt.empty() && task_prompt.back() != '\n') {
       task_prompt.push_back('\n');
     }
-    task_prompt += "\n<asr>\n";
-    task_prompt += normalized_asr;
-    task_prompt += "\n</asr>\n\n<selected>\n";
-    task_prompt += selected_text;
-    task_prompt += "\n</selected>\n";
+    task_prompt += '\n';
+    task_prompt += WrapXmlBlock(kXmlTagAsr, normalized_asr);
+    task_prompt += "\n\n";
+    task_prompt += WrapXmlBlock(kXmlTagSelected, selected_text);
+    task_prompt += '\n';
   }
 
   // Data is already embedded in task_prompt (legacy XML tags) or will be

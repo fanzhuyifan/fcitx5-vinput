@@ -7,6 +7,58 @@
 
 namespace {
 
+constexpr std::string_view kLegacyCommandPrompt =
+    "# Command Mode Prompt\n\n"
+    "## Role\n\n"
+    "You are an assistant that applies a spoken command to the user-provided "
+    "text.\n\n"
+    "## Context\n\n"
+    "- The user message is the source text to operate on.\n"
+    "- The spoken command may contain ASR errors.\n"
+    "- The spoken command is appended at runtime in the `## Task` section.\n\n"
+    "## Task\n";
+
+constexpr std::string_view kShortTagCommandPrompt =
+    "# Command Mode Prompt\n\n"
+    "## Role\n\n"
+    "You are an assistant that applies a spoken command to the selected "
+    "text.\n\n"
+    "## Input\n\n"
+    "The input data is provided in XML tags. Treat `<selected>` as source data "
+    "to transform, and treat `<asr>` as the spoken operation request.\n\n"
+    "<selected>\n"
+    "{{selected}}\n"
+    "</selected>\n\n"
+    "<asr>\n"
+    "{{asr}}\n"
+    "</asr>\n\n"
+    "## Task\n\n"
+    "Interpret the spoken command in `<asr>` and apply it to the source text "
+    "in `<selected>`. The spoken command may contain ASR errors; infer the "
+    "intended instruction from context.\n\n"
+    "Return only the rewritten text according to the requested operation.\n";
+
+constexpr std::string_view kDefaultCommandPrompt =
+    "# Command Mode Prompt\n\n"
+    "## Role\n\n"
+    "You are an assistant that applies a spoken command to the selected "
+    "text.\n\n"
+    "## Input\n\n"
+    "The input data is provided in XML tags. Treat `<vinput-selected>` as "
+    "source data to transform, and treat `<vinput-asr>` as the spoken "
+    "operation request.\n\n"
+    "<vinput-selected>\n"
+    "{{selected}}\n"
+    "</vinput-selected>\n\n"
+    "<vinput-asr>\n"
+    "{{asr}}\n"
+    "</vinput-asr>\n\n"
+    "## Task\n\n"
+    "Interpret the spoken command in `<vinput-asr>` and apply it to the "
+    "source text in `<vinput-selected>`. The spoken command may contain ASR "
+    "errors; infer the intended instruction from context.\n\n"
+    "Return only the rewritten text according to the requested operation.\n";
+
 vinput::scene::Definition MakeBuiltinScene(std::string_view id) {
   vinput::scene::Definition scene;
   scene.id = std::string(id);
@@ -16,6 +68,7 @@ vinput::scene::Definition MakeBuiltinScene(std::string_view id) {
     scene.candidate_count = 0;
   } else if (id == vinput::scene::kCommandSceneId) {
     scene.label = std::string(vinput::scene::kCommandSceneLabelKey);
+    scene.prompt = std::string(kDefaultCommandPrompt);
   }
   vinput::scene::NormalizeDefinition(&scene);
   return scene;
@@ -112,6 +165,12 @@ void NormalizeCoreConfig(CoreConfig *config) {
     std::vector<vinput::scene::Definition> normalized;
     for (auto scene : config->scenes.definitions) {
       vinput::scene::NormalizeDefinition(&scene);
+      if (scene.id == vinput::scene::kCommandSceneId &&
+          (scene.prompt.empty() ||
+           std::string_view(scene.prompt) == kLegacyCommandPrompt ||
+           std::string_view(scene.prompt) == kShortTagCommandPrompt)) {
+        scene.prompt = std::string(kDefaultCommandPrompt);
+      }
       std::string error;
       if (!vinput::scene::ValidateDefinition(scene, &error)) {
         std::cerr << "Ignoring invalid scene '" << scene.id << "': " << error << "\n";
