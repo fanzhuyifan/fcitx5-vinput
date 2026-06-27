@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.2](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.2) — 2026-06-27
+
+### Bug Fixes
+
+- **postprocess:** Update default command-mode prompt to use `{{selected}}`/`{{asr}}` interpolation with vinput-scoped XML tags and add migration for existing configs
+- **ci:** Add automated build verification workflow for all targets on push/PR
+
 ## [2.3.1](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.1) — 2026-06-25
 
 ### CI

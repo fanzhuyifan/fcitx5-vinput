@@ -1,13 +1,13 @@
 {
-  "id": 2,
-  "timestamp": 1782384889,
+  "id": 3,
+  "timestamp": 1782558139,
   "title": {
-    "en_US": "Vinput 2.3.1 is available",
-    "zh_CN": "Vinput 2.3.1 已发布"
+    "en_US": "Vinput 2.3.2 — Command prompt data isolation fix",
+    "zh_CN": "Vinput 2.3.2 — 命令模式 prompt 数据隔离修复"
   },
   "text": {
-    "en_US": "This release updates sherpa-onnx to v1.13.3, improves Arch packaging, and refines LLM prompt isolation for post-processing.",
-    "zh_CN": "本次发布将 sherpa-onnx 更新到 v1.13.3，改进 Arch 打包，并优化后处理的 LLM 提示词隔离。"
+    "en_US": "Fixes the default command-mode prompt to explicitly isolate source text and spoken command in vinput-scoped XML tags with {{selected}}/{{asr}} interpolation, preventing data leakage into LLM instructions.",
+    "zh_CN": "修复默认命令模式 prompt，使用 vinput 专用 XML 标签和 {{selected}}/{{asr}} 插值显式隔离源文本与语音指令，防止数据泄漏到 LLM 指令中。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.1"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.2"
 }
