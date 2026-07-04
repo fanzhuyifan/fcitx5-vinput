@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.3](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.3) — 2026-07-04
+
+### Bug Fixes
+
+- Route dbus activation through systemd
+
+### Features
+
+- Reduce system output volume while recording (#105) (#108)
+
+### Miscellaneous
+
+- **deps:** Bump nixpkgs (#106)
+
 ## [2.3.2](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.2) — 2026-06-27
 
 ### Bug Fixes
