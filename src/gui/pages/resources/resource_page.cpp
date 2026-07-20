@@ -220,7 +220,7 @@ ResourcePage::ResourcePage(QWidget *parent) : QWidget(parent) {
           });
 
   connect(&I18nCache::Get(), &I18nCache::mapUpdated, this,
-          [this]() { finishRefreshAfterI18n(); });
+          [this](quint64 generation) { finishRefreshAfterI18n({}, generation); });
   connect(&I18nCache::Get(), &I18nCache::reloadFailed, this,
           &ResourcePage::finishRefreshAfterI18n);
 
@@ -238,16 +238,26 @@ void ResourcePage::refreshLocalizedTables() {
   populateRemoteAdapters(remoteAdapters_);
 }
 
-void ResourcePage::finishRefreshAfterI18n(const QString &error) {
+void ResourcePage::finishRefreshAfterI18n(const QString &error,
+                                          quint64 generation) {
+  // Always repaint with the latest cached map + stored remote entries so
+  // startup disk preload and later mapUpdated events refresh titles.
+  refreshLocalizedTables();
+
+  // Only the i18n reload started by the current Refresh may complete the wait.
+  // Startup preload or a superseded reload must not re-enable the button early.
+  if (!refreshWaitingForI18n_ || generation != i18nWaitGeneration_ ||
+      i18nWaitGeneration_ == 0) {
+    return;
+  }
+
   if (!error.isEmpty()) {
     textLog_->append(tr("I18n cache reload error: %1").arg(error));
   }
-  refreshLocalizedTables();
-  if (refreshWaitingForI18n_) {
-    refreshWaitingForI18n_ = false;
-    btnRefreshResources_->setEnabled(true);
-    textLog_->append(tr("Registry fetch completed."));
-  }
+  refreshWaitingForI18n_ = false;
+  i18nWaitGeneration_ = 0;
+  btnRefreshResources_->setEnabled(true);
+  textLog_->append(tr("Registry fetch completed."));
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +448,11 @@ void ResourcePage::refreshAll() {
   const uint64_t generation = ++refreshGeneration_;
   refreshWaitingForI18n_ = false;
 
+  // Keep installed models visible during the network round-trip.
+  ModelManager local_manager(baseDir.toStdString());
+  populateLocalModels(
+      local_manager.ListDetailed(ResolvePreferredLocalModel(config)));
+
   btnRefreshResources_->setEnabled(false);
   textLog_->append(tr("Fetching remote registry..."));
 
@@ -508,7 +523,7 @@ void ResourcePage::refreshAll() {
               }
 
               self->refreshWaitingForI18n_ = true;
-              I18nCache::Get().ReloadFromDisk();
+              self->i18nWaitGeneration_ = I18nCache::Get().ReloadFromDisk();
             },
             Qt::QueuedConnection);
       });

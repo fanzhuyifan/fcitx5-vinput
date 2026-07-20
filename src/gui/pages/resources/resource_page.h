@@ -48,7 +48,8 @@ private:
   void populateRemoteAdapters(const std::vector<vinput::script::RegistryEntry> &adapters);
   void applyTableFilter(QTableWidget *table, const QString &filter_text);
   void refreshLocalizedTables();
-  void finishRefreshAfterI18n(const QString &error = {});
+  void finishRefreshAfterI18n(const QString &error = {},
+                              quint64 generation = 0);
 
   void abortDownload();
 
@@ -75,6 +76,7 @@ private:
   std::vector<vinput::script::RegistryEntry> remoteProviders_;
   std::vector<vinput::script::RegistryEntry> remoteAdapters_;
   uint64_t refreshGeneration_ = 0;
+  uint64_t i18nWaitGeneration_ = 0;
   bool refreshWaitingForI18n_ = false;
 };
 

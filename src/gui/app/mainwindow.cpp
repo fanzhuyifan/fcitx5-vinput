@@ -22,6 +22,7 @@
 #include "common/utils/path_utils.h"
 #include "gui/utils/config_manager.h"
 #include "gui/utils/download_worker.h"
+#include "gui/utils/i18n_cache.h"
 #include "cli/runtime/systemd_client.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
@@ -66,8 +67,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   bottomLayout->addWidget(btnSave);
   mainLayout->addLayout(bottomLayout);
 
-  // Initial load
+  // Initial load. Disk-only i18n preload so Control/Resources titles are
+  // available before the first registry network refresh finishes.
   controlPage_->reload();
+  vinput::gui::I18nCache::Get().ReloadFromDisk();
 
   checkNotification();
 }
