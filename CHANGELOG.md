@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.4](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.4) — 2026-07-21
+
+### Bug Fixes
+
+- **asr:** Shallow-scan installed models for the F8 menu, reuse one local model listing per open, and read titles from cached registry i18n
+- **gui:** Show resource titles and scene labels in user-facing text instead of raw ids
+- **gui:** Improve registry i18n preload, refresh, and reload completion
+
+### Miscellaneous
+
+- Drop unused includes and fix i18n cache nodiscard handling
+- Ignore local MCP/repowise state and drop stale gitignore paths
+- **deps:** Bump sherpa-onnx to v1.13.4
+- **deps:** Bump nixpkgs
+- **ci:** Only rebuild nix-cache on flake/Nix path changes
+
 ## [2.3.3](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.3) — 2026-07-04
 
 ### Bug Fixes
