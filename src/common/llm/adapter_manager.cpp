@@ -5,10 +5,9 @@
 #include <fstream>
 #include <string>
 #include <string_view>
-#include <sys/wait.h>
 #include <unistd.h>
 
-#include "common/config/core_config.h"
+#include "common/config/core_config_types.h"
 #include "common/utils/path_utils.h"
 #include "common/utils/process_utils.h"
 

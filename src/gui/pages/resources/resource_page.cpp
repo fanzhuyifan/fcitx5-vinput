@@ -19,8 +19,6 @@
 #include "gui/utils/i18n_cache.h"
 #include "gui/utils/download_worker.h"
 #include "cli/runtime/dbus_client.h"
-#include "cli/runtime/systemd_client.h"
-#include "common/utils/download_progress.h"
 #include "common/utils/string_utils.h"
 
 namespace vinput::gui {

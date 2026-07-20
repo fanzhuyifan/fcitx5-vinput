@@ -1,6 +1,6 @@
 #include "daemon/runtime/recognition_pipeline.h"
 
-#include "common/dbus/dbus_interface.h"
+#include "common/dbus/error_info.h"
 #include "common/utils/debug_log.h"
 
 namespace {

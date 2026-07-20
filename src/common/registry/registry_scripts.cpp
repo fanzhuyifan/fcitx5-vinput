@@ -6,7 +6,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "common/config/core_config.h"
+#include "common/config/core_config_types.h"
 #include "common/utils/downloader.h"
 #include "common/utils/path_utils.h"
 #include "common/registry/registry_cache.h"

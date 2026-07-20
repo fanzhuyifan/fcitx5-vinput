@@ -4,7 +4,6 @@
 #include "common/asr/model_manager.h"
 #include "common/i18n.h"
 #include "common/registry/registry_i18n.h"
-#include "common/dbus/asr_backend_state_utils.h"
 #include "common/runtime/runtime_defaults.h"
 #include "common/scene/postprocess_scene.h"
 #include "common/utils/string_utils.h"

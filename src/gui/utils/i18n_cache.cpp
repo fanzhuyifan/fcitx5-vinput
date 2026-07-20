@@ -1,7 +1,7 @@
 #include "gui/utils/i18n_cache.h"
 
 #include <QMetaObject>
-#include <QtConcurrent/QtConcurrent>
+#include <QThreadPool>
 
 namespace vinput::gui {
 
@@ -34,7 +34,7 @@ quint64 I18nCache::LoadFromDiskSync() {
 
 quint64 I18nCache::ReloadFromDisk() {
     const quint64 generation = ++generation_;
-    QtConcurrent::run([this, generation]() {
+    QThreadPool::globalInstance()->start([this, generation]() {
         const std::string locale = vinput::registry::DetectPreferredLocale();
         std::string error;
         auto map =

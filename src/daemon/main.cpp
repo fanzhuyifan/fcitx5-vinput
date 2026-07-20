@@ -4,7 +4,6 @@
 #include "common/dbus/dbus_interface.h"
 #include "common/i18n.h"
 #include "common/utils/process_utils.h"
-#include "common/asr/recognition_result.h"
 #include "common/utils/debug_log.h"
 #include "common/utils/string_utils.h"
 #include "daemon/asr/runtime/recognition_session_manager.h"
@@ -27,7 +26,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <thread>
 #include <vector>

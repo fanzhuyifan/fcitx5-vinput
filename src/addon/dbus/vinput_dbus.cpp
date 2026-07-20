@@ -9,7 +9,6 @@
 #include "core/vinput.h"
 
 #include "notifications_public.h"
-#include <dbus_public.h>
 #include <fcitx-utils/dbus/matchrule.h>
 #include <fcitx-utils/dbus/message.h>
 #include <fcitx/inputcontext.h>
