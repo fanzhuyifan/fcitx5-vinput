@@ -773,19 +773,22 @@ void VinputEngine::reloadAsrMenuItems() {
       have_backend_state && !backend_state.effective_model_id.empty()
           ? backend_state.effective_model_id
           : configured_model;
-  const auto i18n_map = vinput::registry::FetchMergedI18nMap(
-      core_config, vinput::registry::DetectPreferredLocale(), nullptr);
+  // F8 menu must stay off the network; titles come from local registry cache.
+  const auto i18n_map = vinput::registry::LoadMergedCachedI18nMap(
+      vinput::registry::DetectPreferredLocale(), nullptr);
+
+  // Local models share one install tree; scan once, then reuse for every local
+  // provider row instead of re-walking the disk per provider.
+  const auto base_dir = ResolveModelBaseDir(core_config);
+  ModelManager manager(base_dir.string());
+  const auto local_models = manager.ListDetailed(active_model);
 
   for (const auto &provider : core_config.asr.providers) {
     const std::string &pid = AsrProviderId(provider);
     const std::string provider_title =
         vinput::registry::LookupI18n(i18n_map, pid + ".title", pid);
     if (std::holds_alternative<LocalAsrProvider>(provider)) {
-      // Enumerate installed models under this local provider
-      const auto base_dir = ResolveModelBaseDir(core_config);
-      ModelManager manager(base_dir.string());
-      auto models = manager.ListDetailed(active_model);
-      for (const auto &summary : models) {
+      for (const auto &summary : local_models) {
         const bool item_active =
             (pid == active_provider) && (summary.id == active_model);
         const std::string model_title = vinput::registry::LookupI18n(

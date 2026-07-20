@@ -74,6 +74,66 @@ bool IsPathWithinRoot(const fs::path &path, const fs::path &root) {
   return true;
 }
 
+// Walk only the install layout produced by ModelRepository::InstallModel:
+//   <base>/<engine>/<name>/vinput-model.json
+// corresponding to id model.<engine>.<name>. Never recurse into model file trees.
+template <typename Fn>
+void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
+  const auto root = fs::path(base_dir);
+  std::error_code ec;
+  if (!fs::exists(root, ec) || ec || !fs::is_directory(root, ec) || ec) {
+    return;
+  }
+
+  for (const auto &engine_entry : fs::directory_iterator(root, ec)) {
+    if (ec) {
+      return;
+    }
+    if (!engine_entry.is_directory(ec) || ec) {
+      ec.clear();
+      continue;
+    }
+    const auto &engine_dir = engine_entry.path();
+    const std::string engine_name = engine_dir.filename().string();
+    if (engine_name.empty() || engine_name == "." || engine_name == ".." ||
+        engine_name.front() == '.') {
+      continue;
+    }
+
+    for (const auto &model_entry : fs::directory_iterator(engine_dir, ec)) {
+      if (ec) {
+        ec.clear();
+        break;
+      }
+      if (!model_entry.is_directory(ec) || ec) {
+        ec.clear();
+        continue;
+      }
+      const auto &model_dir = model_entry.path();
+      const std::string model_name = model_dir.filename().string();
+      if (model_name.empty() || model_name == "." || model_name == ".." ||
+          model_name.front() == '.') {
+        continue;
+      }
+
+      const fs::path relative_path = fs::path(engine_name) / model_name;
+      const std::string model_id =
+          ModelManager::IdFromRelativePath(relative_path);
+      if (model_id.empty()) {
+        continue;
+      }
+
+      const fs::path json_path = model_dir / "vinput-model.json";
+      if (!fs::is_regular_file(json_path, ec) || ec) {
+        ec.clear();
+        continue;
+      }
+
+      fn(model_id, model_dir, json_path);
+    }
+  }
+}
+
 bool ResolveModelMetadataPath(const fs::path &model_dir,
                               const fs::path &model_root,
                               const std::string &raw_path, fs::path *resolved,
@@ -455,28 +515,11 @@ std::string ModelManager::GetBaseDir() const { return base_dir_; }
 
 std::vector<std::string> ModelManager::ListModels() const {
   std::vector<std::string> models;
-  const auto root = fs::path(base_dir_);
-  if (!fs::exists(root) || !fs::is_directory(root)) {
-    return models;
-  }
-
-  for (const auto &entry : fs::directory_iterator(root)) {
-    if (entry.is_directory()) {
-      for (const auto &nested : fs::recursive_directory_iterator(entry.path())) {
-        if (!nested.is_regular_file() ||
-            nested.path().filename() != "vinput-model.json") {
-          continue;
-        }
-        std::error_code rel_ec;
-        const fs::path relative_path =
-            nested.path().parent_path().lexically_relative(root);
-        const std::string model_id = IdFromRelativePath(relative_path);
-        if (!model_id.empty() && IsValidModelDir(model_id)) {
-          models.push_back(model_id);
-        }
-      }
-    }
-  }
+  // Install layout is fixed: models/<engine>/<name>/vinput-model.json
+  // (id: model.<engine>.<name>). Only walk that shallow tree.
+  ForEachInstalledModelDir(base_dir_,
+                           [&](const std::string &model_id, const fs::path &,
+                               const fs::path &) { models.push_back(model_id); });
 
   std::sort(models.begin(), models.end());
   models.erase(std::unique(models.begin(), models.end()), models.end());
@@ -494,50 +537,31 @@ bool ModelManager::IsValidModelDir(const std::string &model_id) const {
 std::vector<ModelSummary>
 ModelManager::ListDetailed(const std::string &active_model) const {
   std::vector<ModelSummary> summaries;
-  const auto root = fs::path(base_dir_);
-  if (!fs::exists(root) || !fs::is_directory(root)) {
-    return summaries;
-  }
+  // Same shallow install layout as ListModels / ModelRepository::InstallModel.
+  ForEachInstalledModelDir(
+      base_dir_,
+      [&](const std::string &model_id, const fs::path &,
+          const fs::path &json_path) {
+        ModelSummary s;
+        s.id = model_id;
+        try {
+          std::ifstream file(json_path);
+          json j;
+          file >> j;
+          s.model_type = j.value("family", "");
+          s.language = j.value("language", "auto");
+          s.supports_hotwords = j.value("supports_hotwords", false);
+          s.size_bytes = j.value("size_bytes", uint64_t{0});
+        } catch (...) {
+          s.state = ModelState::Broken;
+          summaries.push_back(std::move(s));
+          return;
+        }
 
-  for (const auto &entry : fs::recursive_directory_iterator(root)) {
-    if (!entry.is_regular_file() || entry.path().filename() != "vinput-model.json") {
-      continue;
-    }
-
-    const auto relative_path = entry.path().parent_path().lexically_relative(root);
-    const auto model_id = IdFromRelativePath(relative_path);
-    if (model_id.empty()) {
-      continue;
-    }
-    ModelSummary s;
-    s.id = model_id;
-
-    if (!IsValidModelDir(model_id)) {
-      s.state = ModelState::Broken;
-      summaries.push_back(std::move(s));
-      continue;
-    }
-
-    // Parse model summary from vinput-model.json
-    const auto json_path = entry.path();
-    try {
-      std::ifstream file(json_path);
-      json j;
-      file >> j;
-      s.model_type = j.value("family", "");
-      s.language = j.value("language", "auto");
-      s.supports_hotwords = j.value("supports_hotwords", false);
-      s.size_bytes = j.value("size_bytes", uint64_t{0});
-    } catch (...) {
-      s.state = ModelState::Broken;
-      summaries.push_back(std::move(s));
-      continue;
-    }
-
-    s.state =
-        (model_id == active_model) ? ModelState::Active : ModelState::Installed;
-    summaries.push_back(std::move(s));
-  }
+        s.state = (model_id == active_model) ? ModelState::Active
+                                           : ModelState::Installed;
+        summaries.push_back(std::move(s));
+      });
 
   std::sort(summaries.begin(), summaries.end(),
             [](const ModelSummary &a, const ModelSummary &b) {
