@@ -46,8 +46,8 @@ public:
       std::string *resolved_registry_url = nullptr) const;
   std::vector<RemoteModelEntry> FetchRegistry(
       const CoreConfig &config, const std::vector<std::string> &registry_urls,
-      std::string *error,
-      std::string *resolved_registry_url = nullptr) const;
+      std::string *error, std::string *resolved_registry_url = nullptr,
+      std::vector<std::string> *warnings = nullptr) const;
 
   // Download and install a model
   bool InstallModel(const std::string &registry_url,

@@ -1,5 +1,7 @@
 #include "pages/resources/resource_page.h"
 
+#include <algorithm>
+
 #include <QAbstractItemView>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -218,12 +220,35 @@ ResourcePage::ResourcePage(QWidget *parent) : QWidget(parent) {
           });
 
   connect(&I18nCache::Get(), &I18nCache::mapUpdated, this,
-          &ResourcePage::refreshAll);
+          [this]() { finishRefreshAfterI18n(); });
+  connect(&I18nCache::Get(), &I18nCache::reloadFailed, this,
+          &ResourcePage::finishRefreshAfterI18n);
 
   QTimer::singleShot(0, this, &ResourcePage::refreshAll);
 }
 
 void ResourcePage::reload() { refreshAll(); }
+
+void ResourcePage::refreshLocalizedTables() {
+  CoreConfig config = ConfigManager::Get().Load();
+  ModelManager manager(ResolveModelBaseDir(config).string());
+  populateLocalModels(manager.ListDetailed(ResolvePreferredLocalModel(config)));
+  populateRemoteModels(remoteModels_);
+  populateRemoteProviders(remoteProviders_);
+  populateRemoteAdapters(remoteAdapters_);
+}
+
+void ResourcePage::finishRefreshAfterI18n(const QString &error) {
+  if (!error.isEmpty()) {
+    textLog_->append(tr("I18n cache reload error: %1").arg(error));
+  }
+  refreshLocalizedTables();
+  if (refreshWaitingForI18n_) {
+    refreshWaitingForI18n_ = false;
+    btnRefreshResources_->setEnabled(true);
+    textLog_->append(tr("Registry fetch completed."));
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Populate helpers
@@ -409,69 +434,84 @@ void ResourcePage::populateRemoteAdapters(const std::vector<vinput::script::Regi
 void ResourcePage::refreshAll() {
   CoreConfig config = ConfigManager::Get().Load();
   QString baseDir = QString::fromStdString(ResolveModelBaseDir(config).string());
-  QString preferredModel = QString::fromStdString(ResolvePreferredLocalModel(config));
   QPointer<ResourcePage> self(this);
-
-  ModelManager manager(baseDir.toStdString());
-  auto localModels = manager.ListDetailed(preferredModel.toStdString());
-  populateLocalModels(localModels);
+  const uint64_t generation = ++refreshGeneration_;
+  refreshWaitingForI18n_ = false;
 
   btnRefreshResources_->setEnabled(false);
   textLog_->append(tr("Fetching remote registry..."));
 
-  QThreadPool::globalInstance()->start([self, config, baseDir]() {
-     if (!self) {
-         return;
-     }
-     ModelRepository repo(baseDir.toStdString());
-     std::string err;
-     
-     auto registryUrls = ResolveModelRegistryUrls(config);
-     auto remoteModels = repo.FetchRegistry(config, registryUrls, &err);
-     if (!err.empty()) {
-         QMetaObject::invokeMethod(self, [self, err]() {
-             if (!self) {
-                 return;
-             }
-             self->textLog_->append(self->tr("Models fetch error: %1").arg(QString::fromStdString(err)));
-         });
-     }
-     
-     err.clear();
-     auto providerUrls = ResolveAsrProviderRegistryUrls(config);
-     auto remoteProviders = vinput::script::FetchRegistry(config, vinput::script::Kind::kAsrProvider, providerUrls, &err);
-     if (!err.empty()) {
-         QMetaObject::invokeMethod(self, [self, err]() {
-             if (!self) {
-                 return;
-             }
-             self->textLog_->append(self->tr("Providers fetch error: %1").arg(QString::fromStdString(err)));
-         });
-     }
-     
-     err.clear();
-     auto adapterUrls = ResolveLlmAdapterRegistryUrls(config);
-     auto remoteAdapters = vinput::script::FetchRegistry(config, vinput::script::Kind::kLlmAdapter, adapterUrls, &err);
-     if (!err.empty()) {
-         QMetaObject::invokeMethod(self, [self, err]() {
-             if (!self) {
-                 return;
-             }
-             self->textLog_->append(self->tr("Adapters fetch error: %1").arg(QString::fromStdString(err)));
-         });
-     }
+  QThreadPool::globalInstance()->start(
+      [self, config, baseDir, generation]() {
+        if (!self) {
+          return;
+        }
 
-     QMetaObject::invokeMethod(self, [self, remoteModels, remoteProviders, remoteAdapters]() {
-         if (!self) {
-             return;
-         }
-         self->populateRemoteModels(remoteModels);
-         self->populateRemoteProviders(remoteProviders);
-         self->populateRemoteAdapters(remoteAdapters);
-         self->btnRefreshResources_->setEnabled(true);
-         self->textLog_->append(self->tr("Registry fetch completed."));
-     });
-  });
+        ModelRepository repo(baseDir.toStdString());
+        std::vector<std::string> warnings;
+        std::string models_error;
+        std::string providers_error;
+        std::string adapters_error;
+
+        auto remote_models = repo.FetchRegistry(
+            config, ResolveModelRegistryUrls(config), &models_error, nullptr,
+            &warnings);
+        auto remote_providers = vinput::script::FetchRegistry(
+            config, vinput::script::Kind::kAsrProvider,
+            ResolveAsrProviderRegistryUrls(config), &providers_error, nullptr,
+            &warnings);
+        auto remote_adapters = vinput::script::FetchRegistry(
+            config, vinput::script::Kind::kLlmAdapter,
+            ResolveLlmAdapterRegistryUrls(config), &adapters_error, nullptr,
+            &warnings);
+
+        std::sort(warnings.begin(), warnings.end());
+        warnings.erase(std::unique(warnings.begin(), warnings.end()),
+                       warnings.end());
+
+        QMetaObject::invokeMethod(
+            self,
+            [self, generation, remote_models = std::move(remote_models),
+             remote_providers = std::move(remote_providers),
+             remote_adapters = std::move(remote_adapters),
+             models_error = std::move(models_error),
+             providers_error = std::move(providers_error),
+             adapters_error = std::move(adapters_error),
+             warnings = std::move(warnings)]() mutable {
+              if (!self || generation != self->refreshGeneration_) {
+                return;
+              }
+
+              self->remoteModels_ = std::move(remote_models);
+              self->remoteProviders_ = std::move(remote_providers);
+              self->remoteAdapters_ = std::move(remote_adapters);
+
+              if (!models_error.empty()) {
+                self->textLog_->append(
+                    self->tr("Models fetch error: %1")
+                        .arg(QString::fromStdString(models_error)));
+              }
+              if (!providers_error.empty()) {
+                self->textLog_->append(
+                    self->tr("Providers fetch error: %1")
+                        .arg(QString::fromStdString(providers_error)));
+              }
+              if (!adapters_error.empty()) {
+                self->textLog_->append(
+                    self->tr("Adapters fetch error: %1")
+                        .arg(QString::fromStdString(adapters_error)));
+              }
+              for (const auto &warning : warnings) {
+                self->textLog_->append(
+                    self->tr("Registry warning: %1")
+                        .arg(QString::fromStdString(warning)));
+              }
+
+              self->refreshWaitingForI18n_ = true;
+              I18nCache::Get().ReloadFromDisk();
+            },
+            Qt::QueuedConnection);
+      });
 }
 
 // ---------------------------------------------------------------------------

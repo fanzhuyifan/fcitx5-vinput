@@ -77,17 +77,31 @@ I18nMap ParseI18nJson(const std::string &content, std::string *error) {
   return map;
 }
 
-I18nMap LoadLocalI18nOverrides() {
-  const auto local_path =
-      vinput::path::VinputConfigDir() / "i18n.local.json";
-  std::ifstream ifs(local_path);
+I18nMap LoadI18nFile(const std::filesystem::path &path,
+                      std::string *error) {
+  std::ifstream ifs(path);
   if (!ifs) {
+    if (error) {
+      *error = "cached i18n unavailable: " + path.string();
+    }
     return {};
   }
 
   std::string content(std::istreambuf_iterator<char>(ifs), {});
-  std::string parse_error;
-  return ParseI18nJson(content, &parse_error);
+  return ParseI18nJson(content, error);
+}
+
+I18nMap LoadLocalI18nOverrides() {
+  std::string ignored_error;
+  return LoadI18nFile(vinput::path::VinputConfigDir() / "i18n.local.json",
+                      &ignored_error);
+}
+
+void ApplyLocalI18nOverrides(I18nMap *map) {
+  auto local = LoadLocalI18nOverrides();
+  for (auto &[key, value] : local) {
+    (*map)[key] = std::move(value);
+  }
 }
 
 } // namespace
@@ -154,11 +168,42 @@ I18nMap FetchMergedI18nMap(const CoreConfig &config,
     *error = fetch_error;
   }
 
-  auto local = LoadLocalI18nOverrides();
-  for (auto &[key, value] : local) {
-    merged[key] = std::move(value);
+  ApplyLocalI18nOverrides(&merged);
+  return merged;
+}
+
+I18nMap LoadMergedCachedI18nMap(const std::string &preferred_locale,
+                               std::string *error) {
+  std::string primary_error;
+  I18nMap merged = LoadI18nFile(cache::I18nPath(preferred_locale),
+                                &primary_error);
+
+  std::string fallback_error;
+  if (preferred_locale != "en_US") {
+    auto fallback =
+        LoadI18nFile(cache::I18nPath("en_US"), &fallback_error);
+    if (merged.empty()) {
+      merged = std::move(fallback);
+    } else {
+      for (auto &[key, value] : fallback) {
+        merged.emplace(std::move(key), std::move(value));
+      }
+    }
   }
 
+  ApplyLocalI18nOverrides(&merged);
+  if (error) {
+    if (!merged.empty()) {
+      error->clear();
+    } else if (!primary_error.empty()) {
+      *error = primary_error;
+      if (!fallback_error.empty()) {
+        *error += "; " + fallback_error;
+      }
+    } else {
+      *error = fallback_error;
+    }
+  }
   return merged;
 }
 

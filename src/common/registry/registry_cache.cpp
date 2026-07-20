@@ -44,9 +44,13 @@ std::filesystem::path CachePath(std::string_view name) {
 bool FetchText(const std::vector<std::string> &urls,
                const std::filesystem::path &cache_path,
                const vinput::download::Options &options, std::string *content,
-               vinput::download::Result *result, std::string *error) {
+               vinput::download::Result *result, std::string *error,
+               FetchStatus *status) {
   if (content) {
     content->clear();
+  }
+  if (status) {
+    *status = {};
   }
 
   vinput::download::Result download_result;
@@ -73,6 +77,10 @@ bool FetchText(const std::vector<std::string> &urls,
 
   std::string cache_error;
   if (LoadCachedText(cache_path, content, result, &cache_error)) {
+    if (status) {
+      status->used_cache = true;
+      status->fallback_error = download_result.error;
+    }
     if (error) {
       error->clear();
     }

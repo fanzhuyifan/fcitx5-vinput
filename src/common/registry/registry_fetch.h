@@ -16,6 +16,7 @@ bool FetchRegistryText(const CoreConfig *config,
                        const vinput::download::Options &options,
                        std::string *content,
                        vinput::download::Result *result = nullptr,
-                       std::string *error = nullptr);
+                       std::string *error = nullptr,
+                       std::vector<std::string> *warnings = nullptr);
 
 } // namespace vinput::registry

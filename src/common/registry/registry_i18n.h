@@ -16,6 +16,8 @@ I18nMap FetchI18nMap(const std::string &locale,
 I18nMap FetchMergedI18nMap(const CoreConfig &config,
                            const std::string &preferred_locale,
                            std::string *error = nullptr);
+I18nMap LoadMergedCachedI18nMap(const std::string &preferred_locale,
+                               std::string *error = nullptr);
 std::string LookupI18n(const I18nMap &map, const std::string &key,
                        const std::string &fallback = "");
 

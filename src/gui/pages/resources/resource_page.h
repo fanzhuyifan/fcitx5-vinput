@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <QLabel>
 #include <QLineEdit>
 #include <QProgressBar>
@@ -45,6 +47,8 @@ private:
   void populateRemoteProviders(const std::vector<vinput::script::RegistryEntry> &providers);
   void populateRemoteAdapters(const std::vector<vinput::script::RegistryEntry> &adapters);
   void applyTableFilter(QTableWidget *table, const QString &filter_text);
+  void refreshLocalizedTables();
+  void finishRefreshAfterI18n(const QString &error = {});
 
   void abortDownload();
 
@@ -67,6 +71,11 @@ private:
   QPushButton *btnAddAdapter_;
   QPushButton *btnRefreshResources_;
   DownloadWorker *downloadWorker_ = nullptr;
+  std::vector<RemoteModelEntry> remoteModels_;
+  std::vector<vinput::script::RegistryEntry> remoteProviders_;
+  std::vector<vinput::script::RegistryEntry> remoteAdapters_;
+  uint64_t refreshGeneration_ = 0;
+  bool refreshWaitingForI18n_ = false;
 };
 
 }  // namespace vinput::gui

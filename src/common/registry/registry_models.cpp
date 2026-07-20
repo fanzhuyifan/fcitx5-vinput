@@ -85,7 +85,8 @@ std::vector<RemoteModelEntry> ParseRegistryJson(const std::string &content,
 
 std::vector<RemoteModelEntry> FetchRegistryImpl(
     const CoreConfig *config, const std::vector<std::string> &registry_urls,
-    std::string *error, std::string *resolved_registry_url) {
+    std::string *error, std::string *resolved_registry_url,
+    std::vector<std::string> *warnings) {
   if (registry_urls.empty()) {
     if (error) *error = "no registry URLs configured";
     return {};
@@ -99,7 +100,7 @@ std::vector<RemoteModelEntry> FetchRegistryImpl(
   vinput::download::Result download_result;
   if (!vinput::registry::FetchRegistryText(
           config, registry_urls, vinput::registry::cache::ModelRegistryPath(),
-          options, &content, &download_result, error)) {
+          options, &content, &download_result, error, warnings)) {
     if (resolved_registry_url) {
       resolved_registry_url->clear();
     }
@@ -130,13 +131,16 @@ ModelRepository::FetchRegistry(const std::string &registry_url,
 std::vector<RemoteModelEntry> ModelRepository::FetchRegistry(
     const std::vector<std::string> &registry_urls, std::string *error,
     std::string *resolved_registry_url) const {
-  return FetchRegistryImpl(nullptr, registry_urls, error, resolved_registry_url);
+  return FetchRegistryImpl(nullptr, registry_urls, error, resolved_registry_url,
+                           nullptr);
 }
 
 std::vector<RemoteModelEntry> ModelRepository::FetchRegistry(
     const CoreConfig &config, const std::vector<std::string> &registry_urls,
-    std::string *error, std::string *resolved_registry_url) const {
-  return FetchRegistryImpl(&config, registry_urls, error, resolved_registry_url);
+    std::string *error, std::string *resolved_registry_url,
+    std::vector<std::string> *warnings) const {
+  return FetchRegistryImpl(&config, registry_urls, error, resolved_registry_url,
+                           warnings);
 }
 
 bool ModelRepository::InstallModel(const std::string &registry_url,
@@ -154,8 +158,8 @@ bool ModelRepository::InstallModel(const std::vector<std::string> &registry_urls
                                    std::string *resolved_registry_url) const {
   // Fetch registry without i18n refresh when config context is unavailable.
   std::string fetch_err;
-  auto entries =
-      FetchRegistryImpl(nullptr, registry_urls, &fetch_err, resolved_registry_url);
+  auto entries = FetchRegistryImpl(nullptr, registry_urls, &fetch_err,
+                                   resolved_registry_url, nullptr);
   if (!fetch_err.empty()) {
     if (error) *error = fetch_err;
     return false;

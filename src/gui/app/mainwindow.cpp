@@ -22,14 +22,10 @@
 #include "common/utils/path_utils.h"
 #include "gui/utils/config_manager.h"
 #include "gui/utils/download_worker.h"
-#include "gui/utils/i18n_cache.h"
 #include "cli/runtime/systemd_client.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   setWindowTitle(tr("Vinput Configuration"));
-
-  // Start background fetch of i18n map.
-  vinput::gui::I18nCache::Get().Initialize(vinput::gui::ConfigManager::Get().Load());
 
   auto *centralWidget = new QWidget(this);
   setCentralWidget(centralWidget);

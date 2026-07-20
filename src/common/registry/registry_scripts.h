@@ -32,10 +32,10 @@ std::vector<RegistryEntry> FetchRegistry(Kind kind,
                                          const std::vector<std::string> &urls,
                                          std::string *error,
                                          std::string *resolved_registry_url = nullptr);
-std::vector<RegistryEntry> FetchRegistry(const CoreConfig &config, Kind kind,
-                                         const std::vector<std::string> &urls,
-                                         std::string *error,
-                                         std::string *resolved_registry_url = nullptr);
+std::vector<RegistryEntry> FetchRegistry(
+    const CoreConfig &config, Kind kind, const std::vector<std::string> &urls,
+    std::string *error, std::string *resolved_registry_url = nullptr,
+    std::vector<std::string> *warnings = nullptr);
 std::filesystem::path RelativePathForId(std::string_view id);
 std::string IdFromRelativePath(std::string_view type,
                                const std::filesystem::path &relative_path);

@@ -640,6 +640,14 @@ Found %2 model(s).</source>
         <translation>注册表获取完成。</translation>
     </message>
     <message>
+        <source>Registry warning: %1</source>
+        <translation>注册表警告：%1</translation>
+    </message>
+    <message>
+        <source>I18n cache reload error: %1</source>
+        <translation>i18n 缓存重载错误：%1</translation>
+    </message>
+    <message>
         <source>Failed to save config.</source>
         <translation>保存配置失败。</translation>
     </message>

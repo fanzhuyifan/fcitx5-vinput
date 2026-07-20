@@ -190,7 +190,8 @@ CommandAsrProvider *GetCommandAsrProvider(AsrProvider *provider) {
 
 std::vector<RegistryEntry> FetchRegistryImpl(
     const CoreConfig *config, Kind kind, const std::vector<std::string> &urls,
-    std::string *error, std::string *resolved_registry_url) {
+    std::string *error, std::string *resolved_registry_url,
+    std::vector<std::string> *warnings) {
   if (urls.empty()) {
     if (error) {
       *error = "no script registry URLs configured";
@@ -208,7 +209,7 @@ std::vector<RegistryEntry> FetchRegistryImpl(
           kind == Kind::kAsrProvider
               ? vinput::registry::cache::AsrProviderRegistryPath()
               : vinput::registry::cache::LlmAdapterRegistryPath(),
-          options, &content, &result, error)) {
+          options, &content, &result, error, warnings)) {
     if (resolved_registry_url) {
       resolved_registry_url->clear();
     }
@@ -227,14 +228,16 @@ std::vector<RegistryEntry> FetchRegistry(Kind kind,
                                          const std::vector<std::string> &urls,
                                          std::string *error,
                                          std::string *resolved_registry_url) {
-  return FetchRegistryImpl(nullptr, kind, urls, error, resolved_registry_url);
+  return FetchRegistryImpl(nullptr, kind, urls, error, resolved_registry_url,
+                           nullptr);
 }
 
-std::vector<RegistryEntry> FetchRegistry(const CoreConfig &config, Kind kind,
-                                         const std::vector<std::string> &urls,
-                                         std::string *error,
-                                         std::string *resolved_registry_url) {
-  return FetchRegistryImpl(&config, kind, urls, error, resolved_registry_url);
+std::vector<RegistryEntry> FetchRegistry(
+    const CoreConfig &config, Kind kind, const std::vector<std::string> &urls,
+    std::string *error, std::string *resolved_registry_url,
+    std::vector<std::string> *warnings) {
+  return FetchRegistryImpl(&config, kind, urls, error, resolved_registry_url,
+                           warnings);
 }
 
 std::filesystem::path RelativePathForId(std::string_view id) {
