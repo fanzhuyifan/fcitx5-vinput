@@ -224,6 +224,14 @@ ResourcePage::ResourcePage(QWidget *parent) : QWidget(parent) {
   connect(&I18nCache::Get(), &I18nCache::reloadFailed, this,
           &ResourcePage::finishRefreshAfterI18n);
 
+  // Show installed models immediately; remote lists fill after refreshAll.
+  {
+    CoreConfig config = ConfigManager::Get().Load();
+    ModelManager manager(ResolveModelBaseDir(config).string());
+    populateLocalModels(
+        manager.ListDetailed(ResolvePreferredLocalModel(config)));
+  }
+
   QTimer::singleShot(0, this, &ResourcePage::refreshAll);
 }
 
@@ -246,8 +254,7 @@ void ResourcePage::finishRefreshAfterI18n(const QString &error,
 
   // Only the i18n reload started by the current Refresh may complete the wait.
   // Startup preload or a superseded reload must not re-enable the button early.
-  if (!refreshWaitingForI18n_ || generation != i18nWaitGeneration_ ||
-      i18nWaitGeneration_ == 0) {
+  if (!refreshWaitingForI18n_ || generation != i18nWaitGeneration_) {
     return;
   }
 
@@ -447,6 +454,7 @@ void ResourcePage::refreshAll() {
   QPointer<ResourcePage> self(this);
   const uint64_t generation = ++refreshGeneration_;
   refreshWaitingForI18n_ = false;
+  i18nWaitGeneration_ = 0;
 
   // Keep installed models visible during the network round-trip.
   ModelManager local_manager(baseDir.toStdString());
@@ -521,6 +529,13 @@ void ResourcePage::refreshAll() {
                     self->tr("Registry warning: %1")
                         .arg(QString::fromStdString(warning)));
               }
+
+              // Paint remotes with the current map first so rows appear even
+              // when disk i18n is already warm; finishRefreshAfterI18n repaints
+              // after ReloadFromDisk if titles changed.
+              self->populateRemoteModels(self->remoteModels_);
+              self->populateRemoteProviders(self->remoteProviders_);
+              self->populateRemoteAdapters(self->remoteAdapters_);
 
               self->refreshWaitingForI18n_ = true;
               self->i18nWaitGeneration_ = I18nCache::Get().ReloadFromDisk();

@@ -76,7 +76,7 @@ private:
   std::vector<vinput::script::RegistryEntry> remoteProviders_;
   std::vector<vinput::script::RegistryEntry> remoteAdapters_;
   uint64_t refreshGeneration_ = 0;
-  uint64_t i18nWaitGeneration_ = 0;
+  quint64 i18nWaitGeneration_ = 0;
   bool refreshWaitingForI18n_ = false;
 };
 

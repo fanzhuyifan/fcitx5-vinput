@@ -10,6 +10,28 @@ I18nCache& I18nCache::Get() {
     return instance;
 }
 
+void I18nCache::ApplyLoadedMap(vinput::registry::I18nMap map, std::string error,
+                               quint64 generation) {
+    if (!error.empty()) {
+        emit reloadFailed(QString::fromStdString(error), generation);
+        return;
+    }
+    {
+        QMutexLocker locker(&mutex_);
+        map_ = std::move(map);
+    }
+    emit mapUpdated(generation);
+}
+
+quint64 I18nCache::LoadFromDiskSync() {
+    const quint64 generation = ++generation_;
+    const std::string locale = vinput::registry::DetectPreferredLocale();
+    std::string error;
+    auto map = vinput::registry::LoadMergedCachedI18nMap(locale, &error);
+    ApplyLoadedMap(std::move(map), std::move(error), generation);
+    return generation;
+}
+
 quint64 I18nCache::ReloadFromDisk() {
     const quint64 generation = ++generation_;
     QtConcurrent::run([this, generation]() {
@@ -25,15 +47,7 @@ quint64 I18nCache::ReloadFromDisk() {
                 if (generation != generation_.load()) {
                     return;
                 }
-                if (!error.empty()) {
-                    emit reloadFailed(QString::fromStdString(error), generation);
-                    return;
-                }
-                {
-                    QMutexLocker locker(&mutex_);
-                    map_ = std::move(map);
-                }
-                emit mapUpdated(generation);
+                ApplyLoadedMap(std::move(map), std::move(error), generation);
             },
             Qt::QueuedConnection);
     });

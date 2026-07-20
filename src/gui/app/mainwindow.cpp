@@ -35,6 +35,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   tabWidget_ = new QTabWidget(this);
   mainLayout->addWidget(tabWidget_);
 
+  // Sync disk-only i18n preload before pages paint titles; no network here.
+  vinput::gui::I18nCache::Get().LoadFromDiskSync();
+
   controlPage_ = new vinput::gui::ControlPage(this);
   resourcePage_ = new vinput::gui::ResourcePage(this);
   llmPage_ = new vinput::gui::LlmPage(this);
@@ -67,10 +70,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   bottomLayout->addWidget(btnSave);
   mainLayout->addLayout(bottomLayout);
 
-  // Initial load. Disk-only i18n preload so Control/Resources titles are
-  // available before the first registry network refresh finishes.
+  // Initial load after pages are constructed with a warm i18n map.
   controlPage_->reload();
-  vinput::gui::I18nCache::Get().ReloadFromDisk();
 
   checkNotification();
 }

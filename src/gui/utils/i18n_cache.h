@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string>
 
 #include <QMutex>
 #include <QObject>
@@ -16,6 +17,11 @@ class I18nCache : public QObject {
 public:
     static I18nCache& Get();
 
+    // Synchronously load the merged disk i18n map on the calling thread.
+    // Invalidates any in-flight async reload and emits mapUpdated on success
+    // (or reloadFailed when the merged map is empty).
+    quint64 LoadFromDiskSync();
+
     // Starts an async disk reload and returns the generation for that request.
     // Only the latest generation emits mapUpdated/reloadFailed.
     quint64 ReloadFromDisk();
@@ -28,6 +34,9 @@ signals:
 private:
     I18nCache() = default;
     ~I18nCache() override = default;
+
+    void ApplyLoadedMap(vinput::registry::I18nMap map, std::string error,
+                        quint64 generation);
 
     mutable QMutex mutex_;
     vinput::registry::I18nMap map_;
