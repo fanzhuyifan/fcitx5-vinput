@@ -5,6 +5,11 @@ on:
     branches:
       - main
       - master
+    paths:
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - '.github/workflows/nix-cache.yml'
   workflow_dispatch:
 
 permissions:
