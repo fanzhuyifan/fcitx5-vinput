@@ -29,11 +29,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1779626950,
-        "narHash": "sha256-28bn6+ZBP9MKXWedndNZ5CSudFyf+EGWkCTPQClSCj0=",
+        "lastModified": 1784544804,
+        "narHash": "sha256-OiLfGXPT4Tkplqb0OA7B95LhOT4xo2La8AUFcy/MJ78=",
         "owner": "xifan2333",
         "repo": "sherpa-onnx-flake",
-        "rev": "21db94ab4c0f5421fd3363f50e1e68e54e7106f4",
+        "rev": "e8a53c3b0d990b88f3dac784a681f2c0816632fc",
         "type": "github"
       },
       "original": {
