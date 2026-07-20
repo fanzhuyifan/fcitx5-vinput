@@ -111,6 +111,14 @@ QString SceneLabelForGui(const vinput::scene::Definition &scene) {
   return QString::fromStdString(scene.id);
 }
 
+// Adapters have no config-side label/title field; registry i18n is the only
+// user-facing name. Fall back to id when the cache has no entry yet.
+QString AdapterTitleForGui(const std::string &adapter_id) {
+  const auto i18n_map = I18nCache::Get().GetMap();
+  return QString::fromStdString(vinput::registry::LookupI18n(
+      i18n_map, adapter_id + ".title", adapter_id));
+}
+
 // Convert between AdapterData (GUI dialog) and LlmAdapter (config).
 AdapterData AdapterDataFromConfig(const LlmAdapter &a) {
   return {a.id, a.command, a.args, a.env};
@@ -226,6 +234,8 @@ LlmPage::LlmPage(QWidget *parent) : QWidget(parent) {
           &LlmPage::onSceneRemove);
   connect(btnSceneSetActive_, &QPushButton::clicked, this,
           &LlmPage::onSceneSetActive);
+  connect(&I18nCache::Get(), &I18nCache::mapUpdated, this,
+          &LlmPage::refreshAdapterList);
 
   QTimer::singleShot(0, this, &LlmPage::refreshAdapterList);
   QTimer::singleShot(0, this, &LlmPage::refreshLlmList);
@@ -258,9 +268,10 @@ void LlmPage::refreshAdapterList() {
 
   for (const auto &adapter : config.llm.adapters) {
     QString id = QString::fromStdString(adapter.id);
+    QString title = AdapterTitleForGui(adapter.id);
     bool running = vinput::adapter::IsRunning(adapter.id);
 
-    QString display = id + " · " +
+    QString display = title + " · " +
                       (running ? GuiTranslate("running")
                                : GuiTranslate("stopped"));
     QString command = QString::fromStdString(adapter.command);
@@ -271,6 +282,7 @@ void LlmPage::refreshAdapterList() {
     auto *item = new QListWidgetItem(display, listAdapters_);
     item->setData(Qt::UserRole, id);
     item->setData(Qt::UserRole + 1, running);
+    item->setData(Qt::UserRole + 2, title);
 
     // Build tooltip
     QString tooltip;
@@ -573,9 +585,10 @@ void LlmPage::onAdapterEdit() {
   }
   
   if (!found) {
+    const QString adapter_title = AdapterTitleForGui(adapter_id.toStdString());
     QMessageBox::warning(
         this, tr("Error"),
-        tr("Adapter '%1' not found in configuration.").arg(adapter_id));
+        tr("Adapter '%1' not found in configuration.").arg(adapter_title));
     return;
   }
 
@@ -600,10 +613,14 @@ void LlmPage::onAdapterStart() {
     return;
 
   const QString adapter_id = item->data(Qt::UserRole).toString();
+  QString adapter_title = item->data(Qt::UserRole + 2).toString();
+  if (adapter_title.isEmpty()) {
+    adapter_title = AdapterTitleForGui(adapter_id.toStdString());
+  }
   btnAdapterStart_->setEnabled(false);
   btnAdapterStop_->setEnabled(false);
   RunAdapterControlAsync(this, adapter_id.toStdString(), true,
-                         [this, adapter_id](bool ok, const std::string &err) {
+                         [this, adapter_title](bool ok, const std::string &err) {
                            btnAdapterStart_->setEnabled(true);
                            btnAdapterStop_->setEnabled(true);
                            if (!ok) {
@@ -614,7 +631,7 @@ void LlmPage::onAdapterStart() {
                            }
                            QMessageBox::information(
                                this, tr("LLM Adapter Started"),
-                               tr("Adapter '%1' started.").arg(adapter_id));
+                               tr("Adapter '%1' started.").arg(adapter_title));
                            refreshAdapterList();
                          });
 }
@@ -818,15 +835,20 @@ void LlmPage::onSceneRemove() {
     return;
 
   QString scene_id = item->data(Qt::UserRole).toString();
+  CoreConfig config = ConfigManager::Get().Load();
+  vinput::scene::Config sc = ToSceneConfig(config.scenes);
+  QString scene_label = scene_id;
+  if (const auto *scene =
+          vinput::scene::Find(sc, scene_id.toStdString())) {
+    scene_label = SceneLabelForGui(*scene);
+  }
   auto response = QMessageBox::question(
       this, tr("Confirm"),
-      tr("Are you sure you want to remove scene '%1'?").arg(scene_id));
+      tr("Are you sure you want to remove scene '%1'?").arg(scene_label));
   if (response != QMessageBox::Yes)
     return;
 
-  CoreConfig config = ConfigManager::Get().Load();
   std::string err;
-  vinput::scene::Config sc = ToSceneConfig(config.scenes);
   if (!vinput::scene::RemoveScene(&sc, scene_id.toStdString(), true, &err)) {
       QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
       return;

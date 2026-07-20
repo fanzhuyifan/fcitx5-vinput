@@ -561,11 +561,17 @@ void ResourcePage::abortDownload() {
 void ResourcePage::onUseModelClicked() {
   auto items = tableInstalledModels_->selectedItems();
   if (items.isEmpty()) return;
-  QString model_name = tableInstalledModels_->item(tableInstalledModels_->currentRow(), 0)->data(Qt::UserRole).toString();
+  auto *name_item =
+      tableInstalledModels_->item(tableInstalledModels_->currentRow(), 0);
+  QString model_id = name_item->data(Qt::UserRole).toString();
+  QString model_title = name_item->text();
+  if (model_title.isEmpty()) {
+    model_title = model_id;
+  }
 
   CoreConfig config = ConfigManager::Get().Load();
   std::string err;
-  if (!SetPreferredLocalModel(&config, model_name.toStdString(), &err)) {
+  if (!SetPreferredLocalModel(&config, model_id.toStdString(), &err)) {
       QMessageBox::critical(this, tr("Error"), QString::fromStdString(err));
       return;
   }
@@ -576,7 +582,7 @@ void ResourcePage::onUseModelClicked() {
   refreshAll();
   emit configChanged();
   RunReloadAsrBackendAsync(
-      this, [this, model_name](bool ok, const std::string &err) {
+      this, [this, model_title](bool ok, const std::string &err) {
         if (!ok) {
           QMessageBox::warning(
               this, tr("Warning"),
@@ -587,25 +593,31 @@ void ResourcePage::onUseModelClicked() {
         textLog_->append(
             tr("Selected model '%1' saved as the preferred local ASR model. "
                "Backend reload is in progress.")
-                .arg(model_name));
+                .arg(model_title));
       });
 }
 
 void ResourcePage::onRemoveModelClicked() {
   auto items = tableInstalledModels_->selectedItems();
   if (items.isEmpty()) return;
-  QString model_name = tableInstalledModels_->item(tableInstalledModels_->currentRow(), 0)->data(Qt::UserRole).toString();
+  auto *name_item =
+      tableInstalledModels_->item(tableInstalledModels_->currentRow(), 0);
+  QString model_id = name_item->data(Qt::UserRole).toString();
+  QString model_title = name_item->text();
+  if (model_title.isEmpty()) {
+    model_title = model_id;
+  }
 
   auto response = QMessageBox::question(
       this, tr("Confirm"),
-      tr("Are you sure you want to remove model '%1'?").arg(model_name));
+      tr("Are you sure you want to remove model '%1'?").arg(model_title));
   if (response == QMessageBox::Yes) {
     CoreConfig config = ConfigManager::Get().Load();
     const bool reload_backend =
-        ResolvePreferredLocalModel(config) == model_name.toStdString();
+        ResolvePreferredLocalModel(config) == model_id.toStdString();
     ModelManager manager(ResolveModelBaseDir(config).string());
     std::string err;
-    if (!manager.Remove(model_name.toStdString(), &err)) {
+    if (!manager.Remove(model_id.toStdString(), &err)) {
         QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
         return;
     }
@@ -618,7 +630,7 @@ void ResourcePage::onRemoveModelClicked() {
             return;
         }
     }
-    textLog_->append(tr("Removed %1.").arg(model_name));
+    textLog_->append(tr("Removed %1.").arg(model_title));
     refreshAll();
     emit configChanged();
     if (reload_backend) {
@@ -666,7 +678,13 @@ void ResourcePage::onDownloadFinished() {
 void ResourcePage::onDownloadModelClicked() {
   auto items = tableAvailableModels_->selectedItems();
   if (items.isEmpty()) return;
-  QString model_name = tableAvailableModels_->item(tableAvailableModels_->currentRow(), 0)->data(Qt::UserRole).toString();
+  auto *name_item =
+      tableAvailableModels_->item(tableAvailableModels_->currentRow(), 0);
+  QString model_id = name_item->data(Qt::UserRole).toString();
+  QString model_title = name_item->text();
+  if (model_title.isEmpty()) {
+    model_title = model_id;
+  }
 
   abortDownload();
   btnDownloadModel_->setEnabled(false);
@@ -683,10 +701,10 @@ void ResourcePage::onDownloadModelClicked() {
 
   CoreConfig config = ConfigManager::Get().Load();
   
-  downloadWorker_->SetTask([config, model_name, worker=downloadWorker_](std::string* err) -> bool {
+  downloadWorker_->SetTask([config, model_id, worker=downloadWorker_](std::string* err) -> bool {
       ModelRepository repo(ResolveModelBaseDir(config).string());
       auto urls = ResolveModelRegistryUrls(config);
-      return repo.InstallModel(config, urls, model_name.toStdString(), [worker](const InstallProgress& p) {
+      return repo.InstallModel(config, urls, model_id.toStdString(), [worker](const InstallProgress& p) {
          if (p.total_bytes > 0) {
              int percent = static_cast<int>((p.downloaded_bytes * 100) / p.total_bytes);
              QString speed = QString::fromStdString(vinput::str::FormatSize(static_cast<uint64_t>(p.speed_bps))) + "/s";
@@ -694,14 +712,20 @@ void ResourcePage::onDownloadModelClicked() {
          }
       }, err);
   });
-  textLog_->append(tr("Starting download for %1...").arg(model_name));
+  textLog_->append(tr("Starting download for %1...").arg(model_title));
   downloadWorker_->start();
 }
 
 void ResourcePage::onAddProviderClicked() {
   auto items = tableAvailableProviders_->selectedItems();
   if (items.isEmpty()) return;
-  QString id = tableAvailableProviders_->item(tableAvailableProviders_->currentRow(), 0)->data(Qt::UserRole).toString();
+  auto *name_item =
+      tableAvailableProviders_->item(tableAvailableProviders_->currentRow(), 0);
+  QString id = name_item->data(Qt::UserRole).toString();
+  QString title = name_item->text();
+  if (title.isEmpty()) {
+    title = id;
+  }
 
   abortDownload();
   btnAddProvider_->setEnabled(false);
@@ -734,14 +758,20 @@ void ResourcePage::onAddProviderClicked() {
       }
       return ConfigManager::Get().Save(mutConfig);
   });
-  textLog_->append(tr("Installing provider %1...").arg(id));
+  textLog_->append(tr("Installing provider %1...").arg(title));
   downloadWorker_->start();
 }
 
 void ResourcePage::onAddAdapterClicked() {
   auto items = tableAvailableAdapters_->selectedItems();
   if (items.isEmpty()) return;
-  QString id = tableAvailableAdapters_->item(tableAvailableAdapters_->currentRow(), 0)->data(Qt::UserRole).toString();
+  auto *name_item =
+      tableAvailableAdapters_->item(tableAvailableAdapters_->currentRow(), 0);
+  QString id = name_item->data(Qt::UserRole).toString();
+  QString title = name_item->text();
+  if (title.isEmpty()) {
+    title = id;
+  }
 
   abortDownload();
   btnAddAdapter_->setEnabled(false);
@@ -774,7 +804,7 @@ void ResourcePage::onAddAdapterClicked() {
       }
       return ConfigManager::Get().Save(mutConfig);
   });
-  textLog_->append(tr("Installing adapter %1...").arg(id));
+  textLog_->append(tr("Installing adapter %1...").arg(title));
   downloadWorker_->start();
 }
 

@@ -367,6 +367,7 @@ void ControlPage::populateAsrList(
     auto *item = new QListWidgetItem(display, listAsrProviders_);
     item->setData(Qt::UserRole, id);
     item->setData(Qt::UserRole + 1, type);
+    item->setData(Qt::UserRole + 2, title);
     if (id == current_selection) {
       listAsrProviders_->setCurrentItem(item);
     }
@@ -462,9 +463,14 @@ void ControlPage::onAsrRemove() {
   if (!item) return;
 
   QString provider_id = item->data(Qt::UserRole).toString();
+  QString provider_title = item->data(Qt::UserRole + 2).toString();
+  if (provider_title.isEmpty()) {
+    provider_title = provider_id;
+  }
   auto response = QMessageBox::question(
       this, tr("Confirm"),
-      tr("Are you sure you want to remove ASR provider '%1'?").arg(provider_id));
+      tr("Are you sure you want to remove ASR provider '%1'?")
+          .arg(provider_title));
   if (response != QMessageBox::Yes) return;
 
   CoreConfig config = ConfigManager::Get().Load();
