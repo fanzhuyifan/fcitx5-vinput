@@ -1,15 +1,12 @@
 name: nix-cache
 
 on:
+  # Publish a fresh Cachix binary for each formal release tag.
+  # Do not rebuild on every main push; ordinary app commits do not need a
+  # cache refresh, and flake-only bumps can still use workflow_dispatch.
   push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'nix/**'
-      - '.github/workflows/nix-cache.yml'
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
