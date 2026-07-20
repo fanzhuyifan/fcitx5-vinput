@@ -1,6 +1,5 @@
 build/
 builddir/
-build-test/
 dist/
 packaging/arch/PKGBUILD
 packaging/arch/pkg/
@@ -8,11 +7,9 @@ packaging/arch/src/
 packaging/arch/*.pkg.tar.zst
 packaging/arch/*.pkg.tar.zst.sig
 packaging/arch/*.tar.gz
-.ace-tool/
 .claude/
 .cache/
 compile_commands.json
-.qoder/*.po~
 *.po~
 *.orig
 *~
@@ -20,10 +17,8 @@ compile_commands.json
 __pycache__/
 *.pyc
 .vscode/
-.codex
-.codex/
-.kiro/
-repo/
+.mcp.json
+.repowise/
 fcitx5-vinput.flatpak
 node_modules/
 .astro/
