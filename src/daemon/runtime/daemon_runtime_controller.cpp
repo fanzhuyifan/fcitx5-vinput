@@ -331,28 +331,10 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
   auto runtime_settings = LoadCoreConfig();
   NormalizeCoreConfig(&runtime_settings);
 
+  // Open the mic before CreateSession so ASR session setup cannot delay the
+  // first capture buffers after a cold press. Chunks are only accepted after
+  // both capture and session are armed below.
   std::string error;
-  vinput::daemon::asr::BackendDescriptor active_backend;
-  const auto session_start_at = std::chrono::steady_clock::now();
-  auto session =
-      recognition_manager_->CreateSession(runtime_settings, &active_backend, &error);
-  const long session_ms = static_cast<long>(
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::steady_clock::now() - session_start_at)
-          .count());
-  if (!session) {
-    std::string message = "Failed to start recognition session.";
-    if (!error.empty()) {
-      message += " " + error;
-    }
-    {
-      std::lock_guard<std::mutex> lock(state_mutex_);
-      start_recording_in_progress_ = false;
-    }
-    fprintf(stderr, "vinput-daemon: %s\n", message.c_str());
-    return DbusService::MethodResult::Failure(message);
-  }
-
   capture_->SetTargetObject(runtime_settings.global.captureDevice);
   capture_->SetChunkCallback(
       [this](std::span<const int16_t> pcm) { HandleIncomingAudio(pcm); });
@@ -369,6 +351,31 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
       std::lock_guard<std::mutex> lock(state_mutex_);
       start_recording_in_progress_ = false;
     }
+    fprintf(stderr, "vinput-daemon: %s\n", message.c_str());
+    return DbusService::MethodResult::Failure(message);
+  }
+
+  vinput::daemon::asr::BackendDescriptor active_backend;
+  const auto session_start_at = std::chrono::steady_clock::now();
+  auto session =
+      recognition_manager_->CreateSession(runtime_settings, &active_backend, &error);
+  const long session_ms = static_cast<long>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - session_start_at)
+          .count());
+  if (!session) {
+    std::string message = "Failed to start recognition session.";
+    if (!error.empty()) {
+      message += " " + error;
+    }
+    capture_->EndRecording();
+    capture_->SetChunkCallback({});
+    {
+      std::lock_guard<std::mutex> lock(state_mutex_);
+      start_recording_in_progress_ = false;
+    }
+    RestoreOutputIfDucked();
+    ScheduleCaptureStopOnMainThread();
     fprintf(stderr, "vinput-daemon: %s\n", message.c_str());
     return DbusService::MethodResult::Failure(message);
   }
@@ -404,6 +411,7 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
 
   if (abort_started_capture) {
     capture_->EndRecording();
+    capture_->SetChunkCallback({});
     RestoreOutputIfDucked();
     ScheduleCaptureStopOnMainThread();
     return DbusService::MethodResult::Failure("Daemon is busy.");
