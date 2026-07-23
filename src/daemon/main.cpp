@@ -649,6 +649,9 @@ int main(int argc, char *argv[]) {
       break;
     }
 
+    // Bounded warm grace: destroy inactive reusable streams after idle timeout.
+    capture.MaybeDestroyExpiredStream();
+
     if (ret > 0) {
       if (fds[1].revents & POLLIN) {
         dbus.FlushEmitQueue();
