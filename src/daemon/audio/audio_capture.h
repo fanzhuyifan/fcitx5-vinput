@@ -47,6 +47,16 @@ public:
   // Whether stream-reuse policy is enabled (env VINPUT_CAPTURE_REUSE).
   static bool StreamReuseEnabled();
 
+  // After stop, keep an inactive connected stream for this long (ms), then
+  // destroy. Env VINPUT_CAPTURE_IDLE_DESTROY_MS (default 15000). 0 = destroy
+  // immediately after stop even when reuse is on.
+  static long IdleDestroyMs();
+
+  // Destroy a reusable inactive stream once its idle grace has expired.
+  // Safe to call from the daemon main loop. Returns true if a stream was
+  // destroyed.
+  bool MaybeDestroyExpiredStream();
+
 private:
   static void onProcess(void *userdata);
   static void onParamChanged(void *userdata, uint32_t id,
@@ -75,6 +85,10 @@ private:
   bool stream_active_ = false;
   std::optional<std::chrono::steady_clock::time_point> last_stream_destroyed_at_;
   std::optional<std::chrono::steady_clock::time_point> last_stream_deactivated_at_;
+  std::optional<std::chrono::steady_clock::time_point> idle_destroy_deadline_;
   std::optional<std::chrono::steady_clock::time_point> recording_armed_at_;
   std::optional<std::chrono::steady_clock::time_point> first_buffer_at_;
+
+  void ScheduleIdleDestroy();
+  void CancelIdleDestroy();
 };

@@ -5,6 +5,7 @@
 #include <spa/param/audio/format-utils.h>
 #include <spa/pod/builder.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -49,6 +50,22 @@ bool AudioCapture::StreamReuseEnabled() {
     return true;
   }
   return true;
+}
+
+long AudioCapture::IdleDestroyMs() {
+  // Keep an inactive connected stream briefly after stop so a cold re-press
+  // can set_active instead of full reconnect. Default 15s. 0 = destroy ASAP.
+  const char *value = std::getenv("VINPUT_CAPTURE_IDLE_DESTROY_MS");
+  if (!value || value[0] == '\0') {
+    return 15000;
+  }
+  char *end = nullptr;
+  const long parsed = std::strtol(value, &end, 10);
+  if (end == value || parsed < 0) {
+    return 15000;
+  }
+  // Cap to 10 minutes to avoid accidental always-on connect.
+  return std::min(parsed, 600000L);
 }
 
 AudioCapture::AudioCapture() { pw_init(nullptr, nullptr); }
@@ -306,6 +323,7 @@ void AudioCapture::MarkStreamDestroyed() {
   std::lock_guard<std::mutex> lock(timing_mutex_);
   last_stream_destroyed_at_ = std::chrono::steady_clock::now();
   last_stream_deactivated_at_ = last_stream_destroyed_at_;
+  idle_destroy_deadline_.reset();
   recording_armed_at_.reset();
   first_buffer_at_.reset();
 }
@@ -317,11 +335,61 @@ void AudioCapture::MarkStreamDeactivated() {
   first_buffer_at_.reset();
 }
 
+void AudioCapture::ScheduleIdleDestroy() {
+  const long grace_ms = IdleDestroyMs();
+  std::lock_guard<std::mutex> lock(timing_mutex_);
+  if (grace_ms <= 0) {
+    idle_destroy_deadline_ = std::chrono::steady_clock::now();
+    return;
+  }
+  idle_destroy_deadline_ =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(grace_ms);
+  vinput::debug::Log("capture idle destroy scheduled in %ld ms\n", grace_ms);
+}
+
+void AudioCapture::CancelIdleDestroy() {
+  std::lock_guard<std::mutex> lock(timing_mutex_);
+  if (idle_destroy_deadline_.has_value()) {
+    vinput::debug::Log("capture idle destroy cancelled\n");
+  }
+  idle_destroy_deadline_.reset();
+}
+
+bool AudioCapture::MaybeDestroyExpiredStream() {
+  if (recording_.load(std::memory_order_relaxed)) {
+    return false;
+  }
+  if (!stream_) {
+    return false;
+  }
+
+  std::optional<std::chrono::steady_clock::time_point> deadline;
+  {
+    std::lock_guard<std::mutex> lock(timing_mutex_);
+    deadline = idle_destroy_deadline_;
+  }
+  if (!deadline.has_value()) {
+    return false;
+  }
+  if (std::chrono::steady_clock::now() < *deadline) {
+    return false;
+  }
+
+  vinput::debug::Log(
+      "capture idle grace expired; destroying reusable stream\n");
+  DestroyStream();
+  return true;
+}
+
 void AudioCapture::DestroyStream() {
   recording_.store(false, std::memory_order_relaxed);
   if (!loop_ || !stream_) {
     stream_active_ = false;
     connected_target_object_.clear();
+    {
+      std::lock_guard<std::mutex> lock(timing_mutex_);
+      idle_destroy_deadline_.reset();
+    }
     return;
   }
 
@@ -337,6 +405,7 @@ void AudioCapture::DestroyStream() {
 bool AudioCapture::BeginRecording(std::string *error, StartTiming *timing) {
   StartTiming local_timing;
   local_timing.reuse_policy_enabled = StreamReuseEnabled();
+  CancelIdleDestroy();
   const auto begin_at = std::chrono::steady_clock::now();
   {
     std::lock_guard<std::mutex> lock(timing_mutex_);
@@ -455,6 +524,13 @@ void AudioCapture::EndRecording() {
     if (!SetStreamActive(false, &error)) {
       vinput::debug::Log("capture EndRecording set_active(false) failed: %s\n",
                          error.c_str());
+      DestroyStream();
+      return;
+    }
+    if (IdleDestroyMs() <= 0) {
+      DestroyStream();
+    } else {
+      ScheduleIdleDestroy();
     }
   }
 }
@@ -468,6 +544,10 @@ std::vector<int16_t> AudioCapture::StopAndGetBuffer() {
           "capture StopAndGetBuffer set_active(false) failed: %s; destroying\n",
           error.c_str());
       DestroyStream();
+    } else if (IdleDestroyMs() <= 0) {
+      DestroyStream();
+    } else {
+      ScheduleIdleDestroy();
     }
   } else {
     DestroyStream();
@@ -480,6 +560,7 @@ std::vector<int16_t> AudioCapture::StopAndGetBuffer() {
 
 void AudioCapture::Stop() {
   recording_.store(false, std::memory_order_relaxed);
+  CancelIdleDestroy();
   DestroyStream();
   std::lock_guard<std::mutex> lock(buffer_mutex_);
   pcm_buffer_.clear();
