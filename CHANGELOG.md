@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.5](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.5) — 2026-07-24
+
+### Bug Fixes
+
+- **audio:** Reuse the PipeWire capture stream with `pw_stream_set_active` instead of destroy/create on every recording start, cutting cold PTT open latency after idle (median first non-silent ~405ms → ~50ms in local tests)
+- **audio:** Open capture before ASR session creation so model/session setup no longer delays the first mic buffers
+- **audio:** Keep an inactive connected stream for a bounded idle grace (default 15s), then destroy it; cancel grace on the next start
+- **audio:** Harden deferred stop vs rapid Tap-stop-Tap so a warm reusable stream is not torn down under a new recording
+- **asr:** Make offline Silero VAD threshold / min-speech / pad configurable, softens defaults, and log leading/trailing trim separately
+
+### Documentation
+
+- Document capture warm-path privacy bounds and VAD knobs (EN/ZH settings)
+
+### Miscellaneous
+
+- Add `scripts/bench-capture-cold-start.sh` to scrape cold/warm capture timing from daemon journals
+- Env knobs: `VINPUT_CAPTURE_REUSE` (default on; `0` = legacy destroy/create), `VINPUT_CAPTURE_IDLE_DESTROY_MS` (default `15000`)
+
 ## [2.3.4](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.4) — 2026-07-21
 
 ### Bug Fixes
