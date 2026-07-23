@@ -313,6 +313,8 @@ void DaemonRuntimeController::MaybeApplyPendingAsrBackendReload() {
 DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
     bool is_command, const std::string &selected_text) {
   const auto start_enter_at = std::chrono::steady_clock::now();
+  // Drain any abort-path deferred stop before arming a new recording so a
+  // rapid Tap-stop-Tap cannot destroy a just-reused stream.
   if (pending_capture_stop_.load(std::memory_order_acquire)) {
     FlushDeferredActions();
   }
@@ -325,6 +327,8 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
                          start_recording_in_progress_);
       return DbusService::MethodResult::Failure("Daemon is busy.");
     }
+    // Drop a stale deferred stop scheduled between the check above and now.
+    pending_capture_stop_.store(false, std::memory_order_release);
     start_recording_in_progress_ = true;
   }
 
@@ -618,7 +622,8 @@ DbusService::MethodResult DaemonRuntimeController::StopRecording(
   }
 
   if (stop_capture) {
-    capture_->EndRecording();
+    // StopAndGetBuffer ends recording and deactivates/reuses the stream.
+    // Avoid a prior EndRecording() so idle-grace is scheduled once.
     if (const auto first_buffer_ms = capture_->FirstBufferLatencyMs()) {
       vinput::debug::Log("capture first_buffer_ms=%ld (at stop)\n",
                          *first_buffer_ms);
@@ -770,7 +775,39 @@ void DaemonRuntimeController::FlushDeferredActions() {
     return;
   }
 
-  capture_->Stop();
+  // Abort-path cleanup only. If a newer StartRecording already began, do not
+  // tear down its capture (rapid Tap-stop-Tap / failed-start races).
+  bool skip_teardown = false;
+  vinput::dbus::Status phase_snapshot = vinput::dbus::Status::Idle;
+  bool start_in_progress = false;
+  {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    phase_snapshot = phase_;
+    start_in_progress = start_recording_in_progress_;
+    skip_teardown =
+        start_recording_in_progress_ || capture_->IsRecording() ||
+        phase_ == vinput::dbus::Status::Recording ||
+        phase_ == vinput::dbus::Status::Inferring ||
+        phase_ == vinput::dbus::Status::Postprocessing;
+  }
+  if (skip_teardown) {
+    vinput::debug::Log(
+        "deferred capture stop skipped (start_in_progress=%d recording=%d "
+        "phase=%s)\n",
+        start_in_progress ? 1 : 0, capture_->IsRecording() ? 1 : 0,
+        vinput::dbus::StatusToString(phase_snapshot));
+    RestoreOutputIfDucked();
+    return;
+  }
+
+  if (AudioCapture::StreamReuseEnabled()) {
+    // EndRecording/StopAndGetBuffer already deactivated the stream; keep it
+    // for warm set_active until idle grace expires.
+    vinput::debug::Log(
+        "deferred capture stop: keeping inactive reusable stream\n");
+  } else {
+    capture_->Stop();
+  }
   RestoreOutputIfDucked();
   ResetToIdle();
 }
