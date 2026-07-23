@@ -88,6 +88,13 @@ struct CoreConfig {
     double inputGain{1.0};
     struct Vad {
       bool enabled{true};
+      // Silero knobs for offline trim (ignored when disabled / non-offline).
+      // Defaults slightly softer than historical hard-codes to reduce leading
+      // syllable dropout after cold PTT.
+      double threshold{0.45};
+      double minSpeechDuration{0.15};
+      double minSilenceDuration{0.5};
+      int speechPadMs{300};
     } vad;
     std::vector<AsrProvider> providers;
   } asr;

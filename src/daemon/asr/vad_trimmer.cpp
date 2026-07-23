@@ -10,14 +10,16 @@ VadTrimmer::VadTrimmer() = default;
 VadTrimmer::~VadTrimmer() { Shutdown(); }
 
 bool VadTrimmer::Init(const std::string &model_path, int sample_rate,
-                      const std::string &provider, std::string *error) {
+                      const std::string &provider, const VadTrimParams &params,
+                      std::string *error) {
   if (vad_) return true;
 
+  params_ = params;
   SherpaOnnxVadModelConfig config = {};
   config.silero_vad.model = model_path.c_str();
-  config.silero_vad.threshold = 0.5f;
-  config.silero_vad.min_silence_duration = 0.5f;
-  config.silero_vad.min_speech_duration = 0.25f;
+  config.silero_vad.threshold = params_.threshold;
+  config.silero_vad.min_silence_duration = params_.min_silence_duration;
+  config.silero_vad.min_speech_duration = params_.min_speech_duration;
   config.silero_vad.window_size = 512;
   config.silero_vad.max_speech_duration = 0.0f;
   config.sample_rate = sample_rate;
@@ -34,7 +36,11 @@ bool VadTrimmer::Init(const std::string &model_path, int sample_rate,
   }
 
   sample_rate_ = sample_rate;
-  fprintf(stderr, "vinput: VAD initialized from '%s'\n", model_path.c_str());
+  fprintf(stderr,
+          "vinput: VAD initialized from '%s' threshold=%.2f min_speech=%.2f "
+          "min_silence=%.2f pad_ms=%d\n",
+          model_path.c_str(), params_.threshold, params_.min_speech_duration,
+          params_.min_silence_duration, params_.speech_pad_ms);
   return true;
 }
 
@@ -63,15 +69,24 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
   }
   SherpaOnnxVoiceActivityDetectorFlush(vad_);
 
-  // Collect all speech segments with padding from original audio
-  constexpr int kPaddingSamples = 3200;  // 200ms @ 16kHz
+  const int padding_samples = std::max(
+      0, static_cast<int>(static_cast<long long>(params_.speech_pad_ms) *
+                          sample_rate_ / 1000));
   std::vector<float> result;
+  int first_start = -1;
+  int last_end = -1;
   while (!SherpaOnnxVoiceActivityDetectorEmpty(vad_)) {
     const SherpaOnnxSpeechSegment *seg =
         SherpaOnnxVoiceActivityDetectorFront(vad_);
     if (seg && seg->n > 0) {
-      int start = std::max(0, static_cast<int>(seg->start) - kPaddingSamples);
-      int end = std::min(n, static_cast<int>(seg->start) + static_cast<int>(seg->n) + kPaddingSamples);
+      int start =
+          std::max(0, static_cast<int>(seg->start) - padding_samples);
+      int end = std::min(n, static_cast<int>(seg->start) +
+                                static_cast<int>(seg->n) + padding_samples);
+      if (first_start < 0) {
+        first_start = start;
+      }
+      last_end = end;
       result.insert(result.end(), samples.begin() + start,
                     samples.begin() + end);
     }
@@ -86,7 +101,13 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
     return samples;
   }
 
-  fprintf(stderr, "vinput: VAD trimmed %d -> %zu samples\n", n, result.size());
+  const int leading_removed = first_start > 0 ? first_start : 0;
+  const int trailing_removed = last_end >= 0 ? (n - last_end) : 0;
+  fprintf(stderr,
+          "vinput: VAD trimmed %d -> %zu samples leading_removed_ms=%d "
+          "trailing_removed_ms=%d pad_ms=%d\n",
+          n, result.size(), leading_removed * 1000 / sample_rate_,
+          trailing_removed * 1000 / sample_rate_, params_.speech_pad_ms);
   return result;
 }
 

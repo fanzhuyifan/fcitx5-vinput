@@ -511,8 +511,13 @@ private:
     if (asr_config_.vad_enabled && !asr_config_.vad_model_path.empty()) {
       const std::string vad_provider =
           JsonString(model_info_.model_config, "provider", "cpu");
+      VadTrimParams vad_params;
+      vad_params.threshold = asr_config_.vad_threshold;
+      vad_params.min_speech_duration = asr_config_.vad_min_speech_duration;
+      vad_params.min_silence_duration = asr_config_.vad_min_silence_duration;
+      vad_params.speech_pad_ms = asr_config_.vad_speech_pad_ms;
       std::string vad_error;
-      if (!vad_.Init(asr_config_.vad_model_path, 16000, vad_provider,
+      if (!vad_.Init(asr_config_.vad_model_path, 16000, vad_provider, vad_params,
                      &vad_error)) {
         fprintf(stderr, "vinput: %s, continuing without VAD\n",
                 vad_error.empty() ? "VAD model not available"
@@ -571,6 +576,12 @@ CreateSherpaOfflineBackend(const CoreConfig &config,
   asr_config.hotwords_file = provider.hotwordsFile;
   asr_config.vad_enabled = config.asr.vad.enabled;
   asr_config.vad_model_path = VINPUT_VAD_MODEL_PATH;
+  asr_config.vad_threshold = static_cast<float>(config.asr.vad.threshold);
+  asr_config.vad_min_speech_duration =
+      static_cast<float>(config.asr.vad.minSpeechDuration);
+  asr_config.vad_min_silence_duration =
+      static_cast<float>(config.asr.vad.minSilenceDuration);
+  asr_config.vad_speech_pad_ms = config.asr.vad.speechPadMs;
 
   if (error)
     error->clear();

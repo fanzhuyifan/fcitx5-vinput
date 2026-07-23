@@ -93,6 +93,14 @@ void NormalizeCoreConfig(CoreConfig *config) {
   config->asr.inputGain = std::clamp(config->asr.inputGain, 0.1, 10.0);
   config->global.duckOutputVolume =
       std::clamp(config->global.duckOutputVolume, 0.0, 1.0);
+  config->asr.vad.threshold =
+      std::clamp(config->asr.vad.threshold, 0.05, 0.95);
+  config->asr.vad.minSpeechDuration =
+      std::clamp(config->asr.vad.minSpeechDuration, 0.05, 2.0);
+  config->asr.vad.minSilenceDuration =
+      std::clamp(config->asr.vad.minSilenceDuration, 0.05, 5.0);
+  config->asr.vad.speechPadMs =
+      std::clamp(config->asr.vad.speechPadMs, 0, 2000);
 
   {
     std::set<std::string> seen;

@@ -66,6 +66,39 @@ VAD detects whether someone is speaking. When enabled, silent segments are filte
 vinput config set /asr/vad/enabled true
 ```
 
+Optional VAD knobs (offline local ASR only):
+
+```bash
+vinput config set /asr/vad/threshold 0.45
+vinput config set /asr/vad/min_speech_duration 0.15
+vinput config set /asr/vad/speech_pad_ms 300
+```
+
+## Capture warm path (privacy)
+
+To reduce leading-word dropout after idle, the daemon may keep a **connected but inactive** PipeWire capture stream for a short grace period after you stop recording. While inactive:
+
+- audio is **not** copied into recognition buffers
+- `recording` is false
+- the stream is destroyed after the idle grace (default **15s**)
+
+This is **not** always-on listening. Environment overrides (user unit):
+
+```bash
+# Disable stream reuse (legacy destroy/create every start)
+Environment=VINPUT_CAPTURE_REUSE=0
+
+# Idle destroy grace in milliseconds (0 = destroy immediately after stop)
+Environment=VINPUT_CAPTURE_IDLE_DESTROY_MS=15000
+```
+
+Verify on your machine:
+
+1. Record once, then wait past the grace period without recording.
+2. Confirm daemon logs: `capture idle grace expired; destroying reusable stream`.
+3. Optionally inspect PipeWire (`pw-top` / desktop mic indicator) — after grace, Vinput should not hold an active capture stream.
+4. Cold-start metrics: `./scripts/bench-capture-cold-start.sh --since "1 hour ago"` (requires `VINPUT_DEBUG=1`).
+
 ## Reduce output volume while recording
 
 When `duck_output_while_recording` is enabled, Vinput lowers the system output

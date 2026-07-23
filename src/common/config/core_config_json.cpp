@@ -241,10 +241,18 @@ void from_json(const json &j, CoreConfig::Llm &p) {
 void to_json(json &j, const CoreConfig::Asr::Vad &v) {
   j = json::object();
   j["enabled"] = v.enabled;
+  j["threshold"] = v.threshold;
+  j["min_speech_duration"] = v.minSpeechDuration;
+  j["min_silence_duration"] = v.minSilenceDuration;
+  j["speech_pad_ms"] = v.speechPadMs;
 }
 
 void from_json(const json &j, CoreConfig::Asr::Vad &v) {
   v.enabled = j.value("enabled", v.enabled);
+  v.threshold = j.value("threshold", v.threshold);
+  v.minSpeechDuration = j.value("min_speech_duration", v.minSpeechDuration);
+  v.minSilenceDuration = j.value("min_silence_duration", v.minSilenceDuration);
+  v.speechPadMs = j.value("speech_pad_ms", v.speechPadMs);
 }
 
 void to_json(json &j, const CoreConfig::Asr &a) {

@@ -66,6 +66,39 @@ VAD 检测录音中是否有人在说话。开启后，静音片段会被自动�
 vinput config set /asr/vad/enabled true
 ```
 
+可选参数（仅本地 offline ASR）：
+
+```bash
+vinput config set /asr/vad/threshold 0.45
+vinput config set /asr/vad/min_speech_duration 0.15
+vinput config set /asr/vad/speech_pad_ms 300
+```
+
+## 录音预热与隐私
+
+为减少「空闲后第一次按键吃开头字」，daemon 可能在停止录音后短时间内保持 **已连接但 inactive** 的 PipeWire 采集流。inactive 期间：
+
+- **不会**把麦克风音频写入识别缓冲
+- `recording` 为 false
+- 超过空闲宽限（默认 **15 秒**）后销毁 stream
+
+这不是一直监听。可用环境变量覆盖（user unit）：
+
+```bash
+# 关闭 stream 复用（恢复每次 Destroy/Create）
+Environment=VINPUT_CAPTURE_REUSE=0
+
+# 空闲销毁宽限（毫秒；0 = 停止后立即销毁）
+Environment=VINPUT_CAPTURE_IDLE_DESTROY_MS=15000
+```
+
+本机验收建议：
+
+1. 录一次，停住并等待超过宽限时间。
+2. 日志应出现：`capture idle grace expired; destroying reusable stream`。
+3. 可用 `pw-top` / 桌面麦克风指示灯确认宽限后不再占用采集。
+4. 冷启动指标：`./scripts/bench-capture-cold-start.sh --since "1 hour ago"`（需 `VINPUT_DEBUG=1`）。
+
 ## 录音时降低输出音量
 
 开启 `duck_output_while_recording` 后，Vinput 会在录音期间降低系统输出音量，录音结束后自动恢复。适用于同时使用外放音箱和麦克风的场景——例如边听音乐边口述——避免外放声音被麦克风收进去、干扰识别。
