@@ -9,6 +9,7 @@ packaging/arch/*.pkg.tar.zst.sig
 packaging/arch/*.tar.gz
 .claude/
 .cache/
+.pi-subagents
 compile_commands.json
 *.po~
 *.orig
