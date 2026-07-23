@@ -1,10 +1,23 @@
 #include "audio_capture.h"
 
+#include "common/utils/debug_log.h"
+
 #include <spa/param/audio/format-utils.h>
 #include <spa/pod/builder.h>
 
 #include <cstdio>
 #include <cstring>
+
+namespace {
+
+long MillisecondsBetween(std::chrono::steady_clock::time_point start,
+                         std::chrono::steady_clock::time_point end) {
+  return static_cast<long>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count());
+}
+
+}  // namespace
 
 AudioCapture::AudioCapture() { pw_init(nullptr, nullptr); }
 
@@ -48,6 +61,16 @@ void AudioCapture::processCallback() {
     if (size > 0 && offset + size <= buf->datas[0].maxsize) {
       auto *samples = reinterpret_cast<int16_t *>(raw + offset);
       uint32_t n_samples = size / sizeof(int16_t);
+      {
+        std::lock_guard<std::mutex> lock(timing_mutex_);
+        if (recording_armed_at_.has_value() && !first_buffer_at_.has_value()) {
+          first_buffer_at_ = std::chrono::steady_clock::now();
+          vinput::debug::Log(
+              "capture first buffer after %ld ms (samples=%u)\n",
+              MillisecondsBetween(*recording_armed_at_, *first_buffer_at_),
+              n_samples);
+        }
+      }
       {
         std::lock_guard<std::mutex> lock(buffer_mutex_);
         pcm_buffer_.insert(pcm_buffer_.end(), samples, samples + n_samples);
@@ -195,6 +218,13 @@ bool AudioCapture::CreateStream(std::string *error) {
   return true;
 }
 
+void AudioCapture::MarkStreamDestroyed() {
+  std::lock_guard<std::mutex> lock(timing_mutex_);
+  last_stream_destroyed_at_ = std::chrono::steady_clock::now();
+  recording_armed_at_.reset();
+  first_buffer_at_.reset();
+}
+
 void AudioCapture::DestroyStream() {
   recording_.store(false, std::memory_order_relaxed);
   if (!loop_ || !stream_) {
@@ -205,18 +235,60 @@ void AudioCapture::DestroyStream() {
   pw_stream_destroy(stream_);
   stream_ = nullptr;
   pw_thread_loop_unlock(loop_);
+  MarkStreamDestroyed();
 }
 
-bool AudioCapture::BeginRecording(std::string *error) {
+bool AudioCapture::BeginRecording(std::string *error, StartTiming *timing) {
+  StartTiming local_timing;
+  const auto begin_at = std::chrono::steady_clock::now();
+  {
+    std::lock_guard<std::mutex> lock(timing_mutex_);
+    if (last_stream_destroyed_at_.has_value()) {
+      local_timing.idle_gap_ms =
+          MillisecondsBetween(*last_stream_destroyed_at_, begin_at);
+    }
+    first_buffer_at_.reset();
+    recording_armed_at_.reset();
+  }
+
+  // Current policy always tears down and recreates the stream each start.
+  // Timing records that so later reuse work can be compared in logs.
+  const bool had_stream = stream_ != nullptr;
   DestroyStream();
+  local_timing.stream_reused = false;
+  local_timing.created_new_stream = true;
+  (void)had_stream;
+
   {
     std::lock_guard<std::mutex> lock(buffer_mutex_);
     pcm_buffer_.clear();
   }
   recording_.store(true, std::memory_order_relaxed);
+  {
+    std::lock_guard<std::mutex> lock(timing_mutex_);
+    recording_armed_at_ = std::chrono::steady_clock::now();
+  }
+
+  const auto create_start = std::chrono::steady_clock::now();
   if (!CreateStream(error)) {
     recording_.store(false, std::memory_order_relaxed);
+    std::lock_guard<std::mutex> lock(timing_mutex_);
+    recording_armed_at_.reset();
     return false;
+  }
+  const auto create_end = std::chrono::steady_clock::now();
+  local_timing.create_stream_ms =
+      MillisecondsBetween(create_start, create_end);
+
+  vinput::debug::Log(
+      "capture begin idle_gap_ms=%ld create_stream_ms=%ld stream_reused=%d "
+      "created_new_stream=%d\n",
+      local_timing.idle_gap_ms, local_timing.create_stream_ms,
+      local_timing.stream_reused ? 1 : 0,
+      local_timing.created_new_stream ? 1 : 0);
+
+  if (timing) {
+    *timing = local_timing;
   }
   return true;
 }
@@ -243,6 +315,14 @@ void AudioCapture::Stop() {
 
 bool AudioCapture::IsRecording() const {
   return recording_.load(std::memory_order_relaxed);
+}
+
+std::optional<long> AudioCapture::FirstBufferLatencyMs() const {
+  std::lock_guard<std::mutex> lock(timing_mutex_);
+  if (!recording_armed_at_.has_value() || !first_buffer_at_.has_value()) {
+    return std::nullopt;
+  }
+  return MillisecondsBetween(*recording_armed_at_, *first_buffer_at_);
 }
 
 void AudioCapture::SetTargetObject(std::string target_object) {

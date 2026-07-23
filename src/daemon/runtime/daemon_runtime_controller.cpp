@@ -312,6 +312,7 @@ void DaemonRuntimeController::MaybeApplyPendingAsrBackendReload() {
 
 DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
     bool is_command, const std::string &selected_text) {
+  const auto start_enter_at = std::chrono::steady_clock::now();
   if (pending_capture_stop_.load(std::memory_order_acquire)) {
     FlushDeferredActions();
   }
@@ -332,8 +333,13 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
 
   std::string error;
   vinput::daemon::asr::BackendDescriptor active_backend;
+  const auto session_start_at = std::chrono::steady_clock::now();
   auto session =
       recognition_manager_->CreateSession(runtime_settings, &active_backend, &error);
+  const long session_ms = static_cast<long>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - session_start_at)
+          .count());
   if (!session) {
     std::string message = "Failed to start recognition session.";
     if (!error.empty()) {
@@ -350,7 +356,8 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
   capture_->SetTargetObject(runtime_settings.global.captureDevice);
   capture_->SetChunkCallback(
       [this](std::span<const int16_t> pcm) { HandleIncomingAudio(pcm); });
-  if (!capture_->BeginRecording(&error)) {
+  AudioCapture::StartTiming capture_timing;
+  if (!capture_->BeginRecording(&error, &capture_timing)) {
     std::string message =
         is_command ? "Failed to start command recording."
                    : "Failed to start recording.";
@@ -405,6 +412,17 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
   if (runtime_settings.global.duckOutputWhileRecording) {
     output_ducker_.Duck(runtime_settings.global.duckOutputVolume);
   }
+
+  const long start_total_ms = static_cast<long>(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - start_enter_at)
+          .count());
+  vinput::debug::Log(
+      "start timing command=%d session_ms=%ld idle_gap_ms=%ld "
+      "create_stream_ms=%ld stream_reused=%d start_total_ms=%ld backend=%s\n",
+      is_command ? 1 : 0, session_ms, capture_timing.idle_gap_ms,
+      capture_timing.create_stream_ms, capture_timing.stream_reused ? 1 : 0,
+      start_total_ms, active_backend.backend_id.c_str());
 
   dbus_->EmitStatusChanged(
       vinput::dbus::StatusToString(vinput::dbus::Status::Recording));
@@ -590,6 +608,12 @@ DbusService::MethodResult DaemonRuntimeController::StopRecording(
 
   if (stop_capture) {
     capture_->EndRecording();
+    if (const auto first_buffer_ms = capture_->FirstBufferLatencyMs()) {
+      vinput::debug::Log("capture first_buffer_ms=%ld (at stop)\n",
+                         *first_buffer_ms);
+    } else {
+      vinput::debug::Log("capture first_buffer_ms=-1 (no buffer before stop)\n");
+    }
     captured_pcm = capture_->StopAndGetBuffer();
     RestoreOutputIfDucked();
   }
