@@ -427,10 +427,13 @@ DbusService::MethodResult DaemonRuntimeController::StartRecordingInternal(
           .count());
   vinput::debug::Log(
       "start timing command=%d session_ms=%ld idle_gap_ms=%ld "
-      "create_stream_ms=%ld stream_reused=%d start_total_ms=%ld backend=%s\n",
+      "create_stream_ms=%ld set_active_ms=%ld stream_reused=%d "
+      "reuse_policy=%d start_total_ms=%ld backend=%s\n",
       is_command ? 1 : 0, session_ms, capture_timing.idle_gap_ms,
-      capture_timing.create_stream_ms, capture_timing.stream_reused ? 1 : 0,
-      start_total_ms, active_backend.backend_id.c_str());
+      capture_timing.create_stream_ms, capture_timing.set_active_ms,
+      capture_timing.stream_reused ? 1 : 0,
+      capture_timing.reuse_policy_enabled ? 1 : 0, start_total_ms,
+      active_backend.backend_id.c_str());
 
   dbus_->EmitStatusChanged(
       vinput::dbus::StatusToString(vinput::dbus::Status::Recording));

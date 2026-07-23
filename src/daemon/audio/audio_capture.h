@@ -20,8 +20,10 @@ public:
   struct StartTiming {
     long idle_gap_ms = -1;
     long create_stream_ms = -1;
+    long set_active_ms = -1;
     bool stream_reused = false;
     bool created_new_stream = false;
+    bool reuse_policy_enabled = false;
   };
 
   AudioCapture();
@@ -42,14 +44,21 @@ public:
   // Latency from BeginRecording arm to first non-empty process buffer, if any.
   std::optional<long> FirstBufferLatencyMs() const;
 
+  // Whether stream-reuse policy is enabled (env VINPUT_CAPTURE_REUSE).
+  static bool StreamReuseEnabled();
+
 private:
   static void onProcess(void *userdata);
   static void onParamChanged(void *userdata, uint32_t id,
                              const struct spa_pod *param);
-  bool CreateStream(std::string *error = nullptr);
+  bool CreateStream(bool start_inactive, std::string *error = nullptr);
+  bool SetStreamActive(bool active, std::string *error = nullptr);
   void DestroyStream();
   void processCallback();
   void MarkStreamDestroyed();
+  void MarkStreamDeactivated();
+  bool CanReuseStreamLocked() const;
+  std::string CurrentTargetObject() const;
 
   struct pw_thread_loop *loop_ = nullptr;
   struct pw_stream *stream_ = nullptr;
@@ -61,8 +70,11 @@ private:
   mutable std::mutex timing_mutex_;
   std::vector<int16_t> pcm_buffer_;
   std::string target_object_;
+  std::string connected_target_object_;
   ChunkCallback chunk_callback_;
+  bool stream_active_ = false;
   std::optional<std::chrono::steady_clock::time_point> last_stream_destroyed_at_;
+  std::optional<std::chrono::steady_clock::time_point> last_stream_deactivated_at_;
   std::optional<std::chrono::steady_clock::time_point> recording_armed_at_;
   std::optional<std::chrono::steady_clock::time_point> first_buffer_at_;
 };
