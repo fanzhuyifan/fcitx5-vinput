@@ -76,7 +76,7 @@ private:
   std::atomic<bool> recording_{false};
   std::mutex buffer_mutex_;
   std::mutex callback_mutex_;
-  std::mutex target_mutex_;
+  mutable std::mutex target_mutex_;
   mutable std::mutex timing_mutex_;
   std::vector<int16_t> pcm_buffer_;
   std::string target_object_;
