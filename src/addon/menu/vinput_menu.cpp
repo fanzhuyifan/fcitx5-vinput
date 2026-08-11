@@ -546,24 +546,28 @@ void VinputEngine::rebuildSceneMenu(fcitx::InputContext *ic) {
   ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
-void VinputEngine::hideSceneMenu() {
-  if (!scene_menu_visible_ || !scene_menu_ic_) {
-    scene_menu_visible_ = false;
-    scene_menu_ic_ = nullptr;
-    return;
-  }
-
+void VinputEngine::resetSceneMenuState() {
+  scene_menu_ic_ = nullptr;
   scene_menu_visible_ = false;
   scene_menu_query_.clear();
   scene_menu_filter_mode_ = false;
   scene_menu_filtered_indices_.clear();
+}
+
+void VinputEngine::hideSceneMenu() {
+  auto *ic = scene_menu_ic_;
+  const bool was_visible = scene_menu_visible_;
+  resetSceneMenuState();
+
+  if (!was_visible || !ic) {
+    return;
+  }
+
   fcitx::Text empty;
-  scene_menu_ic_->inputPanel().setAuxUp(empty);
-  scene_menu_ic_->inputPanel().setAuxDown(empty);
-  scene_menu_ic_->inputPanel().setCandidateList({});
-  scene_menu_ic_->updateUserInterface(
-      fcitx::UserInterfaceComponent::InputPanel);
-  scene_menu_ic_ = nullptr;
+  ic->inputPanel().setAuxUp(empty);
+  ic->inputPanel().setAuxDown(empty);
+  ic->inputPanel().setCandidateList({});
+  ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
 bool VinputEngine::handleSceneMenuKeyEvent(fcitx::KeyEvent &keyEvent) {
@@ -923,24 +927,28 @@ void VinputEngine::showAsrMenu(fcitx::InputContext *ic) {
   requestAsrMenuStateRefresh(ic);
 }
 
-void VinputEngine::hideAsrMenu() {
-  if (!asr_menu_visible_ || !asr_menu_ic_) {
-    asr_menu_visible_ = false;
-    asr_menu_ic_ = nullptr;
-    return;
-  }
-
+void VinputEngine::resetAsrMenuState() {
+  asr_menu_ic_ = nullptr;
   asr_menu_visible_ = false;
   asr_menu_query_.clear();
   asr_menu_filter_mode_ = false;
   asr_menu_filtered_indices_.clear();
+}
+
+void VinputEngine::hideAsrMenu() {
+  auto *ic = asr_menu_ic_;
+  const bool was_visible = asr_menu_visible_;
+  resetAsrMenuState();
+
+  if (!was_visible || !ic) {
+    return;
+  }
+
   fcitx::Text empty;
-  asr_menu_ic_->inputPanel().setAuxUp(empty);
-  asr_menu_ic_->inputPanel().setAuxDown(empty);
-  asr_menu_ic_->inputPanel().setCandidateList({});
-  asr_menu_ic_->updateUserInterface(
-      fcitx::UserInterfaceComponent::InputPanel);
-  asr_menu_ic_ = nullptr;
+  ic->inputPanel().setAuxUp(empty);
+  ic->inputPanel().setAuxDown(empty);
+  ic->inputPanel().setCandidateList({});
+  ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
 bool VinputEngine::handleAsrMenuKeyEvent(fcitx::KeyEvent &keyEvent) {
@@ -1192,22 +1200,25 @@ void VinputEngine::showResultMenu(fcitx::InputContext *ic,
   ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
+void VinputEngine::resetResultMenuState() {
+  result_menu_ic_ = nullptr;
+  result_menu_visible_ = false;
+  result_candidates_.clear();
+}
+
 void VinputEngine::hideResultMenu() {
-  if (!result_menu_visible_ || !result_menu_ic_) {
-    result_menu_visible_ = false;
-    result_menu_ic_ = nullptr;
-    result_candidates_.clear();
+  auto *ic = result_menu_ic_;
+  const bool was_visible = result_menu_visible_;
+  resetResultMenuState();
+
+  if (!was_visible || !ic) {
     return;
   }
 
-  result_menu_visible_ = false;
   fcitx::Text empty;
-  result_menu_ic_->inputPanel().setAuxUp(empty);
-  result_menu_ic_->inputPanel().setCandidateList({});
-  result_menu_ic_->updateUserInterface(
-      fcitx::UserInterfaceComponent::InputPanel);
-  result_menu_ic_ = nullptr;
-  result_candidates_.clear();
+  ic->inputPanel().setAuxUp(empty);
+  ic->inputPanel().setCandidateList({});
+  ic->updateUserInterface(fcitx::UserInterfaceComponent::InputPanel);
 }
 
 bool VinputEngine::handleResultMenuKeyEvent(fcitx::KeyEvent &keyEvent) {

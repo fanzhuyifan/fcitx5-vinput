@@ -51,10 +51,12 @@ private:
   void handleKeyEvent(fcitx::Event &event);
   void showSceneMenu(fcitx::InputContext *ic);
   void hideSceneMenu();
+  void resetSceneMenuState();
   bool handleSceneMenuKeyEvent(fcitx::KeyEvent &keyEvent);
   void rebuildSceneMenu(fcitx::InputContext *ic);
   void showAsrMenu(fcitx::InputContext *ic);
   void hideAsrMenu();
+  void resetAsrMenuState();
   bool handleAsrMenuKeyEvent(fcitx::KeyEvent &keyEvent);
   void reloadAsrMenuItems();
   void rebuildAsrMenu(fcitx::InputContext *ic);
@@ -62,6 +64,7 @@ private:
   void showResultMenu(fcitx::InputContext *ic,
                       const vinput::result::Payload &payload);
   void hideResultMenu();
+  void resetResultMenuState();
   bool handleResultMenuKeyEvent(fcitx::KeyEvent &keyEvent);
   bool isReleaseOfActiveTrigger(const fcitx::Key &key) const;
   void cancelPendingStop();

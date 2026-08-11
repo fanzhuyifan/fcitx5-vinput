@@ -132,13 +132,13 @@ VinputEngine::VinputEngine(fcitx::Instance *instance) : instance_(instance) {
           last_active_ic_ = nullptr;
         }
         if (scene_menu_ic_ == ic) {
-          hideSceneMenu();
+          resetSceneMenuState();
         }
         if (asr_menu_ic_ == ic) {
-          hideAsrMenu();
+          resetAsrMenuState();
         }
         if (result_menu_ic_ == ic) {
-          hideResultMenu();
+          resetResultMenuState();
         }
         if (context_buffer_ic_ == ic) {
           flushContextBuffer();
@@ -327,12 +327,12 @@ void VinputEngine::suppressNextCommitContext(const std::string &text) {
 }
 
 void VinputEngine::flushContextBuffer() {
+  context_buffer_ic_ = nullptr;
   if (context_buffer_text_.empty()) {
     return;
   }
   appendContextEntry(context_buffer_text_, kContextSourceUser);
   context_buffer_text_.clear();
-  context_buffer_ic_ = nullptr;
   if (context_flush_timer_) {
     context_flush_timer_->setEnabled(false);
   }
