@@ -4,6 +4,7 @@
 #include "common/i18n.h"
 #include "common/utils/string_utils.h"
 #include "daemon/asr/asr_config.h"
+#include "daemon/asr/hotword_utils.h"
 #include "daemon/asr/sherpa_json_helpers.h"
 
 #include <sherpa-onnx/c-api/c-api.h>
@@ -348,6 +349,41 @@ private:
         JsonString(model_cfg, "modeling_unit");
     const std::string tokens_buf = JsonString(model_cfg, "tokens_buf");
     const std::string hotwords_buf = JsonString(recognizer_cfg, "hotwords_buf");
+    std::string selected_hotwords_file;
+    bool selected_file_has_entries = false;
+    bool use_hotwords_buf = false;
+
+    const bool provider_hotwords_configured =
+        model_info_.supports_hotwords && !asr_config_.hotwords_file.empty();
+    if (provider_hotwords_configured &&
+        !IsTransducerHotwordFamily(model_info_.family)) {
+      if (error) {
+        *error = "model family '" + model_info_.family +
+                 "' does not expose streaming ASR hotwords in sherpa-onnx";
+      }
+      return false;
+    }
+    if (model_info_.supports_hotwords &&
+        IsTransducerHotwordFamily(model_info_.family)) {
+      selected_hotwords_file = !asr_config_.hotwords_file.empty()
+                                   ? asr_config_.hotwords_file
+                                   : f_hotwords_file;
+      bool hotwords_active = false;
+      if (!selected_hotwords_file.empty()) {
+        if (!HotwordFileHasEntries(selected_hotwords_file,
+                                   &selected_file_has_entries, error)) {
+          return false;
+        }
+        hotwords_active = selected_file_has_entries;
+      } else if (!hotwords_buf.empty()) {
+        use_hotwords_buf = true;
+        hotwords_active = true;
+      }
+      if (hotwords_active &&
+          !ValidateTransducerHotwordAssets(model_info_, error)) {
+        return false;
+      }
+    }
 
     config.model_config.tokens = tokens_path.c_str();
     config.model_config.num_threads =
@@ -392,11 +428,17 @@ private:
                                        nlohmann::json::object()),
                   "max_active", 3000);
     }
-    if (!hotwords_buf.empty()) {
+    if (!selected_hotwords_file.empty()) {
+      if (selected_file_has_entries) {
+        config.hotwords_file = selected_hotwords_file.c_str();
+        config.decoding_method = "modified_beam_search";
+      }
+    } else if (use_hotwords_buf) {
       config.hotwords_buf = hotwords_buf.c_str();
       config.hotwords_buf_size =
           JsonInt(recognizer_cfg, "hotwords_buf_size",
                   static_cast<int>(hotwords_buf.size()));
+      config.decoding_method = "modified_beam_search";
     }
     if (!f_hr_lexicon.empty()) {
       config.hr.lexicon = f_hr_lexicon.c_str();
@@ -424,16 +466,6 @@ private:
                  model_info_.family + "'";
       }
       return false;
-    }
-
-    if (model_info_.supports_hotwords) {
-      if (!asr_config_.hotwords_file.empty()) {
-        config.hotwords_file = asr_config_.hotwords_file.c_str();
-        config.decoding_method = "modified_beam_search";
-      } else if (!f_hotwords_file.empty()) {
-        config.hotwords_file = f_hotwords_file.c_str();
-        config.decoding_method = "modified_beam_search";
-      }
     }
 
     const SherpaOnnxOnlineRecognizer *recognizer =

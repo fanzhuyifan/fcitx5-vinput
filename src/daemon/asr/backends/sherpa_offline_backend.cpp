@@ -2,6 +2,7 @@
 
 #include "common/i18n.h"
 #include "common/utils/string_utils.h"
+#include "daemon/asr/hotword_utils.h"
 #include "daemon/asr/sherpa_json_helpers.h"
 #include "daemon/asr/vad_trimmer.h"
 
@@ -77,7 +78,44 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   std::string cfg_system_prompt;
   std::string cfg_user_prompt;
   std::string cfg_hotwords;
+  std::string selected_hotwords_file;
+  std::string provider_prompt_hotwords;
   std::string cfg_telespeech_path;
+
+  const bool provider_hotwords_configured =
+      info.supports_hotwords && !asr_config.hotwords_file.empty();
+  if (provider_hotwords_configured && IsPromptHotwordFamily(info.family)) {
+    if (!LoadPromptHotwordsCsv(asr_config.hotwords_file,
+                               &provider_prompt_hotwords, error)) {
+      return nullptr;
+    }
+  } else if (provider_hotwords_configured &&
+             !IsTransducerHotwordFamily(info.family)) {
+    if (error) {
+      *error = "model family '" + info.family +
+               "' does not expose an ASR hotword input in sherpa-onnx";
+    }
+    return nullptr;
+  }
+
+  if (info.supports_hotwords && IsTransducerHotwordFamily(info.family)) {
+    selected_hotwords_file = !asr_config.hotwords_file.empty()
+                                 ? asr_config.hotwords_file
+                                 : f_hotwords_file;
+    if (!selected_hotwords_file.empty()) {
+      bool has_entries = false;
+      if (!HotwordFileHasEntries(selected_hotwords_file, &has_entries, error)) {
+        return nullptr;
+      }
+      if (has_entries) {
+        if (!ValidateTransducerHotwordAssets(info, error)) {
+          return nullptr;
+        }
+        config.hotwords_file = selected_hotwords_file.c_str();
+        config.decoding_method = "modified_beam_search";
+      }
+    }
+  }
 
   if (!tokens_path.empty()) {
     config.model_config.tokens = tokens_path.c_str();
@@ -104,16 +142,6 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   }
 
   const auto &family = info.family;
-
-  if (info.supports_hotwords) {
-    if (!asr_config.hotwords_file.empty()) {
-      config.hotwords_file = asr_config.hotwords_file.c_str();
-      config.decoding_method = "modified_beam_search";
-    } else if (!f_hotwords_file.empty()) {
-      config.hotwords_file = f_hotwords_file.c_str();
-      config.decoding_method = "modified_beam_search";
-    }
-  }
 
   if (!f_rule_fsts.empty()) {
     config.rule_fsts = f_rule_fsts.c_str();
@@ -270,7 +298,9 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
          cfg_language = JsonString(family_cfg, "language", p_language);
          cfg_system_prompt = JsonString(family_cfg, "system_prompt");
          cfg_user_prompt = JsonString(family_cfg, "user_prompt");
-         cfg_hotwords = JsonString(family_cfg, "hotwords");
+         cfg_hotwords = provider_hotwords_configured
+                            ? provider_prompt_hotwords
+                            : JsonString(family_cfg, "hotwords");
          config.model_config.funasr_nano.language = cfg_language.c_str();
          config.model_config.funasr_nano.itn =
              JsonBool(family_cfg, "itn") ? 1 : 0;
@@ -309,6 +339,11 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
          config.model_config.qwen3_asr.top_p =
              JsonFloat(family_cfg, "top_p", 0.9f);
          config.model_config.qwen3_asr.seed = JsonInt(family_cfg, "seed", 0);
+         cfg_hotwords = provider_hotwords_configured
+                            ? provider_prompt_hotwords
+                            : JsonString(family_cfg, "hotwords");
+         if (!cfg_hotwords.empty())
+           config.model_config.qwen3_asr.hotwords = cfg_hotwords.c_str();
          if (!config.model_config.model_type)
            config.model_config.model_type = "qwen3_asr";
        }}};

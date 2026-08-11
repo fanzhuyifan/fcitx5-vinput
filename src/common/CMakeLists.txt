@@ -23,6 +23,7 @@ add_library(common STATIC
     ${VINPUT_CONFIG_SOURCES}
     asr/recognition_result.cpp
     asr/model_manager.cpp
+    asr/bpe_vocab_exporter.cpp
     registry/registry_fetch.cpp
     registry/registry_models.cpp
     registry/registry_cache.cpp

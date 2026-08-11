@@ -101,7 +101,7 @@ bool FetchText(const std::vector<std::string> &urls,
 }
 
 std::filesystem::path ModelRegistryPath() {
-  return CachePath("models.json");
+  return CachePath("models-v3.json");
 }
 
 std::filesystem::path AsrProviderRegistryPath() {

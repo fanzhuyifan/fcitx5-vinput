@@ -234,6 +234,8 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
                           &info);
     ResolveModelFileField(dir, model_root, info.model_config, "bpe_vocab",
                           "bpe_vocab", &info);
+    ResolveModelFileField(dir, model_root, info.model_config, "bpe_model",
+                          "bpe_model", &info);
     ResolveModelFileField(dir, model_root, info.model_config, "telespeech_ctc",
                           "telespeech_ctc", &info);
 
@@ -344,7 +346,12 @@ std::string RequiredTextAssetPathKey(const ModelInfo &info) {
 // Check that at least one model/encoder file exists
 bool HasModelFiles(const ModelInfo &info) {
   for (const auto &[key, path] : info.files) {
-    if (key == "tokens") continue;
+    if (key == "tokens" || key == "tokenizer" || key == "bpe_vocab" ||
+        key == "bpe_model" || key == "hotwords_file" || key == "lm" ||
+        key == "rule_fsts" || key == "rule_fars" || key == "graph" ||
+        key == "hr_lexicon" || key == "hr_rule_fsts") {
+      continue;
+    }
     if (!path.empty() && fs::exists(path)) return true;
   }
   return false;

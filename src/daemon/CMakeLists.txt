@@ -24,6 +24,7 @@ add_executable(daemon
     main.cpp
     asr/runtime/backend_factory.cpp
     asr/runtime/recognition_session_manager.cpp
+    asr/hotword_utils.cpp
     asr/backends/sherpa_offline_backend.cpp
     asr/backends/sherpa_streaming_backend.cpp
     asr/backends/command_batch_backend.cpp

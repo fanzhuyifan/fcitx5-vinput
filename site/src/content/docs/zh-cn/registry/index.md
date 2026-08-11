@@ -10,7 +10,8 @@ description: "vinput-registry 贡献规范：模型、提供商和适配器。"
 ```
 vinput-registry/
 ├── registry/
-│   ├── models.json          # 本地 ASR 模型索引
+│   ├── models.json          # 旧版 v2 本地 ASR 模型索引
+│   ├── v3/models.json       # 当前本地 ASR 模型索引
 │   ├── providers.json       # 云端 ASR 提供商索引
 │   └── adapters.json        # LLM 适配器索引
 ├── i18n/
@@ -200,7 +201,7 @@ resources/adapters/<目录>/<名称>/
 
 ## 本地 ASR 模型
 
-`models.json` 中的模型条目描述可下载的 sherpa-onnx 模型归档。
+`registry/v3/models.json` 中的模型条目描述可下载的 sherpa-onnx 模型归档；v2 索引继续供旧客户端使用。
 
 **必填字段：**
 
@@ -245,7 +246,7 @@ resources/adapters/<目录>/<名称>/
 
 ### 添加模型
 
-1. 在 `registry/models.json` 中添加条目，包含完整 `vinput_model` 元数据
+1. 在 `registry/v3/models.json` 中添加条目，包含完整 `vinput_model` 元数据
 2. 添加 i18n 条目
 
 ### i18n 条目格式

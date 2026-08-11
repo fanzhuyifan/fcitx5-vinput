@@ -16,6 +16,7 @@
 #include "common/utils/downloader.h"
 #include "common/utils/file_utils.h"
 #include "common/registry/registry_cache.h"
+#include "common/asr/bpe_vocab_exporter.h"
 #include "common/asr/model_manager.h"
 #include "common/registry/registry_fetch.h"
 
@@ -47,6 +48,11 @@ std::vector<RemoteModelEntry> ParseRegistryJson(const std::string &content,
     json j = json::parse(content);
     if (!j.is_object()) {
       if (error) *error = "registry JSON is not an object";
+      return entries;
+    }
+    if (!j.contains("version") || !j.at("version").is_number_integer() ||
+        j.at("version").get<int>() != 3) {
+      if (error) *error = "model registry must use schema version 3";
       return entries;
     }
     if (!j.contains("items") || !j.at("items").is_array()) {
@@ -81,6 +87,125 @@ std::vector<RemoteModelEntry> ParseRegistryJson(const std::string &content,
   }
 
   return entries;
+}
+
+bool ResolveInstallAssetPath(const fs::path &root, const std::string &raw_path,
+                             fs::path *resolved, std::string *error) {
+  const fs::path relative(raw_path);
+  if (relative.empty() || relative.is_absolute()) {
+    if (error) *error = "model asset path must be relative: " + raw_path;
+    return false;
+  }
+  for (const auto &component : relative) {
+    if (component == "..") {
+      if (error) *error = "model asset path escapes install root: " + raw_path;
+      return false;
+    }
+  }
+  *resolved = (root / relative).lexically_normal();
+  return true;
+}
+
+bool LoadEffectiveModelManifest(const fs::path &model_dir, json *manifest,
+                                std::string *error) {
+  const fs::path manifest_path = model_dir / "vinput-model.json";
+  std::error_code ec;
+  if (!fs::is_regular_file(manifest_path, ec) || ec) {
+    *manifest = json();
+    return true;
+  }
+  try {
+    std::ifstream input(manifest_path);
+    input >> *manifest;
+  } catch (const std::exception &ex) {
+    if (error) {
+      *error = "failed to parse effective vinput-model.json: " +
+               std::string(ex.what());
+    }
+    return false;
+  }
+  if (!manifest->is_object()) {
+    if (error) *error = "effective vinput-model.json must be a JSON object";
+    return false;
+  }
+  return true;
+}
+
+bool ProvisionBpeVocabulary(const fs::path &model_dir, const json &vinput_model,
+                            std::string *error) {
+  if (!vinput_model.is_object()) return true;
+  if (vinput_model.contains("supports_hotwords") &&
+      !vinput_model["supports_hotwords"].is_boolean()) {
+    if (error) *error = "supports_hotwords must be a boolean";
+    return false;
+  }
+  if (!vinput_model.value("supports_hotwords", false)) return true;
+  if (!vinput_model.contains("family") ||
+      !vinput_model["family"].is_string()) {
+    if (error) *error = "hotword-capable model is missing string field family";
+    return false;
+  }
+  const std::string family = vinput_model["family"].get<std::string>();
+  if (family != "transducer" && family != "nemo_transducer") return true;
+  if (!vinput_model.contains("model") ||
+      !vinput_model["model"].is_object()) {
+    if (error) *error = "hotword-capable transducer is missing object field model";
+    return false;
+  }
+  const auto &model = vinput_model["model"];
+  if (!model.contains("modeling_unit") ||
+      !model["modeling_unit"].is_string()) {
+    if (error) *error = "hotword-capable transducer requires model.modeling_unit";
+    return false;
+  }
+  const std::string unit = model["modeling_unit"].get<std::string>();
+  if (unit != "cjkchar" && unit != "bpe" && unit != "bbpe" &&
+      unit != "cjkchar+bpe") {
+    if (error) *error = "unsupported hotword modeling_unit: " + unit;
+    return false;
+  }
+  if (unit == "cjkchar") return true;
+
+  if (!model.contains("bpe_vocab") || !model["bpe_vocab"].is_string() ||
+      model["bpe_vocab"].get<std::string>().empty()) {
+    if (error) {
+      *error = "hotword modeling_unit '" + unit + "' requires model.bpe_vocab";
+    }
+    return false;
+  }
+  const std::string vocab_field = model["bpe_vocab"].get<std::string>();
+  fs::path vocab_path;
+  if (!ResolveInstallAssetPath(model_dir, vocab_field, &vocab_path, error)) {
+    return false;
+  }
+  std::error_code ec;
+  if (fs::is_regular_file(vocab_path, ec) && !ec) {
+    return ValidateBpeVocabulary(vocab_path, error);
+  }
+
+  if (!model.contains("bpe_model") || !model["bpe_model"].is_string() ||
+      model["bpe_model"].get<std::string>().empty()) {
+    if (error) {
+      *error = "BPE vocabulary is missing and model.bpe_model is not declared";
+    }
+    return false;
+  }
+  const std::string bpe_model_field = model["bpe_model"].get<std::string>();
+  fs::path bpe_model_path;
+  if (!ResolveInstallAssetPath(model_dir, bpe_model_field, &bpe_model_path,
+                               error)) {
+    return false;
+  }
+  if (!fs::is_regular_file(bpe_model_path, ec) || ec) {
+    if (error) {
+      *error = "SentencePiece model not found: " + bpe_model_path.string();
+    }
+    return false;
+  }
+  if (!ExportSentencePieceVocabulary(bpe_model_path, vocab_path, error)) {
+    return false;
+  }
+  return ValidateBpeVocabulary(vocab_path, error);
 }
 
 std::vector<RemoteModelEntry> FetchRegistryImpl(
@@ -290,6 +415,17 @@ bool ModelRepository::InstallModel(const std::vector<std::string> &registry_urls
     }
   }
 
+  json effective_manifest;
+  std::string provision_error;
+  if (!LoadEffectiveModelManifest(extracted_dir, &effective_manifest,
+                                  &provision_error) ||
+      !ProvisionBpeVocabulary(extracted_dir, effective_manifest,
+                              &provision_error)) {
+    fs::remove_all(tmp_dir, ec);
+    if (error) *error = "failed to prepare hotword assets: " + provision_error;
+    return false;
+  }
+
   const fs::path relative_path = ModelManager::RelativePathForId(model_id);
   if (relative_path.empty()) {
     fs::remove_all(tmp_dir, ec);
@@ -497,6 +633,17 @@ bool ModelRepository::InstallModel(const CoreConfig &config,
       if (error) *error = "failed to write vinput-model.json: " + write_err;
       return false;
     }
+  }
+
+  json effective_manifest;
+  std::string provision_error;
+  if (!LoadEffectiveModelManifest(extracted_dir, &effective_manifest,
+                                  &provision_error) ||
+      !ProvisionBpeVocabulary(extracted_dir, effective_manifest,
+                              &provision_error)) {
+    fs::remove_all(tmp_dir, ec);
+    if (error) *error = "failed to prepare hotword assets: " + provision_error;
+    return false;
   }
 
   // Replace the destination by rename so the old model stays intact until

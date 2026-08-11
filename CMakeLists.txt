@@ -91,6 +91,11 @@ add_subdirectory(src/cli)
 add_subdirectory(src/gui)
 add_subdirectory(po)
 
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
 # Umbrella target that builds every translation artefact (gettext .mo + Qt .qm)
 set(VINPUT_TRANSLATIONS_DEPS gettext-translations)
 if(TARGET qt-translations)

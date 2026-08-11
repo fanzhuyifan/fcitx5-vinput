@@ -110,7 +110,7 @@ std::vector<std::string> ResolveRegistryUrlsForPath(
 } // namespace
 
 std::vector<std::string> ResolveModelRegistryUrls(const CoreConfig &config) {
-  return ResolveRegistryUrlsForPath(config, "registry/models.json");
+  return ResolveRegistryUrlsForPath(config, "registry/v3/models.json");
 }
 
 std::vector<std::string> ResolveAsrProviderRegistryUrls(const CoreConfig &config) {

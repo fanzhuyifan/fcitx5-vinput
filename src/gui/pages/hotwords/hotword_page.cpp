@@ -26,7 +26,7 @@ HotwordPage::HotwordPage(QWidget *parent) : QWidget(parent) {
   layout->addLayout(fileLayout);
 
   auto *lblWords = new QLabel(
-      tr("Hotwords (one per line, optional per-word score: \"word 2.0\"):"));
+      tr("Hotwords (one per line, optional transducer score: \"word :2.0\"):"));
   layout->addWidget(lblWords);
 
   textContent_ = new QTextEdit();
