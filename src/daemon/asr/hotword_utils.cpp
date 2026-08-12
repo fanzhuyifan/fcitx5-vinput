@@ -6,6 +6,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <locale>
@@ -25,6 +26,75 @@ std::string TrimAsciiWhitespace(std::string value) {
   }
   const auto last = value.find_last_not_of(" \t\r\n");
   return value.substr(first, last - first + 1);
+}
+
+bool ValidateHotwordUtf8(std::string_view text, std::string *error) {
+  auto fail = [&](std::size_t offset, std::string_view reason) {
+    if (error) {
+      *error = "invalid hotwords file at byte " + std::to_string(offset) +
+               ": " + std::string(reason);
+    }
+    return false;
+  };
+
+  std::size_t offset = 0;
+  while (offset < text.size()) {
+    const auto first = static_cast<unsigned char>(text[offset]);
+    std::size_t length = 0;
+    std::uint32_t codepoint = 0;
+    if (first <= 0x7f) {
+      length = 1;
+      codepoint = first;
+    } else if (first >= 0xc2 && first <= 0xdf) {
+      length = 2;
+      codepoint = first & 0x1f;
+    } else if (first >= 0xe0 && first <= 0xef) {
+      length = 3;
+      codepoint = first & 0x0f;
+    } else if (first >= 0xf0 && first <= 0xf4) {
+      length = 4;
+      codepoint = first & 0x07;
+    } else {
+      return fail(offset, "invalid UTF-8 leading byte");
+    }
+
+    if (length > text.size() - offset) {
+      return fail(offset, "truncated UTF-8 sequence");
+    }
+    for (std::size_t i = 1; i < length; ++i) {
+      const auto continuation =
+          static_cast<unsigned char>(text[offset + i]);
+      if ((continuation & 0xc0) != 0x80) {
+        return fail(offset + i, "invalid UTF-8 continuation byte");
+      }
+      codepoint = (codepoint << 6) | (continuation & 0x3f);
+    }
+
+    const bool overlong =
+        (length == 2 && codepoint < 0x80) ||
+        (length == 3 && codepoint < 0x800) ||
+        (length == 4 && codepoint < 0x10000);
+    if (overlong) {
+      return fail(offset, "overlong UTF-8 sequence");
+    }
+    if (codepoint >= 0xd800 && codepoint <= 0xdfff) {
+      return fail(offset, "UTF-8 encodes a surrogate code point");
+    }
+    if (codepoint > 0x10ffff) {
+      return fail(offset, "UTF-8 code point exceeds U+10FFFF");
+    }
+    if (codepoint == 0) {
+      return fail(offset, "embedded NUL is not allowed");
+    }
+    const bool permitted_ascii_whitespace =
+        codepoint == '\t' || codepoint == '\n' || codepoint == '\r';
+    if ((!permitted_ascii_whitespace && codepoint < 0x20) ||
+        (codepoint >= 0x7f && codepoint <= 0x9f)) {
+      return fail(offset, "control character is not allowed");
+    }
+    offset += length;
+  }
+  return true;
 }
 
 bool ReadHotwordFile(const std::string &path, std::string *content,
@@ -78,8 +148,12 @@ bool ReadHotwordFile(const std::string &path, std::string *content,
     return false;
   }
 
+  std::string text = std::move(buffer).str();
+  if (!ValidateHotwordUtf8(text, error)) {
+    return false;
+  }
   if (content) {
-    *content = std::move(buffer).str();
+    *content = std::move(text);
   }
   if (error) {
     error->clear();
@@ -102,6 +176,27 @@ bool IsValidScore(std::string_view value) {
   float score = 0.0f;
   input >> score;
   return input.eof() && !input.fail() && std::isfinite(score);
+}
+
+bool LooksLikeScore(std::string_view value) {
+  if (value.empty()) {
+    return true;
+  }
+  const unsigned char first = static_cast<unsigned char>(value.front());
+  if ((first >= '0' && first <= '9') || first == '+' || first == '-' ||
+      first == '.') {
+    return true;
+  }
+
+  std::string lower(value);
+  for (char &c : lower) {
+    const auto byte = static_cast<unsigned char>(c);
+    if (byte >= 'A' && byte <= 'Z') {
+      c = static_cast<char>(byte - 'A' + 'a');
+    }
+  }
+  return lower == "nan" || lower.starts_with("nan(") || lower == "inf" ||
+         lower == "infinity";
 }
 
 bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
@@ -146,10 +241,14 @@ bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
     return true;
   }
 
-  // A separated ':...' token is an invalid score. A non-numeric suffix
-  // attached directly to a term remains literal text.
-  if (colon > 0 &&
-      std::isspace(static_cast<unsigned char>(line[colon - 1]))) {
+  // A separated ':...' token or an attached numeric-looking suffix is an
+  // invalid score. Other colon-containing terms (for example URLs) remain
+  // literal text.
+  const bool whitespace_before =
+      colon > 0 &&
+      std::isspace(static_cast<unsigned char>(line[colon - 1]));
+  const bool whitespace_after = raw_score != score;
+  if (whitespace_before || whitespace_after || LooksLikeScore(score)) {
     if (error) {
       *error = "invalid hotword score; use 'word:3.5' without spaces: " + line;
     }

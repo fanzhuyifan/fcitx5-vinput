@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 #include <unistd.h>
 
 namespace fs = std::filesystem;
@@ -27,6 +28,12 @@ void Require(bool condition, std::string_view message) {
     std::cerr << "hotword test failed: " << message << '\n';
     std::exit(1);
   }
+}
+
+void WriteBytes(const fs::path &path, std::string_view bytes) {
+  std::ofstream output(path, std::ios::binary | std::ios::trunc);
+  output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+  Require(static_cast<bool>(output), "write test hotwords file");
 }
 
 void AppendVarint(std::string *data, std::uint64_t value) {
@@ -130,6 +137,29 @@ int main() {
   }
   Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
           "non-finite explicit scores must be rejected");
+
+  for (const std::string_view suffix :
+       {"nan", "inf", "infinity", "-inf", "1e9999", "1.2junk", ""}) {
+    WriteBytes(hotword_file, std::string("invalid:") + std::string(suffix) +
+                                 "\n");
+    Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+            "invalid attached scores must be rejected");
+  }
+
+  const std::vector<std::string> invalid_utf8 = {
+      std::string("bad\0text\n", 9),
+      std::string("bad\x01text\n", 9),
+      std::string("bad\xc0\xaf\n", 6),
+      std::string("bad\xe2\x28\xa1\n", 7),
+      std::string("bad\xed\xa0\x80\n", 7),
+      std::string("bad\xf4\x90\x80\x80\n", 8),
+      std::string("bad\xf0", 4),
+  };
+  for (const auto &bytes : invalid_utf8) {
+    WriteBytes(hotword_file, bytes);
+    Require(!LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error),
+            "invalid UTF-8 and control bytes must be rejected");
+  }
 
   {
     std::ofstream output(hotword_file);
