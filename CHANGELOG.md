@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.6](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.6) — 2026-08-12
+
+### Bug Fixes
+
+- **asr:** Route hotwords through the matching sherpa-onnx model-family API: Transducer contextual biasing, FunASR Nano prompts, or Qwen3-ASR prompts
+- **asr:** Support Transducer hotword modeling units `cjkchar`, `bpe`, `bbpe`, and `cjkchar+bpe`, and select `modified_beam_search` when contextual biasing is active
+- **models:** Generate and validate sherpa-onnx text `bpe.vocab` assets from packaged SentencePiece `bpe.model` files during installation, enabling hotwords for offline and streaming X-ASR models
+- **menu:** Avoid a use-after-free when an input context is destroyed while a Vinput menu is visible (#115)
+- **config:** Preserve configured defaults when saving instead of replacing them with value-initialized fields (#118)
+
+### Refactor
+
+- **registry:** Use one model index (`registry/models.json`) instead of the versioned v3 path
+
+### Documentation
+
+- Correct the Transducer per-hotword score syntax to `word :2.0`
+
+### Testing
+
+- Add automated coverage for prompt hotword conversion, Transducer modeling-unit validation, and SentencePiece vocabulary export
+- Verify the packaged Arch Linux artifact with real offline and streaming X-ASR hotword inference
+
+### Miscellaneous
+
+- Ignore pi-subagents artifacts and drop AGENTS.md
+
 ## [2.3.5](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.5) — 2026-07-24
 
 ### Bug Fixes

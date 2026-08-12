@@ -1,13 +1,13 @@
 {
-  "id": 4,
-  "timestamp": 1784825625,
+  "id": 5,
+  "timestamp": 1786515938,
   "title": {
-    "en_US": "Vinput 2.3.5 — Faster cold recording start",
-    "zh_CN": "Vinput 2.3.5 — 空闲后录音启动更快"
+    "en_US": "Vinput 2.3.6 — Model-aware hotwords and stability fixes",
+    "zh_CN": "Vinput 2.3.6 — 模型感知热词与稳定性修复"
   },
   "text": {
-    "en_US": "Cold push-to-talk no longer rebuilds the PipeWire capture stream every time. The mic path reuses an inactive stream with a short idle grace, opens capture before ASR session setup, and softens offline VAD leading trim — reducing dropped leading words after idle.",
-    "zh_CN": "空闲后第一次按键不再每次重建 PipeWire 采集流。录音路径会在短空闲宽限内复用 inactive stream，并先开麦再创建 ASR session，同时放宽 offline VAD 前缘裁切，减少「开头字被吃掉」的问题。"
+    "en_US": "Hotwords now follow each sherpa-onnx model family, including BPE-aware X-ASR support with automatic vocabulary provisioning. This release also fixes an input-context menu crash and preserves default configuration values when saving. Note: for hotwords to work with offline/streaming X-ASR models, re-download the model from the model manager so the new BPE vocabulary assets are installed.",
+    "zh_CN": "热词现在会按 sherpa-onnx 模型家族正确接入，并为 X-ASR 自动生成 BPE 词表。本版本同时修复输入上下文销毁时的菜单崩溃，以及保存配置时默认值丢失的问题。注意：已安装的离线/流式 X-ASR 模型需要重新下载（在模型管理器中删除后重新安装），热词才能生效，因为 BPE 词表资产只在安装时生成。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.5"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.6"
 }
