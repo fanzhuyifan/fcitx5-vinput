@@ -10,8 +10,7 @@ description: "vinput-registry contribution guide: models, providers, and adapter
 ```
 vinput-registry/
 ├── registry/
-│   ├── models.json          # Legacy v2 local ASR model index
-│   ├── v3/models.json       # Current local ASR model index
+│   ├── models.json          # Local ASR model index
 │   ├── providers.json       # Cloud ASR provider index
 │   └── adapters.json        # LLM adapter index
 ├── i18n/
@@ -201,7 +200,7 @@ Adapter env names use a provider-specific prefix (e.g. `MTRAN_*`), not `VINPUT_A
 
 ## Local ASR models
 
-Model entries in `registry/v3/models.json` describe downloadable sherpa-onnx model archives. The v2 index remains available for older clients.
+Model entries in `models.json` describe downloadable sherpa-onnx model archives.
 
 **Required fields:**
 
@@ -246,7 +245,7 @@ Field naming follows sherpa-onnx C API conventions.
 
 ### Adding a model
 
-1. Add entry to `registry/v3/models.json` with complete `vinput_model` metadata
+1. Add entry to `registry/models.json` with complete `vinput_model` metadata
 2. Add i18n entries
 
 ### i18n entry format

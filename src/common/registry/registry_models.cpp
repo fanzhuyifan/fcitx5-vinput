@@ -50,11 +50,6 @@ std::vector<RemoteModelEntry> ParseRegistryJson(const std::string &content,
       if (error) *error = "registry JSON is not an object";
       return entries;
     }
-    if (!j.contains("version") || !j.at("version").is_number_integer() ||
-        j.at("version").get<int>() != 3) {
-      if (error) *error = "model registry must use schema version 3";
-      return entries;
-    }
     if (!j.contains("items") || !j.at("items").is_array()) {
       if (error) *error = "registry JSON is missing array field 'items'";
       return entries;
