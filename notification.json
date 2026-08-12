@@ -1,13 +1,13 @@
 {
-  "id": 5,
-  "timestamp": 1786515938,
+  "id": 6,
+  "timestamp": 1786528601,
   "title": {
-    "en_US": "Vinput 2.3.6 — Model-aware hotwords and stability fixes",
-    "zh_CN": "Vinput 2.3.6 — 模型感知热词与稳定性修复"
+    "en_US": "Vinput 2.3.7 — Unified hotword weights and safer parsing",
+    "zh_CN": "Vinput 2.3.7 — 统一热词权重格式与输入校验"
   },
   "text": {
-    "en_US": "Hotwords now follow each sherpa-onnx model family, including BPE-aware X-ASR support with automatic vocabulary provisioning. This release also fixes an input-context menu crash and preserves default configuration values when saving. Note: for hotwords to work with offline/streaming X-ASR models, re-download the model from the model manager so the new BPE vocabulary assets are installed.",
-    "zh_CN": "热词现在会按 sherpa-onnx 模型家族正确接入，并为 X-ASR 自动生成 BPE 词表。本版本同时修复输入上下文销毁时的菜单崩溃，以及保存配置时默认值丢失的问题。注意：已安装的离线/流式 X-ASR 模型需要重新下载（在模型管理器中删除后重新安装），热词才能生效，因为 BPE 词表资产只在安装时生成。"
+    "en_US": "Hotword files now use one entry per line with optional term:weight syntax and no spaces around the colon. Vinput validates weights and UTF-8 before passing entries to sherpa-onnx, preventing malformed input from crashing ASR. X-ASR models installed before 2.3.6 still need to be re-downloaded for hotwords.",
+    "zh_CN": "热词文件现在统一为每行一个词条，可选权重格式为“词条:权重”，冒号两边不能有空格。Vinput 会在交给 sherpa-onnx 前校验权重与 UTF-8，避免异常输入导致 ASR 崩溃。2.3.6 之前安装的 X-ASR 模型仍需重新下载，热词才能生效。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.6"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.7"
 }

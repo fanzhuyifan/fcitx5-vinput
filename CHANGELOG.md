@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.7](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.7) — 2026-08-12
+
+### Bug Fixes
+
+- **asr:** Standardize hotword files as one entry per line with optional `term:weight` syntax and no spaces around the colon
+- **asr:** Normalize weighted Transducer entries to sherpa-onnx's internal format while stripping unsupported per-entry weights from FunASR Nano and Qwen3-ASR prompts
+- **asr:** Validate UTF-8, embedded NULs, control characters, malformed/non-finite weights, and score-token bypasses before passing hotwords to sherpa-onnx
+- **asr:** Propagate the configured global `hotwords_score` to offline Transducer recognizers and size streaming hotword buffers from their actual content
+
+### Documentation
+
+- Document the unified `term:weight` syntax and invalid spaced forms in English, Chinese, and the GUI
+
+### Testing
+
+- Cover Transducer and prompt serialization, strict no-space score parsing, malformed weights, valid multibyte UTF-8, invalid UTF-8, embedded NULs, and control characters
+
 ## [2.3.6](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.6) — 2026-08-12
 
 ### Bug Fixes
@@ -18,7 +35,7 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- Correct the user-facing per-hotword score syntax to `word:2.0`
+- Correct the Transducer per-hotword score syntax to `word :2.0`
 
 ### Testing
 
