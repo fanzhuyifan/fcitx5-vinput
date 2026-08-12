@@ -127,6 +127,14 @@ vinput provider remove <id>    # Uninstall
 
 A hotword file is a text file with one term per line, used to boost recognition accuracy for specific vocabulary with local models. Typical use cases: names, brand names, technical terms.
 
+```text
+OpenAI
+speech recognition:2.0
+deep learning:3.5
+```
+
+For models supporting per-entry weights, append `:<weight>` directly to the term. Do not add spaces around the colon: use `term:2.0`, not `term :2.0` or `term: 2.0`. Models without per-entry weights ignore the weight suffix and use only the term.
+
 Not all models support hotwords — the model list indicates support.
 
 ### GUI

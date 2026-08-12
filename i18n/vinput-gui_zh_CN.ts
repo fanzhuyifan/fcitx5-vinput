@@ -234,8 +234,8 @@
         <translation>浏览...</translation>
     </message>
     <message>
-        <source>Hotwords (one per line, optional transducer score: &quot;word :2.0&quot;):</source>
-        <translation>热词（每行一个，可选 Transducer 权重：&quot;词 :2.0&quot;）：</translation>
+        <source>Hotwords (one per line, optional transducer score: &quot;word:2.0&quot;):</source>
+        <translation>热词（每行一个，可选 Transducer 权重：&quot;词:2.0&quot;）：</translation>
     </message>
     <message>
         <source>Select Hotwords File</source>

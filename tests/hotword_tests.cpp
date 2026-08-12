@@ -17,6 +17,7 @@ namespace fs = std::filesystem;
 using vinput::daemon::asr::IsPromptHotwordFamily;
 using vinput::daemon::asr::IsTransducerHotwordFamily;
 using vinput::daemon::asr::LoadPromptHotwordsCsv;
+using vinput::daemon::asr::LoadTransducerHotwords;
 using vinput::daemon::asr::ValidateTransducerHotwordAssets;
 
 namespace {
@@ -78,21 +79,67 @@ int main() {
   const fs::path hotword_file = root / "hotwords.txt";
   {
     std::ofstream output(hotword_file);
-    output << "语音识别 :3.5\n"
+    output << "语音识别:3.5\n"
            << "OpenAI\n"
-           << "deep learning :2\n\n";
+           << "deep learning:2\n\n";
   }
   std::string prompt_hotwords;
   Require(LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error), error);
   Require(prompt_hotwords == "语音识别,OpenAI,deep learning",
           "prompt hotword conversion");
 
+  std::string transducer_hotwords;
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          error);
+  Require(transducer_hotwords ==
+              "语音识别 :3.5\nOpenAI\ndeep learning :2\n",
+          "transducer hotword conversion");
+
   {
     std::ofstream output(hotword_file);
     output << "invalid :score\n";
   }
   Require(!LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error),
-          "invalid scores must be rejected");
+          "invalid explicit scores must be rejected");
+
+  {
+    std::ofstream output(hotword_file);
+    output << "https://example.com\n";
+  }
+  Require(LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error), error);
+  Require(prompt_hotwords == "https://example.com",
+          "non-numeric colon suffix remains literal text");
+
+  {
+    std::ofstream output(hotword_file);
+    output << "spaced score :1.25\n";
+  }
+  Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          "spaces before the score delimiter must be rejected");
+
+  {
+    std::ofstream output(hotword_file);
+    output << "spaced score: 1.25\n";
+  }
+  Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          "spaces after the score delimiter must be rejected");
+
+  {
+    std::ofstream output(hotword_file);
+    output << "invalid :nan\n";
+  }
+  Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          "non-finite explicit scores must be rejected");
+
+  {
+    std::ofstream output(hotword_file);
+    output << " \n\t\n";
+  }
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          error);
+  Require(transducer_hotwords.empty(), "empty transducer hotwords stay off");
+  Require(LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error), error);
+  Require(prompt_hotwords.empty(), "empty prompt hotwords stay off");
 
   Require(IsTransducerHotwordFamily("transducer"), "transducer family");
   Require(IsTransducerHotwordFamily("nemo_transducer"),

@@ -350,7 +350,7 @@ private:
     const std::string tokens_buf = JsonString(model_cfg, "tokens_buf");
     const std::string hotwords_buf = JsonString(recognizer_cfg, "hotwords_buf");
     std::string selected_hotwords_file;
-    bool selected_file_has_entries = false;
+    std::string normalized_transducer_hotwords;
     bool use_hotwords_buf = false;
 
     const bool provider_hotwords_configured =
@@ -370,11 +370,11 @@ private:
                                    : f_hotwords_file;
       bool hotwords_active = false;
       if (!selected_hotwords_file.empty()) {
-        if (!HotwordFileHasEntries(selected_hotwords_file,
-                                   &selected_file_has_entries, error)) {
+        if (!LoadTransducerHotwords(selected_hotwords_file,
+                                    &normalized_transducer_hotwords, error)) {
           return false;
         }
-        hotwords_active = selected_file_has_entries;
+        hotwords_active = !normalized_transducer_hotwords.empty();
       } else if (!hotwords_buf.empty()) {
         use_hotwords_buf = true;
         hotwords_active = true;
@@ -428,16 +428,14 @@ private:
                                        nlohmann::json::object()),
                   "max_active", 3000);
     }
-    if (!selected_hotwords_file.empty()) {
-      if (selected_file_has_entries) {
-        config.hotwords_file = selected_hotwords_file.c_str();
-        config.decoding_method = "modified_beam_search";
-      }
+    if (!normalized_transducer_hotwords.empty()) {
+      config.hotwords_buf = normalized_transducer_hotwords.c_str();
+      config.hotwords_buf_size =
+          static_cast<int32_t>(normalized_transducer_hotwords.size());
+      config.decoding_method = "modified_beam_search";
     } else if (use_hotwords_buf) {
       config.hotwords_buf = hotwords_buf.c_str();
-      config.hotwords_buf_size =
-          JsonInt(recognizer_cfg, "hotwords_buf_size",
-                  static_cast<int>(hotwords_buf.size()));
+      config.hotwords_buf_size = static_cast<int32_t>(hotwords_buf.size());
       config.decoding_method = "modified_beam_search";
     }
     if (!f_hr_lexicon.empty()) {

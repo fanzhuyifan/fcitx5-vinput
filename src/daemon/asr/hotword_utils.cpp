@@ -4,10 +4,11 @@
 #include "common/asr/model_manager.h"
 #include "daemon/asr/sherpa_json_helpers.h"
 
+#include <cctype>
 #include <cmath>
-#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <locale>
 #include <sstream>
 #include <vector>
 
@@ -86,58 +87,102 @@ bool ReadHotwordFile(const std::string &path, std::string *content,
   return true;
 }
 
-bool IsValidScore(std::string_view token) {
-  if (token.size() < 2 || token.front() != ':') {
+struct HotwordEntry {
+  std::string text;
+  std::string score;
+};
+
+bool IsValidScore(std::string_view value) {
+  if (value.empty()) {
     return false;
   }
-  const std::string number(token.substr(1));
-  char *end = nullptr;
-  const float value = std::strtof(number.c_str(), &end);
-  return end == number.c_str() + number.size() && std::isfinite(value);
+  std::istringstream input{std::string(value)};
+  input.imbue(std::locale::classic());
+  input >> std::noskipws;
+  float score = 0.0f;
+  input >> score;
+  return input.eof() && !input.fail() && std::isfinite(score);
 }
 
-bool NormalizePromptEntry(const std::string &line, std::string *entry,
-                          std::string *error) {
-  std::istringstream words(line);
-  std::vector<std::string> tokens;
-  std::string token;
-  while (words >> token) {
-    tokens.push_back(token);
-  }
-  if (tokens.empty()) {
-    entry->clear();
+bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
+                       std::string *error) {
+  line = TrimAsciiWhitespace(std::move(line));
+  if (line.empty()) {
+    entry->text.clear();
+    entry->score.clear();
     return true;
   }
 
-  for (std::size_t i = 0; i < tokens.size(); ++i) {
-    if (tokens[i].empty() || tokens[i].front() != ':') {
-      continue;
-    }
-    if (i + 1 != tokens.size() || !IsValidScore(tokens[i])) {
+  const auto colon = line.rfind(':');
+  if (colon == std::string::npos) {
+    entry->text = std::move(line);
+    entry->score.clear();
+    return true;
+  }
+
+  const std::string raw_score = line.substr(colon + 1);
+  const std::string score = TrimAsciiWhitespace(raw_score);
+  const std::string text = TrimAsciiWhitespace(line.substr(0, colon));
+  if (IsValidScore(score)) {
+    const bool whitespace_before =
+        colon > 0 &&
+        std::isspace(static_cast<unsigned char>(line[colon - 1]));
+    const bool whitespace_after = raw_score != score;
+    if (whitespace_before || whitespace_after) {
       if (error) {
-        *error =
-            "invalid hotword score; use a trailing score such as ':3.5': " +
-            line;
+        *error = "invalid hotword score; use 'word:3.5' without spaces: " +
+                 line;
       }
       return false;
     }
-    tokens.pop_back();
-    break;
+    if (text.empty()) {
+      if (error) {
+        *error = "hotword score has no preceding word or phrase: " + line;
+      }
+      return false;
+    }
+    entry->text = text;
+    entry->score = score;
+    return true;
   }
 
-  if (tokens.empty()) {
+  // A separated ':...' token is an invalid score. A non-numeric suffix
+  // attached directly to a term remains literal text.
+  if (colon > 0 &&
+      std::isspace(static_cast<unsigned char>(line[colon - 1]))) {
     if (error) {
-      *error = "hotword score has no preceding word or phrase: " + line;
+      *error = "invalid hotword score; use 'word:3.5' without spaces: " + line;
     }
     return false;
   }
 
-  entry->clear();
-  for (std::size_t i = 0; i < tokens.size(); ++i) {
-    if (i) {
-      entry->push_back(' ');
+  entry->text = std::move(line);
+  entry->score.clear();
+  return true;
+}
+
+bool LoadHotwordEntries(const std::string &path,
+                        std::vector<HotwordEntry> *entries,
+                        std::string *error) {
+  std::string content;
+  if (!ReadHotwordFile(path, &content, error)) {
+    return false;
+  }
+
+  entries->clear();
+  std::istringstream lines(content);
+  std::string line;
+  while (std::getline(lines, line)) {
+    HotwordEntry entry;
+    if (!ParseHotwordEntry(std::move(line), &entry, error)) {
+      return false;
     }
-    *entry += tokens[i];
+    if (!entry.text.empty()) {
+      entries->push_back(std::move(entry));
+    }
+  }
+  if (error) {
+    error->clear();
   }
   return true;
 }
@@ -152,38 +197,30 @@ bool IsPromptHotwordFamily(std::string_view family) {
   return family == "funasr_nano" || family == "qwen3_asr";
 }
 
-bool HotwordFileHasEntries(const std::string &path, bool *has_entries,
-                           std::string *error) {
-  std::string content;
-  if (!ReadHotwordFile(path, &content, error)) {
+bool LoadTransducerHotwords(const std::string &path, std::string *hotwords,
+                            std::string *error) {
+  std::vector<HotwordEntry> entries;
+  if (!LoadHotwordEntries(path, &entries, error)) {
     return false;
   }
-  if (has_entries) {
-    *has_entries = !TrimAsciiWhitespace(std::move(content)).empty();
+
+  hotwords->clear();
+  for (const auto &entry : entries) {
+    *hotwords += entry.text;
+    if (!entry.score.empty()) {
+      // sherpa-onnx expects the score as a separate trailing token.
+      *hotwords += " :" + entry.score;
+    }
+    hotwords->push_back('\n');
   }
   return true;
 }
 
 bool LoadPromptHotwordsCsv(const std::string &path, std::string *hotwords,
                            std::string *error) {
-  std::string content;
-  if (!ReadHotwordFile(path, &content, error)) {
+  std::vector<HotwordEntry> entries;
+  if (!LoadHotwordEntries(path, &entries, error)) {
     return false;
-  }
-
-  std::istringstream lines(content);
-  std::string line;
-  std::vector<std::string> entries;
-  while (std::getline(lines, line)) {
-    line = TrimAsciiWhitespace(std::move(line));
-    if (line.empty()) {
-      continue;
-    }
-    std::string entry;
-    if (!NormalizePromptEntry(line, &entry, error)) {
-      return false;
-    }
-    entries.push_back(std::move(entry));
   }
 
   hotwords->clear();
@@ -191,10 +228,7 @@ bool LoadPromptHotwordsCsv(const std::string &path, std::string *hotwords,
     if (i) {
       hotwords->push_back(',');
     }
-    *hotwords += entries[i];
-  }
-  if (error) {
-    error->clear();
+    *hotwords += entries[i].text;
   }
   return true;
 }

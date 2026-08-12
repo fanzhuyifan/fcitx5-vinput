@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ### Documentation
 
-- Correct the Transducer per-hotword score syntax to `word :2.0`
+- Correct the user-facing per-hotword score syntax to `word:2.0`
 
 ### Testing
 

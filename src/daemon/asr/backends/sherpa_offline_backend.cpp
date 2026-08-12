@@ -8,17 +8,73 @@
 
 #include <sherpa-onnx/c-api/c-api.h>
 
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 #include <unordered_map>
 #include <utility>
+#include <unistd.h>
 
 namespace vinput::daemon::asr {
 
 namespace {
 
 constexpr std::size_t kMinSamplesForInference = 8000; // 0.5 s @ 16 kHz
+
+bool WriteTemporaryHotwordFile(std::string_view content, std::string *path,
+                               std::string *error) {
+  std::error_code temp_error;
+  const auto temp_dir = std::filesystem::temp_directory_path(temp_error);
+  if (temp_error) {
+    if (error) {
+      *error = "failed to locate temporary directory: " +
+               temp_error.message();
+    }
+    return false;
+  }
+  std::string pattern = (temp_dir / "vinput-hotwords-XXXXXX").string();
+  const int fd = mkstemp(pattern.data());
+  if (fd < 0) {
+    if (error) {
+      *error = "failed to create temporary hotwords file: " +
+               std::string(std::strerror(errno));
+    }
+    return false;
+  }
+  const char *data = content.data();
+  std::size_t remaining = content.size();
+  while (remaining > 0) {
+    const ssize_t written = write(fd, data, remaining);
+    if (written <= 0) {
+      if (written < 0 && errno == EINTR) {
+        continue;
+      }
+      const std::string write_error =
+          written < 0 ? std::strerror(errno) : "zero-byte write";
+      close(fd);
+      std::filesystem::remove(pattern);
+      if (error) {
+        *error = "failed to write temporary hotwords file: " + write_error;
+      }
+      return false;
+    }
+    data += written;
+    remaining -= static_cast<std::size_t>(written);
+  }
+  if (close(fd) != 0) {
+    const std::string close_error = std::strerror(errno);
+    std::filesystem::remove(pattern);
+    if (error) {
+      *error = "failed to close temporary hotwords file: " + close_error;
+    }
+    return false;
+  }
+  *path = std::move(pattern);
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // Build a SherpaOnnxOfflineRecognizerConfig from ModelInfo + AsrConfig.
@@ -47,6 +103,8 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
       JsonString(recognizer_cfg, "decoding_method", "greedy_search");
   config.decoding_method = p_decoding_method.c_str();
   config.max_active_paths = JsonInt(recognizer_cfg, "max_active_paths", 4);
+  config.hotwords_score =
+      JsonFloat(recognizer_cfg, "hotwords_score", 1.5f);
   config.blank_penalty = JsonFloat(recognizer_cfg, "blank_penalty", 0.0f);
 
   const std::string tokens_path = info.File("tokens");
@@ -79,6 +137,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   std::string cfg_user_prompt;
   std::string cfg_hotwords;
   std::string selected_hotwords_file;
+  std::string normalized_transducer_hotwords;
   std::string provider_prompt_hotwords;
   std::string cfg_telespeech_path;
 
@@ -103,15 +162,14 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
                                  ? asr_config.hotwords_file
                                  : f_hotwords_file;
     if (!selected_hotwords_file.empty()) {
-      bool has_entries = false;
-      if (!HotwordFileHasEntries(selected_hotwords_file, &has_entries, error)) {
+      if (!LoadTransducerHotwords(selected_hotwords_file,
+                                  &normalized_transducer_hotwords, error)) {
         return nullptr;
       }
-      if (has_entries) {
+      if (!normalized_transducer_hotwords.empty()) {
         if (!ValidateTransducerHotwordAssets(info, error)) {
           return nullptr;
         }
-        config.hotwords_file = selected_hotwords_file.c_str();
         config.decoding_method = "modified_beam_search";
       }
     }
@@ -363,7 +421,24 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
     it->second();
   }
 
+  std::string temporary_hotwords_file;
+  if (!normalized_transducer_hotwords.empty()) {
+    if (!WriteTemporaryHotwordFile(normalized_transducer_hotwords,
+                                   &temporary_hotwords_file, error)) {
+      return nullptr;
+    }
+    config.hotwords_file = temporary_hotwords_file.c_str();
+  }
+
   auto *recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
+  if (!temporary_hotwords_file.empty()) {
+    std::error_code remove_error;
+    std::filesystem::remove(temporary_hotwords_file, remove_error);
+    if (remove_error) {
+      fprintf(stderr, "vinput: failed to remove temporary hotwords file: %s\n",
+              remove_error.message().c_str());
+    }
+  }
   if (!recognizer) {
     if (error)
       *error =
