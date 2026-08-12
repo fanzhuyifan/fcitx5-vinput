@@ -146,6 +146,19 @@ int main() {
             "invalid attached scores must be rejected");
   }
 
+  for (const std::string_view line :
+       {"hello :nan:tail\n", "hello :1e9999:tail\n"}) {
+    WriteBytes(hotword_file, line);
+    Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+            "spaced score tokens must not bypass validation");
+  }
+
+  WriteBytes(hotword_file, "é😀:2.0\n");
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
+          error);
+  Require(transducer_hotwords == "é😀 :2.0\n",
+          "valid multibyte UTF-8 hotwords");
+
   const std::vector<std::string> invalid_utf8 = {
       std::string("bad\0text\n", 9),
       std::string("bad\x01text\n", 9),

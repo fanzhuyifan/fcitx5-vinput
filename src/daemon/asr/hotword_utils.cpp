@@ -4,7 +4,6 @@
 #include "common/asr/model_manager.h"
 #include "daemon/asr/sherpa_json_helpers.h"
 
-#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -18,6 +17,10 @@ namespace vinput::daemon::asr {
 namespace {
 
 constexpr std::uintmax_t kMaxHotwordFileBytes = 1024 * 1024;
+
+bool IsAsciiWhitespace(char c) {
+  return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
 
 std::string TrimAsciiWhitespace(std::string value) {
   const auto first = value.find_first_not_of(" \t\r\n");
@@ -208,6 +211,16 @@ bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
     return true;
   }
 
+  for (std::size_t i = 1; i < line.size(); ++i) {
+    if (line[i] == ':' && IsAsciiWhitespace(line[i - 1])) {
+      if (error) {
+        *error = "invalid hotword score; use 'word:3.5' without spaces: " +
+                 line;
+      }
+      return false;
+    }
+  }
+
   const auto colon = line.rfind(':');
   if (colon == std::string::npos) {
     entry->text = std::move(line);
@@ -220,8 +233,7 @@ bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
   const std::string text = TrimAsciiWhitespace(line.substr(0, colon));
   if (IsValidScore(score)) {
     const bool whitespace_before =
-        colon > 0 &&
-        std::isspace(static_cast<unsigned char>(line[colon - 1]));
+        colon > 0 && IsAsciiWhitespace(line[colon - 1]);
     const bool whitespace_after = raw_score != score;
     if (whitespace_before || whitespace_after) {
       if (error) {
@@ -245,8 +257,7 @@ bool ParseHotwordEntry(std::string line, HotwordEntry *entry,
   // invalid score. Other colon-containing terms (for example URLs) remain
   // literal text.
   const bool whitespace_before =
-      colon > 0 &&
-      std::isspace(static_cast<unsigned char>(line[colon - 1]));
+      colon > 0 && IsAsciiWhitespace(line[colon - 1]);
   const bool whitespace_after = raw_score != score;
   if (whitespace_before || whitespace_after || LooksLikeScore(score)) {
     if (error) {
