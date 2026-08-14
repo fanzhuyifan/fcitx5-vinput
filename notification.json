@@ -1,13 +1,13 @@
 {
-  "id": 6,
-  "timestamp": 1786528601,
+  "id": 7,
+  "timestamp": 1786681347,
   "title": {
-    "en_US": "Vinput 2.3.7 — Unified hotword weights and safer parsing",
-    "zh_CN": "Vinput 2.3.7 — 统一热词权重格式与输入校验"
+    "en_US": "Vinput 2.3.8 — arm64 release artifacts and optional clipboard",
+    "zh_CN": "Vinput 2.3.8 — arm64 发布包与可选剪贴板依赖"
   },
   "text": {
-    "en_US": "Hotword files now use one entry per line with optional term:weight syntax and no spaces around the colon. Vinput validates weights and UTF-8 before passing entries to sherpa-onnx, preventing malformed input from crashing ASR. X-ASR models installed before 2.3.6 still need to be re-downloaded for hotwords.",
-    "zh_CN": "热词文件现在统一为每行一个词条，可选权重格式为“词条:权重”，冒号两边不能有空格。Vinput 会在交给 sherpa-onnx 前校验权重与 UTF-8，避免异常输入导致 ASR 崩溃。2.3.6 之前安装的 X-ASR 模型仍需重新下载，热词才能生效。"
+    "en_US": "Release tarballs and Debian packages now ship for both x86_64 and arm64. The clipboard addon is now optional: vinput loads even when clipboard history is disabled, and clipboard-based insertion degrades gracefully at runtime. sherpa-onnx has been bumped to v1.13.5.",
+    "zh_CN": "发布包（tar.gz 与 Debian 包）现在同时提供 x86_64 与 arm64 架构。clipboard 依赖改为可选：即使禁用剪贴板历史，vinput 也能正常加载，基于剪贴板的插入会在运行时优雅降级。sherpa-onnx 已更新至 v1.13.5。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.7"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.8"
 }

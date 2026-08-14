@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.8](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.8) — 2026-08-14
+
+### Features
+
+- **addon:** Make clipboard an optional dependency
+- **ci:** Build deb and tarball for arm64 via matrix strategy
+
+### Miscellaneous
+
+- **deps:** Bump nixpkgs
+- **deps:** Bump sherpa-onnx to v1.13.5
+
 ## [2.3.7](https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.7) — 2026-08-12
 
 ### Bug Fixes
