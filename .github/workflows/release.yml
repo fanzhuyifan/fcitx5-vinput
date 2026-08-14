@@ -68,7 +68,15 @@ jobs:
 
   build-linux-tarball:
     needs: source_archive
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
 
@@ -92,9 +100,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: sccache-release-tarball-${{ github.ref_name }}
+          key: sccache-release-tarball-${{ matrix.arch }}-${{ github.ref_name }}
           restore-keys: |
-            sccache-release-tarball-
+            sccache-release-tarball-${{ matrix.arch }}-
 
       - name: Configure
         run: |
@@ -117,7 +125,7 @@ jobs:
           release="${{ needs.source_archive.outputs.package_release }}"
           mode="bundled"
           stage_root="${RUNNER_TEMP}/stage"
-          archive_root="fcitx5-vinput_${version}-${release}_linux_x86_64_${mode}"
+          archive_root="fcitx5-vinput_${version}-${release}_linux_${{ matrix.arch }}_${mode}"
           build_root="${GITHUB_WORKSPACE}/fcitx5-vinput-${version}/build"
 
           rm -rf "${stage_root}" dist/release
@@ -128,20 +136,40 @@ jobs:
 
       - uses: actions/upload-artifact@v6
         with:
-          name: release-tarball-bundled
-          path: dist/fcitx5-vinput_*_linux_x86_64_bundled.tar.gz
+          name: release-tarball-bundled-${{ matrix.arch }}
+          path: dist/fcitx5-vinput_*_linux_${{ matrix.arch }}_bundled.tar.gz
           if-no-files-found: error
 
-  build-deb-ubuntu:
+  build-deb:
     needs: source_archive
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu24.04
+            image: ubuntu:24.04
+            arch: amd64
+            runner: ubuntu-latest
+          - distro: debian12
+            image: debian:12
+            arch: amd64
+            runner: ubuntu-latest
+          - distro: ubuntu24.04
+            image: ubuntu:24.04
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - distro: debian12
+            image: debian:12
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     container:
-      image: ubuntu:24.04
+      image: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Install build dependencies
-        run: ./scripts/ci-install-build-deps.sh ubuntu24.04
+        run: ./scripts/ci-install-build-deps.sh ${{ matrix.distro }}
 
       - uses: actions/download-artifact@v8
         with:
@@ -158,9 +186,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ${{ env.SCCACHE_DIR }}
-          key: sccache-release-deb-ubuntu24.04-${{ github.ref_name }}
+          key: sccache-release-deb-${{ matrix.distro }}-${{ matrix.arch }}-${{ github.ref_name }}
           restore-keys: |
-            sccache-release-deb-ubuntu24.04-
+            sccache-release-deb-${{ matrix.distro }}-${{ matrix.arch }}-
 
       - name: Build Debian package
         shell: bash
@@ -177,66 +205,12 @@ jobs:
           cpack --config build/CPackConfig.cmake -G DEB -B "${GITHUB_WORKSPACE}/dist"
 
           mv \
-            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_amd64.deb" \
-            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_ubuntu24.04_amd64.deb"
+            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_${{ matrix.arch }}.deb" \
+            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_${{ matrix.distro }}_${{ matrix.arch }}.deb"
 
       - uses: actions/upload-artifact@v6
         with:
-          name: release-deb-ubuntu24.04
-          path: dist/*.deb
-          if-no-files-found: error
-
-  build-deb-debian12:
-    needs: source_archive
-    runs-on: ubuntu-latest
-    container:
-      image: debian:12
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install build dependencies
-        run: ./scripts/ci-install-build-deps.sh debian12
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: source-archive
-          path: dist
-
-      - name: Prepare distro-native runtime prefix
-        run: |
-          prefix="${GITHUB_WORKSPACE}/runtime"
-          tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
-          bash "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}/scripts/build-sherpa-onnx.sh" \
-            "" "${prefix}"
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ env.SCCACHE_DIR }}
-          key: sccache-release-debian12-${{ github.ref_name }}
-          restore-keys: |
-            sccache-release-debian12-
-
-      - name: Build Debian package
-        shell: bash
-        run: |
-          cd "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}"
-          cmake --preset ci-clang-mold \
-            -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/runtime" \
-            -DVINPUT_PROJECT_VERSION="${{ needs.source_archive.outputs.package_version }}" \
-            -DVINPUT_PACKAGE_RELEASE="${{ needs.source_archive.outputs.package_release }}" \
-            -DVINPUT_PACKAGE_CONTACT="${{ github.repository_owner }} <noreply@github.com>" \
-            -DVINPUT_PACKAGE_HOMEPAGE_URL="${{ github.server_url }}/${{ github.repository }}"
-
-          cmake --build --preset ci-clang-mold
-          cpack --config build/CPackConfig.cmake -G DEB -B "${GITHUB_WORKSPACE}/dist"
-
-          mv \
-            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_amd64.deb" \
-            "${GITHUB_WORKSPACE}/dist/fcitx5-vinput_${{ needs.source_archive.outputs.package_version }}-1_debian12_amd64.deb"
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: release-deb-debian12
+          name: release-deb-${{ matrix.distro }}-${{ matrix.arch }}
           path: dist/*.deb
           if-no-files-found: error
 
@@ -414,8 +388,7 @@ jobs:
     needs:
       - source_archive
       - build-linux-tarball
-      - build-deb-ubuntu
-      - build-deb-debian12
+      - build-deb
       - build-rpm-fedora
       - build-rpm-opensuse-leap
       - build-arch

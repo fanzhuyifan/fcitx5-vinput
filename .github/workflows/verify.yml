@@ -28,7 +28,16 @@ concurrency:
 jobs:
   verify-ppa:
     if: ${{ inputs.channel == 'all' || inputs.channel == 'ppa' }}
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          # PPA does not publish arm64 builds yet. Uncomment once enabled on Launchpad.
+          # - arch: arm64
+          #   runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     container:
       image: ubuntu:24.04
     steps:
