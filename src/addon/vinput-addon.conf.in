@@ -12,4 +12,6 @@ Version=@PROJECT_VERSION@
 
 [Addon/Dependencies]
 0=dbus
-1=clipboard
+
+[Addon/OptionalDependencies]
+0=clipboard
