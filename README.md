@@ -151,10 +151,6 @@ For ASR configuration, scenes & LLM setup, CLI reference, and registry contribut
 
 [GPL-3.0](LICENSE)
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=xifan2333/fcitx5-vinput&type=Date)](https://star-history.com/#xifan2333/fcitx5-vinput&Date)
-
 ## Contributors
 
 <a href="https://github.com/xifan2333/fcitx5-vinput/graphs/contributors">

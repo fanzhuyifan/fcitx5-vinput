@@ -151,10 +151,6 @@ ASR 配置、场景与 LLM、CLI 参考和资源仓库贡献规范请查看[文�
 
 [GPL-3.0](LICENSE)
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=xifan2333/fcitx5-vinput&type=Date)](https://star-history.com/#xifan2333/fcitx5-vinput&Date)
-
 ## 贡献者
 
 <a href="https://github.com/xifan2333/fcitx5-vinput/graphs/contributors">
