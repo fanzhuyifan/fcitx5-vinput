@@ -12,6 +12,33 @@ flatpak_branch := "stable"
 default:
   @just --list
 
+fmt:
+  find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format -i
+
+check-fmt:
+  find src tests -name '*.cpp' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+tidy target="":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if [ ! -f "{{build_dir}}/compile_commands.json" ]; then
+    echo "compile_commands.json not found in {{build_dir}}. Run 'just configure' first." >&2
+    exit 1
+  fi
+  if [ -n "{{target}}" ]; then
+    clang-tidy -p {{build_dir}} {{target}}
+  else
+    if command -v run-clang-tidy >/dev/null 2>&1; then
+      run-clang-tidy -p {{build_dir}} -header-filter='src/.*' 'src/.*'
+    else
+      find src -name '*.cpp' | xargs -n 1 -P $(nproc) clang-tidy -p {{build_dir}}
+    fi
+  fi
+
+lint: check-fmt check-i18n
+  python3 -m json.tool data/default-config.json >/dev/null
+  python3 -m json.tool notification.json >/dev/null
+
 configure type="Release" prefix="/usr" *cmake_args:
   if [ "{{type}}" = "Debug" ]; then \
     cmake --preset debug-clang-mold -DCMAKE_INSTALL_PREFIX={{prefix}} {{cmake_args}}; \

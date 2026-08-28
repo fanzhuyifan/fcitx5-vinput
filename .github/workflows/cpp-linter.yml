@@ -1,0 +1,44 @@
+name: cpp-linter
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write # Required for posting comments and annotations on PRs
+
+concurrency:
+  group: cpp-linter-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpp-linter:
+    name: cpp-linter
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run cpp-linter
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: 'file'
+          tidy-checks: ''
+          version: '18'
+          lines-changed-only: false
+          files-changed-only: false
+          step-summary: true
+          file-annotations: true
+          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+
+      - name: Check linter outcome
+        if: steps.linter.outputs.checks-failed > 0
+        run: |
+          echo "cpp-linter failed with ${{ steps.linter.outputs.checks-failed }} failures."
+          exit 1

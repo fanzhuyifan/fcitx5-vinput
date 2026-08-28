@@ -1,0 +1,48 @@
+# clang-format configuration for fcitx5-vinput
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: Latest
+
+# Indentation and Column
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 100
+
+# Braces and Spacing
+BreakBeforeBraces: Attach
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+
+# Includes
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<.*'
+    Priority: 1
+  - Regex: '^"common/.*'
+    Priority: 2
+  - Regex: '^"daemon/.*'
+    Priority: 3
+  - Regex: '^"cli/.*'
+    Priority: 4
+  - Regex: '^"gui/.*'
+    Priority: 5
+  - Regex: '^"addon/.*'
+    Priority: 6
+  - Regex: '.*'
+    Priority: 7
+
+# Alignment
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignEscapedNewlines: Right
+AlignOperands: Align
+AlignTrailingComments: true
+PointerAlignment: Left
+ReferenceAlignment: Left
