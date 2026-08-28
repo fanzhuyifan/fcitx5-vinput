@@ -5,9 +5,9 @@
 #include <nlohmann/json.hpp>
 
 #include "common/config/core_config.h"
+#include "common/registry/registry_cache.h"
 #include "common/utils/downloader.h"
 #include "common/utils/path_utils.h"
-#include "common/registry/registry_cache.h"
 
 namespace vinput::registry {
 
@@ -31,7 +31,7 @@ std::string NormalizeLocale(std::string locale) {
   if (at_pos != std::string::npos) {
     locale = locale.substr(0, at_pos);
   }
-  for (char &ch : locale) {
+  for (char& ch : locale) {
     if (ch == '-') {
       ch = '_';
     }
@@ -51,7 +51,7 @@ std::string NormalizeLocale(std::string locale) {
   return locale;
 }
 
-I18nMap ParseI18nJson(const std::string &content, std::string *error) {
+I18nMap ParseI18nJson(const std::string& content, std::string* error) {
   I18nMap map;
 
   try {
@@ -67,7 +67,7 @@ I18nMap ParseI18nJson(const std::string &content, std::string *error) {
         map[it.key()] = it.value().get<std::string>();
       }
     }
-  } catch (const std::exception &ex) {
+  } catch (const std::exception& ex) {
     if (error) {
       *error = std::string("failed to parse i18n JSON: ") + ex.what();
     }
@@ -77,8 +77,7 @@ I18nMap ParseI18nJson(const std::string &content, std::string *error) {
   return map;
 }
 
-I18nMap LoadI18nFile(const std::filesystem::path &path,
-                      std::string *error) {
+I18nMap LoadI18nFile(const std::filesystem::path& path, std::string* error) {
   std::ifstream ifs(path);
   if (!ifs) {
     if (error) {
@@ -93,13 +92,12 @@ I18nMap LoadI18nFile(const std::filesystem::path &path,
 
 I18nMap LoadLocalI18nOverrides() {
   std::string ignored_error;
-  return LoadI18nFile(vinput::path::VinputConfigDir() / "i18n.local.json",
-                      &ignored_error);
+  return LoadI18nFile(vinput::path::VinputConfigDir() / "i18n.local.json", &ignored_error);
 }
 
-void ApplyLocalI18nOverrides(I18nMap *map) {
+void ApplyLocalI18nOverrides(I18nMap* map) {
   auto local = LoadLocalI18nOverrides();
-  for (auto &[key, value] : local) {
+  for (auto& [key, value] : local) {
     (*map)[key] = std::move(value);
   }
 }
@@ -107,9 +105,9 @@ void ApplyLocalI18nOverrides(I18nMap *map) {
 } // namespace
 
 std::string DetectPreferredLocale() {
-  const char *vars[] = {"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"};
-  for (const char *name : vars) {
-    const char *value = std::getenv(name);
+  const char* vars[] = {"LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"};
+  for (const char* name : vars) {
+    const char* value = std::getenv(name);
     if (value && *value) {
       const std::string locale = NormalizeLocale(value);
       if (!locale.empty()) {
@@ -120,8 +118,8 @@ std::string DetectPreferredLocale() {
   return "en_US";
 }
 
-I18nMap FetchI18nMap(const std::string &locale,
-                     const std::vector<std::string> &urls, std::string *error) {
+I18nMap FetchI18nMap(const std::string& locale, const std::vector<std::string>& urls,
+                     std::string* error) {
   if (urls.empty()) {
     if (error) {
       *error = "no i18n URLs configured";
@@ -133,17 +131,15 @@ I18nMap FetchI18nMap(const std::string &locale,
   vinput::download::Options options;
   options.timeout_seconds = 20;
   options.max_bytes = 1024 * 1024;
-  if (!vinput::registry::cache::FetchText(
-          urls, vinput::registry::cache::I18nPath(locale), options, &content,
-          &result, error)) {
+  if (!vinput::registry::cache::FetchText(urls, vinput::registry::cache::I18nPath(locale), options,
+                                          &content, &result, error)) {
     return {};
   }
   return ParseI18nJson(content, error);
 }
 
-I18nMap FetchMergedI18nMap(const CoreConfig &config,
-                           const std::string &preferred_locale,
-                           std::string *error) {
+I18nMap FetchMergedI18nMap(const CoreConfig& config, const std::string& preferred_locale,
+                           std::string* error) {
   I18nMap merged;
   std::string fetch_error;
 
@@ -159,8 +155,8 @@ I18nMap FetchMergedI18nMap(const CoreConfig &config,
   } else if (preferred_locale != "en_US") {
     const auto fallback_urls = ResolveRegistryI18nUrls(config, "en_US");
     auto fallback = FetchI18nMap("en_US", fallback_urls, nullptr);
-    for (auto &[key, value] : fallback) {
-      merged.emplace(std::move(key), std::move(value));
+    for (auto& [key, value] : fallback) {
+      merged.emplace(key, std::move(value));
     }
   }
 
@@ -172,21 +168,18 @@ I18nMap FetchMergedI18nMap(const CoreConfig &config,
   return merged;
 }
 
-I18nMap LoadMergedCachedI18nMap(const std::string &preferred_locale,
-                               std::string *error) {
+I18nMap LoadMergedCachedI18nMap(const std::string& preferred_locale, std::string* error) {
   std::string primary_error;
-  I18nMap merged = LoadI18nFile(cache::I18nPath(preferred_locale),
-                                &primary_error);
+  I18nMap merged = LoadI18nFile(cache::I18nPath(preferred_locale), &primary_error);
 
   std::string fallback_error;
   if (preferred_locale != "en_US") {
-    auto fallback =
-        LoadI18nFile(cache::I18nPath("en_US"), &fallback_error);
+    auto fallback = LoadI18nFile(cache::I18nPath("en_US"), &fallback_error);
     if (merged.empty()) {
       merged = std::move(fallback);
     } else {
-      for (auto &[key, value] : fallback) {
-        merged.emplace(std::move(key), std::move(value));
+      for (auto& [key, value] : fallback) {
+        merged.emplace(key, std::move(value));
       }
     }
   }
@@ -207,8 +200,7 @@ I18nMap LoadMergedCachedI18nMap(const std::string &preferred_locale,
   return merged;
 }
 
-std::string LookupI18n(const I18nMap &map, const std::string &key,
-                       const std::string &fallback) {
+std::string LookupI18n(const I18nMap& map, const std::string& key, const std::string& fallback) {
   const auto it = map.find(key);
   if (it == map.end() || it->second.empty()) {
     return fallback;

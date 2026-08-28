@@ -12,16 +12,16 @@ inline constexpr const char* kSourceAsr = "asr";
 inline constexpr const char* kSourceCancel = "cancel";
 
 struct Candidate {
-    std::string text;
-    std::string source;
+  std::string text;
+  std::string source;
 };
 
 struct Payload {
-    std::string commitText;
-    std::vector<Candidate> candidates;
+  std::string commitText;
+  std::vector<Candidate> candidates;
 };
 
 std::string Serialize(const Payload& payload);
 Payload Parse(std::string_view payload);
 
-}  // namespace vinput::result
+} // namespace vinput::result

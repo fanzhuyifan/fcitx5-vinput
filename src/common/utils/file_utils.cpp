@@ -10,9 +10,8 @@ namespace {
 
 constexpr int kMaxSymlinkDepth = 32;
 
-std::filesystem::path ResolveRelativeSymlinkTarget(
-    const std::filesystem::path& symlink_path,
-    const std::filesystem::path& link_target) {
+std::filesystem::path ResolveRelativeSymlinkTarget(const std::filesystem::path& symlink_path,
+                                                   const std::filesystem::path& link_target) {
   if (link_target.is_absolute()) {
     return link_target;
   }
@@ -30,8 +29,7 @@ std::filesystem::path ResolveRelativeSymlinkTarget(
   return (parent / link_target).lexically_normal();
 }
 
-bool ResolveSymlinkPathImpl(const std::filesystem::path& path,
-                            std::filesystem::path* resolved,
+bool ResolveSymlinkPathImpl(const std::filesystem::path& path, std::filesystem::path* resolved,
                             std::string* error, int depth) {
   if (depth >= kMaxSymlinkDepth) {
     if (error) {
@@ -64,8 +62,7 @@ bool ResolveSymlinkPathImpl(const std::filesystem::path& path,
   }
   if (ec) {
     if (error) {
-      *error = "Failed to inspect path " + path.string() + ": " +
-               ec.message();
+      *error = "Failed to inspect path " + path.string() + ": " + ec.message();
     }
     return false;
   }
@@ -77,23 +74,20 @@ bool ResolveSymlinkPathImpl(const std::filesystem::path& path,
   const auto link_target = std::filesystem::read_symlink(path, ec);
   if (ec) {
     if (error) {
-      *error = "Failed to read symlink " + path.string() + ": " +
-               ec.message();
+      *error = "Failed to read symlink " + path.string() + ": " + ec.message();
     }
     return false;
   }
 
-  return ResolveSymlinkPathImpl(
-      ResolveRelativeSymlinkTarget(path, link_target), resolved, error,
-      depth + 1);
+  return ResolveSymlinkPathImpl(ResolveRelativeSymlinkTarget(path, link_target), resolved, error,
+                                depth + 1);
 }
 
-}  // namespace
+} // namespace
 
 namespace vinput::file {
 
-bool ResolveSymlinkPath(const std::filesystem::path& path,
-                        std::filesystem::path* resolved,
+bool ResolveSymlinkPath(const std::filesystem::path& path, std::filesystem::path* resolved,
                         std::string* error) {
   if (!resolved) {
     if (error) {
@@ -112,14 +106,14 @@ bool EnsureParentDirectory(const std::filesystem::path& path, std::string* error
   std::error_code ec;
   std::filesystem::create_directories(parent, ec);
   if (ec) {
-    if (error) *error = "Failed to create directory " + parent.string() + ": " + ec.message();
+    if (error)
+      *error = "Failed to create directory " + parent.string() + ": " + ec.message();
     return false;
   }
   return true;
 }
 
-bool ReadTextFile(const std::filesystem::path& path, std::string* content,
-                  std::string* error) {
+bool ReadTextFile(const std::filesystem::path& path, std::string* content, std::string* error) {
   if (!content) {
     if (error) {
       *error = "ReadTextFile requires a destination buffer.";
@@ -135,8 +129,7 @@ bool ReadTextFile(const std::filesystem::path& path, std::string* content,
     return false;
   }
 
-  content->assign(std::istreambuf_iterator<char>(file),
-                  std::istreambuf_iterator<char>());
+  content->assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
   if (!file.good() && !file.eof()) {
     if (error) {
       *error = "Failed to read file " + path.string();
@@ -150,7 +143,8 @@ bool ReadTextFile(const std::filesystem::path& path, std::string* content,
   return true;
 }
 
-bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view content, std::string* error) {
+bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view content,
+                         std::string* error) {
   std::filesystem::path resolved_target;
   if (!ResolveSymlinkPath(target, &resolved_target, error)) {
     return false;
@@ -160,13 +154,14 @@ bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view c
     return false;
   }
 
-  auto tmp_path = resolved_target.parent_path() /
-                  (resolved_target.filename().string() + ".tmp.XXXXXX");
+  auto tmp_path =
+      resolved_target.parent_path() / (resolved_target.filename().string() + ".tmp.XXXXXX");
   std::string tmp_str = tmp_path.string();
 
   int fd = mkstemp(tmp_str.data());
   if (fd < 0) {
-    if (error) *error = std::string("mkstemp failed: ") + std::strerror(errno);
+    if (error)
+      *error = std::string("mkstemp failed: ") + std::strerror(errno);
     return false;
   }
 
@@ -176,8 +171,10 @@ bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view c
   while (remaining > 0) {
     ssize_t written = write(fd, data, remaining);
     if (written < 0) {
-      if (errno == EINTR) continue;
-      if (error) *error = std::string("write failed: ") + std::strerror(errno);
+      if (errno == EINTR)
+        continue;
+      if (error)
+        *error = std::string("write failed: ") + std::strerror(errno);
       close(fd);
       unlink(tmp_str.c_str());
       return false;
@@ -187,7 +184,8 @@ bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view c
   }
 
   if (fsync(fd) != 0) {
-    if (error) *error = std::string("fsync failed: ") + std::strerror(errno);
+    if (error)
+      *error = std::string("fsync failed: ") + std::strerror(errno);
     close(fd);
     unlink(tmp_str.c_str());
     return false;
@@ -198,7 +196,8 @@ bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view c
   std::error_code ec;
   std::filesystem::rename(tmp_str, resolved_target, ec);
   if (ec) {
-    if (error) *error = "rename failed: " + ec.message();
+    if (error)
+      *error = "rename failed: " + ec.message();
     unlink(tmp_str.c_str());
     return false;
   }
@@ -206,4 +205,4 @@ bool AtomicWriteTextFile(const std::filesystem::path& target, std::string_view c
   return true;
 }
 
-}  // namespace vinput::file
+} // namespace vinput::file

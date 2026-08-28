@@ -1,11 +1,10 @@
-#include "common/config/core_config_types.h"
-
 #include <map>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <variant>
 #include <vector>
 
-#include <nlohmann/json.hpp>
+#include "common/config/core_config_types.h"
 
 using json = nlohmann::ordered_json;
 
@@ -13,7 +12,7 @@ using json = nlohmann::ordered_json;
 // LlmProvider
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const LlmProvider &p) {
+void to_json(json& j, const LlmProvider& p) {
   j = json::object();
   j["id"] = p.id;
   if (!p.base_url.empty()) {
@@ -27,7 +26,7 @@ void to_json(json &j, const LlmProvider &p) {
   }
 }
 
-void from_json(const json &j, LlmProvider &p) {
+void from_json(const json& j, LlmProvider& p) {
   p.id = j.value("id", p.id);
   p.base_url = j.value("base_url", p.base_url);
   p.api_key = j.value("api_key", p.api_key);
@@ -42,7 +41,7 @@ void from_json(const json &j, LlmProvider &p) {
 // LlmAdapter
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const LlmAdapter &p) {
+void to_json(json& j, const LlmAdapter& p) {
   j = json::object();
   j["id"] = p.id;
   j["command"] = p.command;
@@ -54,7 +53,7 @@ void to_json(json &j, const LlmAdapter &p) {
   }
 }
 
-void from_json(const json &j, LlmAdapter &p) {
+void from_json(const json& j, LlmAdapter& p) {
   p.id = j.value("id", p.id);
   p.command = j.value("command", p.command);
   if (j.contains("args") && j.at("args").is_array()) {
@@ -69,7 +68,7 @@ void from_json(const json &j, LlmAdapter &p) {
 // LocalAsrProvider
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const LocalAsrProvider &p) {
+void to_json(json& j, const LocalAsrProvider& p) {
   j = json::object();
   j["id"] = p.id;
   j["type"] = vinput::asr::kLocalProviderType;
@@ -84,7 +83,7 @@ void to_json(json &j, const LocalAsrProvider &p) {
   }
 }
 
-void from_json(const json &j, LocalAsrProvider &p) {
+void from_json(const json& j, LocalAsrProvider& p) {
   p.id = j.value("id", p.id);
   p.model = j.value("model", p.model);
   p.hotwordsFile = j.value("hotwords_file", p.hotwordsFile);
@@ -95,7 +94,7 @@ void from_json(const json &j, LocalAsrProvider &p) {
 // CommandAsrProvider
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CommandAsrProvider &p) {
+void to_json(json& j, const CommandAsrProvider& p) {
   j = json::object();
   j["id"] = p.id;
   j["type"] = vinput::asr::kCommandProviderType;
@@ -113,7 +112,7 @@ void to_json(json &j, const CommandAsrProvider &p) {
   }
 }
 
-void from_json(const json &j, CommandAsrProvider &p) {
+void from_json(const json& j, CommandAsrProvider& p) {
   p.id = j.value("id", p.id);
   p.command = j.value("command", p.command);
   if (j.contains("args") && j.at("args").is_array()) {
@@ -129,11 +128,11 @@ void from_json(const json &j, CommandAsrProvider &p) {
 // AsrProvider (variant)
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const AsrProvider &p) {
-  std::visit([&j](const auto &provider) { to_json(j, provider); }, p);
+void to_json(json& j, const AsrProvider& p) {
+  std::visit([&j](const auto& provider) { to_json(j, provider); }, p);
 }
 
-void from_json(const json &j, AsrProvider &p) {
+void from_json(const json& j, AsrProvider& p) {
   const std::string type = j.value("type", std::string{});
   if (type == vinput::asr::kLocalProviderType) {
     LocalAsrProvider local;
@@ -151,7 +150,7 @@ void from_json(const json &j, AsrProvider &p) {
 // CoreConfig::Global
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig::Global &g) {
+void to_json(json& j, const CoreConfig::Global& g) {
   j = json::object();
   j["default_language"] = g.defaultLanguage;
   j["capture_device"] = g.captureDevice;
@@ -159,11 +158,10 @@ void to_json(json &j, const CoreConfig::Global &g) {
   j["duck_output_volume"] = g.duckOutputVolume;
 }
 
-void from_json(const json &j, CoreConfig::Global &g) {
+void from_json(const json& j, CoreConfig::Global& g) {
   g.defaultLanguage = j.value("default_language", g.defaultLanguage);
   g.captureDevice = j.value("capture_device", g.captureDevice);
-  g.duckOutputWhileRecording =
-      j.value("duck_output_while_recording", g.duckOutputWhileRecording);
+  g.duckOutputWhileRecording = j.value("duck_output_while_recording", g.duckOutputWhileRecording);
   g.duckOutputVolume = j.value("duck_output_volume", g.duckOutputVolume);
 }
 
@@ -173,11 +171,10 @@ void from_json(const json &j, CoreConfig::Global &g) {
 
 namespace vinput::scene {
 
-void to_json(json &j, const Definition &d) {
+void to_json(json& j, const Definition& d) {
   j = json::object();
   j["id"] = d.id;
-  if (!d.label.empty() && !IsBuiltinSceneLabelKey(d.label) &&
-      !IsBuiltinSceneId(d.id)) {
+  if (!d.label.empty() && !IsBuiltinSceneLabelKey(d.label) && !IsBuiltinSceneId(d.id)) {
     j["label"] = d.label;
   }
   if (!d.prompt.empty()) {
@@ -200,32 +197,30 @@ void to_json(json &j, const Definition &d) {
   }
 }
 
-void from_json(const json &j, Definition &d) {
+void from_json(const json& j, Definition& d) {
   d.id = j.value("id", std::string{});
   d.label = j.value("label", std::string{});
   d.prompt = j.value("prompt", std::string{});
   d.provider_id = j.value("provider_id", std::string{});
   d.model = j.value("model", std::string{});
-  d.candidate_count =
-      j.value("candidate_count", vinput::scene::kDefaultCandidateCount);
+  d.candidate_count = j.value("candidate_count", vinput::scene::kDefaultCandidateCount);
   d.timeout_ms = j.value("timeout_ms", vinput::scene::kDefaultTimeoutMs);
-  d.context_lines =
-      j.value("context_lines", vinput::scene::kDefaultContextLines);
+  d.context_lines = j.value("context_lines", vinput::scene::kDefaultContextLines);
 }
 
-}  // namespace vinput::scene
+} // namespace vinput::scene
 
 // ---------------------------------------------------------------------------
 // CoreConfig::Llm
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig::Llm &p) {
+void to_json(json& j, const CoreConfig::Llm& p) {
   j = json::object();
   j["providers"] = p.providers;
   j["adapters"] = p.adapters;
 }
 
-void from_json(const json &j, CoreConfig::Llm &p) {
+void from_json(const json& j, CoreConfig::Llm& p) {
   if (j.contains("providers")) {
     p.providers = j.at("providers").get<std::vector<LlmProvider>>();
   }
@@ -238,7 +233,7 @@ void from_json(const json &j, CoreConfig::Llm &p) {
 // CoreConfig::Asr
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig::Asr::Vad &v) {
+void to_json(json& j, const CoreConfig::Asr::Vad& v) {
   j = json::object();
   j["enabled"] = v.enabled;
   j["threshold"] = v.threshold;
@@ -247,7 +242,7 @@ void to_json(json &j, const CoreConfig::Asr::Vad &v) {
   j["speech_pad_ms"] = v.speechPadMs;
 }
 
-void from_json(const json &j, CoreConfig::Asr::Vad &v) {
+void from_json(const json& j, CoreConfig::Asr::Vad& v) {
   v.enabled = j.value("enabled", v.enabled);
   v.threshold = j.value("threshold", v.threshold);
   v.minSpeechDuration = j.value("min_speech_duration", v.minSpeechDuration);
@@ -255,7 +250,7 @@ void from_json(const json &j, CoreConfig::Asr::Vad &v) {
   v.speechPadMs = j.value("speech_pad_ms", v.speechPadMs);
 }
 
-void to_json(json &j, const CoreConfig::Asr &a) {
+void to_json(json& j, const CoreConfig::Asr& a) {
   j = json::object();
   j["active_provider"] = a.activeProvider;
   j["normalize_audio"] = a.normalizeAudio;
@@ -264,7 +259,7 @@ void to_json(json &j, const CoreConfig::Asr &a) {
   j["providers"] = a.providers;
 }
 
-void from_json(const json &j, CoreConfig::Asr &a) {
+void from_json(const json& j, CoreConfig::Asr& a) {
   a.activeProvider = j.value("active_provider", a.activeProvider);
   a.normalizeAudio = j.value("normalize_audio", a.normalizeAudio);
   a.inputGain = j.value("input_gain", a.inputGain);
@@ -280,17 +275,17 @@ void from_json(const json &j, CoreConfig::Asr &a) {
 // CoreConfig::Registry
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig::Registry &r) {
+void to_json(json& j, const CoreConfig::Registry& r) {
   j = json::object();
   if (!r.baseUrls.empty()) {
     j["base_urls"] = r.baseUrls;
   }
 }
 
-void from_json(const json &j, CoreConfig::Registry &r) {
+void from_json(const json& j, CoreConfig::Registry& r) {
   r.baseUrls.clear();
   if (j.contains("base_urls") && j.at("base_urls").is_array()) {
-    for (const auto &value : j.at("base_urls")) {
+    for (const auto& value : j.at("base_urls")) {
       if (value.is_string() && !value.get<std::string>().empty()) {
         r.baseUrls.push_back(value.get<std::string>());
       }
@@ -302,17 +297,16 @@ void from_json(const json &j, CoreConfig::Registry &r) {
 // CoreConfig::Scenes
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig::Scenes &s) {
+void to_json(json& j, const CoreConfig::Scenes& s) {
   j = json::object();
   j["active_scene"] = s.activeScene;
   j["definitions"] = s.definitions;
 }
 
-void from_json(const json &j, CoreConfig::Scenes &s) {
+void from_json(const json& j, CoreConfig::Scenes& s) {
   s.activeScene = j.value("active_scene", s.activeScene);
   if (j.contains("definitions")) {
-    s.definitions =
-        j.at("definitions").get<std::vector<vinput::scene::Definition>>();
+    s.definitions = j.at("definitions").get<std::vector<vinput::scene::Definition>>();
   }
 }
 
@@ -320,7 +314,7 @@ void from_json(const json &j, CoreConfig::Scenes &s) {
 // CoreConfig (top-level)
 // ---------------------------------------------------------------------------
 
-void to_json(json &j, const CoreConfig &p) {
+void to_json(json& j, const CoreConfig& p) {
   j = json::object();
   j["version"] = p.version;
   j["registry"] = p.registry;
@@ -330,7 +324,7 @@ void to_json(json &j, const CoreConfig &p) {
   j["scenes"] = p.scenes;
 }
 
-void from_json(const json &j, CoreConfig &p) {
+void from_json(const json& j, CoreConfig& p) {
   p.version = j.value("version", p.version);
   if (j.contains("registry")) {
     p.registry = j.at("registry").get<CoreConfig::Registry>();

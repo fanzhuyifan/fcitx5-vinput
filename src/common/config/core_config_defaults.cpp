@@ -1,10 +1,10 @@
-#include "common/config/core_config.h"
-
-#include "config.h"
-
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <string>
+
+#include "common/config/core_config.h"
+
+#include "config.h"
 
 using json = nlohmann::ordered_json;
 
@@ -21,7 +21,7 @@ std::filesystem::path BundledDefaultCoreConfigPath() {
 
 } // namespace
 
-bool LoadBundledDefaultCoreConfig(CoreConfig *config, std::string *error) {
+bool LoadBundledDefaultCoreConfig(CoreConfig* config, std::string* error) {
   if (!config) {
     if (error) {
       *error = "Config is null.";
@@ -46,7 +46,7 @@ bool LoadBundledDefaultCoreConfig(CoreConfig *config, std::string *error) {
       error->clear();
     }
     return true;
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     if (error) {
       *error = "Failed to parse bundled default config: " + std::string(e.what());
     }

@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-extern char **environ;
+extern char** environ;
 
 namespace vinput::process {
 
@@ -26,36 +26,34 @@ bool SetNonBlocking(int fd) {
   return fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
 }
 
-std::vector<char *> BuildArgv(const CommandSpec &spec,
-                              std::vector<std::string> *storage) {
+std::vector<char*> BuildArgv(const CommandSpec& spec, std::vector<std::string>* storage) {
   storage->clear();
   storage->reserve(spec.args.size() + 1);
   storage->push_back(spec.command);
-  for (const auto &arg : spec.args) {
+  for (const auto& arg : spec.args) {
     storage->push_back(arg);
   }
 
-  std::vector<char *> argv;
+  std::vector<char*> argv;
   argv.reserve(storage->size() + 1);
-  for (auto &arg : *storage) {
+  for (auto& arg : *storage) {
     argv.push_back(arg.data());
   }
   argv.push_back(nullptr);
   return argv;
 }
 
-std::vector<char *> BuildEnvp(const CommandSpec &spec,
-                              std::vector<std::string> *storage) {
+std::vector<char*> BuildEnvp(const CommandSpec& spec, std::vector<std::string>* storage) {
   storage->clear();
 
-  for (char **env = environ; env && *env; ++env) {
+  for (char** env = environ; env && *env; ++env) {
     storage->push_back(*env);
   }
 
-  for (const auto &[key, value] : spec.env) {
+  for (const auto& [key, value] : spec.env) {
     bool replaced = false;
     const std::string prefix = key + "=";
-    for (auto &entry : *storage) {
+    for (auto& entry : *storage) {
       if (entry.rfind(prefix, 0) == 0) {
         entry = prefix + value;
         replaced = true;
@@ -67,24 +65,24 @@ std::vector<char *> BuildEnvp(const CommandSpec &spec,
     }
   }
 
-  std::vector<char *> envp;
+  std::vector<char*> envp;
   envp.reserve(storage->size() + 1);
-  for (auto &entry : *storage) {
+  for (auto& entry : *storage) {
     envp.push_back(entry.data());
   }
   envp.push_back(nullptr);
   return envp;
 }
 
-void CloseIfOpen(int *fd) {
+void CloseIfOpen(int* fd) {
   if (*fd >= 0) {
     close(*fd);
     *fd = -1;
   }
 }
 
-bool ApplyEnvironment(const CommandSpec &spec) {
-  for (const auto &[key, value] : spec.env) {
+bool ApplyEnvironment(const CommandSpec& spec) {
+  for (const auto& [key, value] : spec.env) {
     if (key.empty()) {
       continue;
     }
@@ -97,8 +95,7 @@ bool ApplyEnvironment(const CommandSpec &spec) {
 
 } // namespace
 
-CommandResult RunCommandWithInput(const CommandSpec &spec,
-                                  std::span<const std::byte> input) {
+CommandResult RunCommandWithInput(const CommandSpec& spec, std::span<const std::byte> input) {
   CommandResult result;
   if (spec.command.empty()) {
     result.launch_failed = true;
@@ -109,8 +106,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
   int stdin_pipe[2] = {-1, -1};
   int stdout_pipe[2] = {-1, -1};
   int stderr_pipe[2] = {-1, -1};
-  if (pipe(stdin_pipe) != 0 || pipe(stdout_pipe) != 0 ||
-      pipe(stderr_pipe) != 0) {
+  if (pipe(stdin_pipe) != 0 || pipe(stdout_pipe) != 0 || pipe(stderr_pipe) != 0) {
     result.launch_failed = true;
     result.stderr_text = std::string("pipe failed: ") + std::strerror(errno);
     CloseIfOpen(&stdin_pipe[0]);
@@ -132,13 +128,13 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
   posix_spawn_file_actions_addclose(&actions, stderr_pipe[0]);
 
   std::vector<std::string> argv_storage;
-  std::vector<char *> argv = BuildArgv(spec, &argv_storage);
+  std::vector<char*> argv = BuildArgv(spec, &argv_storage);
   std::vector<std::string> env_storage;
-  std::vector<char *> envp = BuildEnvp(spec, &env_storage);
+  std::vector<char*> envp = BuildEnvp(spec, &env_storage);
 
   pid_t pid = -1;
-  const int spawn_rc = posix_spawnp(&pid, spec.command.c_str(), &actions,
-                                    nullptr, argv.data(), envp.data());
+  const int spawn_rc =
+      posix_spawnp(&pid, spec.command.c_str(), &actions, nullptr, argv.data(), envp.data());
   posix_spawn_file_actions_destroy(&actions);
 
   CloseIfOpen(&stdin_pipe[0]);
@@ -147,8 +143,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
 
   if (spawn_rc != 0) {
     result.launch_failed = true;
-    result.stderr_text =
-        std::string("failed to launch command: ") + std::strerror(spawn_rc);
+    result.stderr_text = std::string("failed to launch command: ") + std::strerror(spawn_rc);
     CloseIfOpen(&stdin_pipe[1]);
     CloseIfOpen(&stdout_pipe[0]);
     CloseIfOpen(&stderr_pipe[0]);
@@ -167,8 +162,8 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
     return result;
   }
 
-  const auto deadline = std::chrono::steady_clock::now() +
-                        std::chrono::milliseconds(spec.timeout_ms);
+  const auto deadline =
+      std::chrono::steady_clock::now() + std::chrono::milliseconds(spec.timeout_ms);
   std::size_t input_offset = 0;
   bool stdout_open = true;
   bool stderr_open = true;
@@ -226,10 +221,9 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
 
     int timeout_ms = 100;
     if (!result.timed_out) {
-      const auto remaining =
-          std::chrono::duration_cast<std::chrono::milliseconds>(
-              deadline - std::chrono::steady_clock::now())
-              .count();
+      const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 deadline - std::chrono::steady_clock::now())
+                                 .count();
       timeout_ms = remaining > 0 ? static_cast<int>(remaining) : 0;
     }
 
@@ -254,9 +248,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
           stdin_open = false;
           ++index;
         } else {
-          const auto *bytes =
-              reinterpret_cast<const std::uint8_t *>(input.data()) +
-              input_offset;
+          const auto* bytes = reinterpret_cast<const std::uint8_t*>(input.data()) + input_offset;
           const ssize_t written = write(stdin_pipe[1], bytes, remaining);
           if (written > 0) {
             input_offset += static_cast<std::size_t>(written);
@@ -264,8 +256,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
               CloseIfOpen(&stdin_pipe[1]);
               stdin_open = false;
             }
-          } else if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK &&
-                     errno != EINTR) {
+          } else if (written < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
             CloseIfOpen(&stdin_pipe[1]);
             stdin_open = false;
           }
@@ -280,7 +271,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
       }
     }
 
-    auto drain_fd = [](int fd, std::string *out, bool *open_flag) {
+    auto drain_fd = [](int fd, std::string* out, bool* open_flag) {
       char buffer[4096];
       while (true) {
         const ssize_t n = read(fd, buffer, sizeof(buffer));
@@ -291,8 +282,7 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
         if (n == 0) {
           *open_flag = false;
         }
-        if (n < 0 &&
-            (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
           if (errno == EINTR) {
             continue;
           }
@@ -352,63 +342,8 @@ CommandResult RunCommandWithInput(const CommandSpec &spec,
   return result;
 }
 
-bool SpawnDetached(const CommandSpec &spec,
-                   const std::filesystem::path &working_dir, pid_t *pid_out,
-                   std::string *error) {
-  if (pid_out) {
-    *pid_out = -1;
-  }
-  if (spec.command.empty()) {
-    if (error) {
-      *error = "Command is empty.";
-    }
-    return false;
-  }
-
-  std::vector<std::string> argv_storage;
-  std::vector<char *> argv = BuildArgv(spec, &argv_storage);
-
-  pid_t pid = fork();
-  if (pid < 0) {
-    if (error) {
-      *error = std::string("fork failed: ") + std::strerror(errno);
-    }
-    return false;
-  }
-
-  if (pid == 0) {
-    const int devnull = open("/dev/null", O_RDONLY);
-    if (devnull >= 0) {
-      dup2(devnull, STDIN_FILENO);
-      close(devnull);
-    }
-
-    setsid();
-
-    if (!working_dir.empty()) {
-      chdir(working_dir.c_str());
-    }
-
-    if (!ApplyEnvironment(spec)) {
-      _exit(127);
-    }
-
-    execvp(spec.command.c_str(), argv.data());
-    _exit(127);
-  }
-
-  if (pid_out) {
-    *pid_out = pid;
-  }
-  if (error) {
-    error->clear();
-  }
-  return true;
-}
-
-bool SpawnForMonitoring(const CommandSpec &spec,
-                        const std::filesystem::path &working_dir,
-                        SpawnedProcess *process_out, std::string *error) {
+bool SpawnForMonitoring(const CommandSpec& spec, const std::filesystem::path& working_dir,
+                        SpawnedProcess* process_out, std::string* error) {
   if (process_out) {
     process_out->pid = -1;
     process_out->stderr_fd = -1;
@@ -429,7 +364,7 @@ bool SpawnForMonitoring(const CommandSpec &spec,
   }
 
   std::vector<std::string> argv_storage;
-  std::vector<char *> argv = BuildArgv(spec, &argv_storage);
+  std::vector<char*> argv = BuildArgv(spec, &argv_storage);
 
   pid_t pid = fork();
   if (pid < 0) {

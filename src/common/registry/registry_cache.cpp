@@ -7,8 +7,8 @@ namespace vinput::registry::cache {
 
 namespace {
 
-bool LoadCachedText(const std::filesystem::path &cache_path, std::string *content,
-                    vinput::download::Result *result, std::string *error) {
+bool LoadCachedText(const std::filesystem::path& cache_path, std::string* content,
+                    vinput::download::Result* result, std::string* error) {
   std::string read_error;
   if (!vinput::file::ReadTextFile(cache_path, content, &read_error)) {
     if (error) {
@@ -30,8 +30,8 @@ bool LoadCachedText(const std::filesystem::path &cache_path, std::string *conten
   return true;
 }
 
-bool SaveCachedText(const std::filesystem::path &cache_path,
-                    const std::string &content, std::string *error) {
+bool SaveCachedText(const std::filesystem::path& cache_path, const std::string& content,
+                    std::string* error) {
   return vinput::file::AtomicWriteTextFile(cache_path, content, error);
 }
 
@@ -39,13 +39,11 @@ std::filesystem::path CachePath(std::string_view name) {
   return vinput::path::RegistryCacheDir() / name;
 }
 
-}
+} // namespace
 
-bool FetchText(const std::vector<std::string> &urls,
-               const std::filesystem::path &cache_path,
-               const vinput::download::Options &options, std::string *content,
-               vinput::download::Result *result, std::string *error,
-               FetchStatus *status) {
+bool FetchText(const std::vector<std::string>& urls, const std::filesystem::path& cache_path,
+               const vinput::download::Options& options, std::string* content,
+               vinput::download::Result* result, std::string* error, FetchStatus* status) {
   if (content) {
     content->clear();
   }
@@ -56,8 +54,7 @@ bool FetchText(const std::vector<std::string> &urls,
   vinput::download::Result download_result;
   if (vinput::download::DownloadText(urls, options, content, &download_result)) {
     std::string write_error;
-    if (!SaveCachedText(cache_path, content ? *content : std::string{},
-                        &write_error)) {
+    if (!SaveCachedText(cache_path, content ? *content : std::string{}, &write_error)) {
       if (error) {
         *error = write_error;
       }
@@ -87,15 +84,15 @@ bool FetchText(const std::vector<std::string> &urls,
     return true;
   }
 
-  if (result) {
-    *result = std::move(download_result);
-  }
   if (error) {
     if (!download_result.error.empty()) {
       *error = download_result.error + "; cache unavailable: " + cache_error;
     } else {
       *error = cache_error;
     }
+  }
+  if (result) {
+    *result = std::move(download_result);
   }
   return false;
 }
@@ -112,7 +109,7 @@ std::filesystem::path LlmAdapterRegistryPath() {
   return CachePath("adapters.json");
 }
 
-std::filesystem::path I18nPath(const std::string &locale) {
+std::filesystem::path I18nPath(const std::string& locale) {
   return CachePath(std::string("i18n/") + locale + ".json");
 }
 

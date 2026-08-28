@@ -1,11 +1,10 @@
 #pragma once
 
 #include <map>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <variant>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "common/scene/postprocess_scene.h"
 
@@ -14,7 +13,7 @@ namespace vinput::asr {
 inline constexpr char kLocalProviderType[] = "local";
 inline constexpr char kCommandProviderType[] = "command";
 
-}  // namespace vinput::asr
+} // namespace vinput::asr
 
 struct LlmProvider {
   std::string id;
@@ -49,17 +48,15 @@ struct CommandAsrProvider : AsrProviderBase {
 using AsrProvider = std::variant<LocalAsrProvider, CommandAsrProvider>;
 
 // Helper to get the id from any AsrProvider variant
-inline const std::string &AsrProviderId(const AsrProvider &p) {
-  return std::visit([](const AsrProviderBase &base) -> const std::string & {
-    return base.id;
-  }, p);
+inline const std::string& AsrProviderId(const AsrProvider& p) {
+  return std::visit([](const AsrProviderBase& base) -> const std::string& { return base.id; }, p);
 }
 
-inline int AsrProviderTimeoutMs(const AsrProvider &p) {
-  return std::visit([](const AsrProviderBase &base) { return base.timeoutMs; }, p);
+inline int AsrProviderTimeoutMs(const AsrProvider& p) {
+  return std::visit([](const AsrProviderBase& base) { return base.timeoutMs; }, p);
 }
 
-inline std::string_view AsrProviderType(const AsrProvider &p) {
+inline std::string_view AsrProviderType(const AsrProvider& p) {
   if (std::holds_alternative<LocalAsrProvider>(p))
     return vinput::asr::kLocalProviderType;
   return vinput::asr::kCommandProviderType;

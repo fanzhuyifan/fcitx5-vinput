@@ -16,7 +16,7 @@ static std::string FormatSpeed(double speed_bps) {
   return buf;
 }
 
-ProgressBar::ProgressBar(const std::string &label, uint64_t total, bool is_tty)
+ProgressBar::ProgressBar(const std::string& label, uint64_t total, bool is_tty)
     : label_(label), total_(total), is_tty_(is_tty), last_percent_(-1) {}
 
 void ProgressBar::Update(uint64_t current, double speed_bps) {
@@ -43,8 +43,7 @@ void ProgressBar::Update(uint64_t current, double speed_bps) {
 
     std::string speed_str = FormatSpeed(speed_bps);
     if (!speed_str.empty()) {
-      fprintf(stderr, "\r%s [%s] %d%% (%s)   ", label_.c_str(), bar, percent,
-              speed_str.c_str());
+      fprintf(stderr, "\r%s [%s] %d%% (%s)   ", label_.c_str(), bar, percent, speed_str.c_str());
     } else {
       fprintf(stderr, "\r%s [%s] %d%%   ", label_.c_str(), bar, percent);
     }

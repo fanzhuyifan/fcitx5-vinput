@@ -8,8 +8,7 @@ namespace vinput::registry {
 
 namespace {
 
-std::string CacheFallbackWarning(const std::string &name,
-                                 const cache::FetchStatus &status) {
+std::string CacheFallbackWarning(const std::string& name, const cache::FetchStatus& status) {
   std::string warning = "using cached " + name + " because download failed";
   if (!status.fallback_error.empty()) {
     warning += ": " + status.fallback_error;
@@ -17,9 +16,8 @@ std::string CacheFallbackWarning(const std::string &name,
   return warning;
 }
 
-bool RefreshLocaleCache(const CoreConfig &config, const std::string &locale,
-                        std::string *error,
-                        std::vector<std::string> *warnings) {
+bool RefreshLocaleCache(const CoreConfig& config, const std::string& locale, std::string* error,
+                        std::vector<std::string>* warnings) {
   const auto urls = ResolveRegistryI18nUrls(config, locale);
   if (urls.empty()) {
     if (error) {
@@ -34,16 +32,14 @@ bool RefreshLocaleCache(const CoreConfig &config, const std::string &locale,
   options.max_bytes = 1024 * 1024;
   cache::FetchStatus status;
   const bool ok = vinput::registry::cache::FetchText(
-      urls, vinput::registry::cache::I18nPath(locale), options, &content,
-      nullptr, error, &status);
+      urls, vinput::registry::cache::I18nPath(locale), options, &content, nullptr, error, &status);
   if (ok && status.used_cache && warnings) {
     warnings->push_back(CacheFallbackWarning("i18n " + locale, status));
   }
   return ok;
 }
 
-void RefreshI18nAfterOnlineFetch(const CoreConfig *config,
-                                 std::vector<std::string> *warnings) {
+void RefreshI18nAfterOnlineFetch(const CoreConfig* config, std::vector<std::string>* warnings) {
   if (!config) {
     return;
   }
@@ -58,18 +54,15 @@ void RefreshI18nAfterOnlineFetch(const CoreConfig *config,
 
 } // namespace
 
-bool FetchRegistryText(const CoreConfig *config,
-                       const std::vector<std::string> &urls,
-                       const std::filesystem::path &cache_path,
-                       const vinput::download::Options &options,
-                       std::string *content,
-                       vinput::download::Result *result,
-                       std::string *error,
-                       std::vector<std::string> *warnings) {
+bool FetchRegistryText(const CoreConfig* config, const std::vector<std::string>& urls,
+                       const std::filesystem::path& cache_path,
+                       const vinput::download::Options& options, std::string* content,
+                       vinput::download::Result* result, std::string* error,
+                       std::vector<std::string>* warnings) {
   vinput::download::Result local_result;
   cache::FetchStatus status;
-  const bool ok = vinput::registry::cache::FetchText(
-      urls, cache_path, options, content, &local_result, error, &status);
+  const bool ok = vinput::registry::cache::FetchText(urls, cache_path, options, content,
+                                                     &local_result, error, &status);
   if (!ok) {
     if (result) {
       *result = std::move(local_result);
@@ -79,8 +72,7 @@ bool FetchRegistryText(const CoreConfig *config,
 
   if (status.used_cache) {
     if (warnings) {
-      warnings->push_back(
-          CacheFallbackWarning(cache_path.filename().string(), status));
+      warnings->push_back(CacheFallbackWarning(cache_path.filename().string(), status));
     }
   } else {
     RefreshI18nAfterOnlineFetch(config, warnings);

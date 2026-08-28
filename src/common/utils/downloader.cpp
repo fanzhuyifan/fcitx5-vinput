@@ -1,8 +1,7 @@
 #include "common/utils/downloader.h"
 
-#include <curl/curl.h>
-
 #include <chrono>
+#include <curl/curl.h>
 #include <fstream>
 #include <string>
 
@@ -18,7 +17,7 @@ struct MemoryBuffer {
 };
 
 struct FileWriter {
-  std::ofstream *out = nullptr;
+  std::ofstream* out = nullptr;
 };
 
 struct ProgressState {
@@ -28,8 +27,8 @@ struct ProgressState {
   bool has_last_update = false;
 };
 
-size_t WriteToMemory(char *ptr, size_t size, size_t nmemb, void *userdata) {
-  auto *buf = static_cast<MemoryBuffer *>(userdata);
+size_t WriteToMemory(char* ptr, size_t size, size_t nmemb, void* userdata) {
+  auto* buf = static_cast<MemoryBuffer*>(userdata);
   const size_t total = size * nmemb;
   if (buf->max_size > 0 && buf->data.size() + total > buf->max_size) {
     return 0;
@@ -38,8 +37,8 @@ size_t WriteToMemory(char *ptr, size_t size, size_t nmemb, void *userdata) {
   return total;
 }
 
-size_t WriteToFile(char *ptr, size_t size, size_t nmemb, void *userdata) {
-  auto *writer = static_cast<FileWriter *>(userdata);
+size_t WriteToFile(char* ptr, size_t size, size_t nmemb, void* userdata) {
+  auto* writer = static_cast<FileWriter*>(userdata);
   const size_t total = size * nmemb;
   writer->out->write(ptr, static_cast<std::streamsize>(total));
   if (!writer->out->good()) {
@@ -48,9 +47,9 @@ size_t WriteToFile(char *ptr, size_t size, size_t nmemb, void *userdata) {
   return total;
 }
 
-int ProgressCallbackFn(void *userdata, curl_off_t dltotal, curl_off_t dlnow,
-                       curl_off_t /*ultotal*/, curl_off_t /*ulnow*/) {
-  auto *state = static_cast<ProgressState *>(userdata);
+int ProgressCallbackFn(void* userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t /*ultotal*/,
+                       curl_off_t /*ulnow*/) {
+  auto* state = static_cast<ProgressState*>(userdata);
   if (!state->cb) {
     return 0;
   }
@@ -62,12 +61,9 @@ int ProgressCallbackFn(void *userdata, curl_off_t dltotal, curl_off_t dlnow,
   progress.total_bytes = static_cast<uint64_t>(dltotal > 0 ? dltotal : 0);
   if (state->has_last_update) {
     const auto elapsed = now - state->last_update_time;
-    const double elapsed_seconds =
-        std::chrono::duration<double>(elapsed).count();
-    if (elapsed_seconds > 0 &&
-        downloaded_bytes >= state->last_downloaded_bytes) {
-      progress.speed_bps =
-          (downloaded_bytes - state->last_downloaded_bytes) / elapsed_seconds;
+    const double elapsed_seconds = std::chrono::duration<double>(elapsed).count();
+    if (elapsed_seconds > 0 && downloaded_bytes >= state->last_downloaded_bytes) {
+      progress.speed_bps = (downloaded_bytes - state->last_downloaded_bytes) / elapsed_seconds;
     }
   }
   state->last_downloaded_bytes = downloaded_bytes;
@@ -77,17 +73,17 @@ int ProgressCallbackFn(void *userdata, curl_off_t dltotal, curl_off_t dlnow,
   return 0;
 }
 
-bool RequiresHttpStatusCheck(const std::string &url) {
+bool RequiresHttpStatusCheck(const std::string& url) {
   return url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0;
 }
 
-bool FinalizeResult(const std::string &attempt_url, CURL *curl, CURLcode code,
-                    size_t bytes_received, Result *result) {
+bool FinalizeResult(const std::string& attempt_url, CURL* curl, CURLcode code,
+                    size_t bytes_received, Result* result) {
   Result local;
   local.bytes_received = bytes_received;
   local.resolved_url = attempt_url;
 
-  char *effective_url = nullptr;
+  char* effective_url = nullptr;
   curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective_url);
   if (effective_url && *effective_url) {
     local.resolved_url = effective_url;
@@ -119,16 +115,15 @@ bool FinalizeResult(const std::string &attempt_url, CURL *curl, CURLcode code,
 }
 
 template <typename PrepareFn, typename CleanupFn>
-bool DownloadWithFallback(const std::vector<std::string> &urls,
-                          const Options &options, PrepareFn prepare,
-                          CleanupFn cleanup, Result *result) {
+bool DownloadWithFallback(const std::vector<std::string>& urls, const Options& options,
+                          PrepareFn prepare, CleanupFn cleanup, Result* result) {
   Result last_result;
-  for (const auto &url : urls) {
+  for (const auto& url : urls) {
     if (url.empty()) {
       continue;
     }
 
-    CURL *curl = curl_easy_init();
+    CURL* curl = curl_easy_init();
     if (!curl) {
       last_result.error = "failed to initialize libcurl";
       continue;
@@ -136,8 +131,7 @@ bool DownloadWithFallback(const std::vector<std::string> &urls,
 
     ProgressState progress_state{options.progress_cb};
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION,
-                     options.follow_redirects ? 1L : 0L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, options.follow_redirects ? 1L : 0L);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.timeout_seconds);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, ProgressCallbackFn);
@@ -151,8 +145,7 @@ bool DownloadWithFallback(const std::vector<std::string> &urls,
     }
 
     CURLcode code = curl_easy_perform(curl);
-    const bool ok =
-        FinalizeResult(url, curl, code, bytes_received, &last_result);
+    const bool ok = FinalizeResult(url, curl, code, bytes_received, &last_result);
     curl_easy_cleanup(curl);
     if (ok) {
       if (result) {
@@ -172,8 +165,8 @@ bool DownloadWithFallback(const std::vector<std::string> &urls,
 
 } // namespace
 
-bool DownloadText(const std::vector<std::string> &urls, const Options &options,
-                  std::string *content, Result *result) {
+bool DownloadText(const std::vector<std::string>& urls, const Options& options,
+                  std::string* content, Result* result) {
   if (content) {
     content->clear();
   }
@@ -182,7 +175,7 @@ bool DownloadText(const std::vector<std::string> &urls, const Options &options,
   buffer.max_size = options.max_bytes;
   const bool ok = DownloadWithFallback(
       urls, options,
-      [&buffer](CURL *curl, size_t *bytes_received, Result *result_state) {
+      [&buffer](CURL* curl, size_t* bytes_received, Result* result_state) {
         buffer.data.clear();
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteToMemory);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
@@ -207,9 +200,8 @@ bool DownloadText(const std::vector<std::string> &urls, const Options &options,
   return true;
 }
 
-bool DownloadFile(const std::vector<std::string> &urls,
-                  const std::filesystem::path &dest, const Options &options,
-                  Result *result) {
+bool DownloadFile(const std::vector<std::string>& urls, const std::filesystem::path& dest,
+                  const Options& options, Result* result) {
   std::ofstream out;
   FileWriter writer;
 
@@ -223,7 +215,7 @@ bool DownloadFile(const std::vector<std::string> &urls,
 
   const bool ok = DownloadWithFallback(
       urls, options,
-      [&](CURL *curl, size_t *bytes_received, Result *result_state) {
+      [&](CURL* curl, size_t* bytes_received, Result* result_state) {
         cleanup();
         std::string err;
         if (!vinput::file::EnsureParentDirectory(dest, &err)) {
@@ -235,8 +227,7 @@ bool DownloadFile(const std::vector<std::string> &urls,
         out.open(dest, std::ios::binary | std::ios::trunc);
         if (!out.is_open()) {
           if (result_state) {
-            result_state->error =
-                "failed to open destination file: " + dest.string();
+            result_state->error = "failed to open destination file: " + dest.string();
           }
           return false;
         }

@@ -1,10 +1,9 @@
-#include "common/config/core_config.h"
-
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <nlohmann/json.hpp>
 
+#include "common/config/core_config.h"
 #include "common/utils/file_utils.h"
 #include "common/utils/path_utils.h"
 
@@ -20,14 +19,13 @@ struct ConfigCache {
   CoreConfig cached;
 };
 
-ConfigCache &GetConfigCache() {
+ConfigCache& GetConfigCache() {
   static ConfigCache cache;
   return cache;
 }
 
-bool GetConfigStat(const std::filesystem::path &path,
-                   std::filesystem::file_time_type *mtime,
-                   std::uintmax_t *size) {
+bool GetConfigStat(const std::filesystem::path& path, std::filesystem::file_time_type* mtime,
+                   std::uintmax_t* size) {
   std::error_code ec;
   if (!std::filesystem::exists(path, ec) || ec) {
     return false;
@@ -49,11 +47,11 @@ bool GetConfigStat(const std::filesystem::path &path,
   return true;
 }
 
-void MaterializeBuiltinSceneLabels(CoreConfig *config) {
+void MaterializeBuiltinSceneLabels(CoreConfig* config) {
   if (!config) {
     return;
   }
-  for (auto &scene : config->scenes.definitions) {
+  for (auto& scene : config->scenes.definitions) {
     if (!vinput::scene::IsBuiltinSceneId(scene.id)) {
       continue;
     }
@@ -63,7 +61,7 @@ void MaterializeBuiltinSceneLabels(CoreConfig *config) {
   }
 }
 
-CoreConfig LoadCoreConfigFromFile(const std::filesystem::path &path) {
+CoreConfig LoadCoreConfigFromFile(const std::filesystem::path& path) {
   CoreConfig config;
   std::ifstream file(path);
   if (!file.is_open()) {
@@ -74,7 +72,7 @@ CoreConfig LoadCoreConfigFromFile(const std::filesystem::path &path) {
     json root;
     file >> root;
     from_json(root, config);
-  } catch (const json::exception &e) {
+  } catch (const json::exception& e) {
     std::cerr << "Failed to parse vinput config: " << e.what() << "\n";
   }
   return config;
@@ -94,7 +92,7 @@ std::string GetCoreConfigPath() {
 CoreConfig LoadCoreConfig() {
   const std::filesystem::path path = vinput::path::CoreConfigPath();
 
-  auto &cache = GetConfigCache();
+  auto& cache = GetConfigCache();
   std::lock_guard<std::mutex> lock(cache.mu);
 
   std::filesystem::file_time_type mtime;
@@ -132,7 +130,7 @@ CoreConfig LoadCoreConfig() {
   return config;
 }
 
-bool InitializeCoreConfig(std::string *error) {
+bool InitializeCoreConfig(std::string* error) {
   CoreConfig config;
   if (!LoadBundledDefaultCoreConfig(&config, error)) {
     return false;
@@ -149,7 +147,7 @@ bool InitializeCoreConfig(std::string *error) {
   return true;
 }
 
-bool SaveCoreConfig(const CoreConfig &config) {
+bool SaveCoreConfig(const CoreConfig& config) {
   const std::filesystem::path path = vinput::path::CoreConfigPath();
 
   std::string error;
@@ -173,7 +171,7 @@ bool SaveCoreConfig(const CoreConfig &config) {
       return false;
     }
 
-    auto &cache = GetConfigCache();
+    auto& cache = GetConfigCache();
     std::lock_guard<std::mutex> lock(cache.mu);
 
     std::filesystem::file_time_type mtime;
@@ -187,7 +185,7 @@ bool SaveCoreConfig(const CoreConfig &config) {
       cache.hasCache = false;
     }
     return true;
-  } catch (const json::exception &e) {
+  } catch (const json::exception& e) {
     std::cerr << "Failed to serialize vinput config: " << e.what() << "\n";
     return false;
   }

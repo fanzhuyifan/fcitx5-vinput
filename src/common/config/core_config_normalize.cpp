@@ -1,10 +1,10 @@
-#include "common/config/core_config.h"
-
 #include <algorithm>
 #include <iostream>
 #include <iterator>
 #include <set>
 #include <utility>
+
+#include "common/config/core_config.h"
 
 namespace {
 
@@ -75,8 +75,7 @@ vinput::scene::Definition MakeBuiltinScene(std::string_view id) {
   return scene;
 }
 
-template <typename T>
-void EraseEmptyEnvKeys(T *entry) {
+template <typename T> void EraseEmptyEnvKeys(T* entry) {
   for (auto it = entry->env.begin(); it != entry->env.end();) {
     it = it->first.empty() ? entry->env.erase(it) : std::next(it);
   }
@@ -84,28 +83,23 @@ void EraseEmptyEnvKeys(T *entry) {
 
 } // namespace
 
-void NormalizeCoreConfig(CoreConfig *config) {
+void NormalizeCoreConfig(CoreConfig* config) {
   if (!config) {
     return;
   }
 
   // Clamp audio-related knobs to sane ranges.
   config->asr.inputGain = std::clamp(config->asr.inputGain, 0.1, 10.0);
-  config->global.duckOutputVolume =
-      std::clamp(config->global.duckOutputVolume, 0.0, 1.0);
-  config->asr.vad.threshold =
-      std::clamp(config->asr.vad.threshold, 0.05, 0.95);
-  config->asr.vad.minSpeechDuration =
-      std::clamp(config->asr.vad.minSpeechDuration, 0.05, 2.0);
-  config->asr.vad.minSilenceDuration =
-      std::clamp(config->asr.vad.minSilenceDuration, 0.05, 5.0);
-  config->asr.vad.speechPadMs =
-      std::clamp(config->asr.vad.speechPadMs, 0, 2000);
+  config->global.duckOutputVolume = std::clamp(config->global.duckOutputVolume, 0.0, 1.0);
+  config->asr.vad.threshold = std::clamp(config->asr.vad.threshold, 0.05, 0.95);
+  config->asr.vad.minSpeechDuration = std::clamp(config->asr.vad.minSpeechDuration, 0.05, 2.0);
+  config->asr.vad.minSilenceDuration = std::clamp(config->asr.vad.minSilenceDuration, 0.05, 5.0);
+  config->asr.vad.speechPadMs = std::clamp(config->asr.vad.speechPadMs, 0, 2000);
 
   {
     std::set<std::string> seen;
     std::vector<std::string> normalized;
-    for (const auto &url : config->registry.baseUrls) {
+    for (const auto& url : config->registry.baseUrls) {
       if (!url.empty() && seen.insert(url).second) {
         normalized.push_back(url);
       }
@@ -152,7 +146,7 @@ void NormalizeCoreConfig(CoreConfig *config) {
     std::set<std::string> seen;
     std::vector<AsrProvider> normalized;
     for (auto provider : config->asr.providers) {
-      const std::string &id = AsrProviderId(provider);
+      const std::string& id = AsrProviderId(provider);
       if (id.empty()) {
         std::cerr << "Ignoring ASR provider with empty id\n";
         continue;
@@ -161,10 +155,9 @@ void NormalizeCoreConfig(CoreConfig *config) {
         std::cerr << "Ignoring duplicate ASR provider '" << id << "'\n";
         continue;
       }
-      if (auto *cmd = std::get_if<CommandAsrProvider>(&provider)) {
+      if (auto* cmd = std::get_if<CommandAsrProvider>(&provider)) {
         if (cmd->command.empty()) {
-          std::cerr << "Ignoring command ASR provider '" << id
-                    << "' with empty command\n";
+          std::cerr << "Ignoring command ASR provider '" << id << "' with empty command\n";
           continue;
         }
         EraseEmptyEnvKeys(cmd);
@@ -180,8 +173,7 @@ void NormalizeCoreConfig(CoreConfig *config) {
     for (auto scene : config->scenes.definitions) {
       vinput::scene::NormalizeDefinition(&scene);
       if (scene.id == vinput::scene::kCommandSceneId &&
-          (scene.prompt.empty() ||
-           std::string_view(scene.prompt) == kLegacyCommandPrompt ||
+          (scene.prompt.empty() || std::string_view(scene.prompt) == kLegacyCommandPrompt ||
            std::string_view(scene.prompt) == kShortTagCommandPrompt)) {
         scene.prompt = std::string(kDefaultCommandPrompt);
       }

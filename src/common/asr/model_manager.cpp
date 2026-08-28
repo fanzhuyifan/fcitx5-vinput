@@ -28,8 +28,7 @@ std::vector<std::string> SplitModelId(std::string_view model_id) {
   std::size_t start = 0;
   while (start <= model_id.size()) {
     const std::size_t dot = model_id.find('.', start);
-    const std::size_t end =
-        dot == std::string_view::npos ? model_id.size() : dot;
+    const std::size_t end = dot == std::string_view::npos ? model_id.size() : dot;
     if (end == start) {
       return {};
     }
@@ -48,7 +47,7 @@ std::vector<std::string> SplitModelId(std::string_view model_id) {
     return {};
   }
 
-  const std::string &source = raw_segments[1];
+  const std::string& source = raw_segments[1];
   std::string name;
   for (std::size_t i = 2; i < raw_segments.size(); ++i) {
     if (!name.empty()) {
@@ -63,7 +62,7 @@ std::vector<std::string> SplitModelId(std::string_view model_id) {
   return {"model", source, name};
 }
 
-bool IsPathWithinRoot(const fs::path &path, const fs::path &root) {
+bool IsPathWithinRoot(const fs::path& path, const fs::path& root) {
   auto path_it = path.begin();
   auto root_it = root.begin();
   for (; root_it != root.end(); ++root_it, ++path_it) {
@@ -77,15 +76,14 @@ bool IsPathWithinRoot(const fs::path &path, const fs::path &root) {
 // Walk only the install layout produced by ModelRepository::InstallModel:
 //   <base>/<engine>/<name>/vinput-model.json
 // corresponding to id model.<engine>.<name>. Never recurse into model file trees.
-template <typename Fn>
-void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
+template <typename Fn> void ForEachInstalledModelDir(const std::string& base_dir, Fn&& fn) {
   const auto root = fs::path(base_dir);
   std::error_code ec;
   if (!fs::exists(root, ec) || ec || !fs::is_directory(root, ec) || ec) {
     return;
   }
 
-  for (const auto &engine_entry : fs::directory_iterator(root, ec)) {
+  for (const auto& engine_entry : fs::directory_iterator(root, ec)) {
     if (ec) {
       return;
     }
@@ -93,14 +91,14 @@ void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
       ec.clear();
       continue;
     }
-    const auto &engine_dir = engine_entry.path();
+    const auto& engine_dir = engine_entry.path();
     const std::string engine_name = engine_dir.filename().string();
     if (engine_name.empty() || engine_name == "." || engine_name == ".." ||
         engine_name.front() == '.') {
       continue;
     }
 
-    for (const auto &model_entry : fs::directory_iterator(engine_dir, ec)) {
+    for (const auto& model_entry : fs::directory_iterator(engine_dir, ec)) {
       if (ec) {
         ec.clear();
         break;
@@ -109,7 +107,7 @@ void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
         ec.clear();
         continue;
       }
-      const auto &model_dir = model_entry.path();
+      const auto& model_dir = model_entry.path();
       const std::string model_name = model_dir.filename().string();
       if (model_name.empty() || model_name == "." || model_name == ".." ||
           model_name.front() == '.') {
@@ -117,8 +115,7 @@ void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
       }
 
       const fs::path relative_path = fs::path(engine_name) / model_name;
-      const std::string model_id =
-          ModelManager::IdFromRelativePath(relative_path);
+      const std::string model_id = ModelManager::IdFromRelativePath(relative_path);
       if (model_id.empty()) {
         continue;
       }
@@ -134,10 +131,8 @@ void ForEachInstalledModelDir(const std::string &base_dir, Fn &&fn) {
   }
 }
 
-bool ResolveModelMetadataPath(const fs::path &model_dir,
-                              const fs::path &model_root,
-                              const std::string &raw_path, fs::path *resolved,
-                              std::string *error) {
+bool ResolveModelMetadataPath(const fs::path& model_dir, const fs::path& model_root,
+                              const std::string& raw_path, fs::path* resolved, std::string* error) {
   std::error_code ec;
   fs::path candidate = fs::weakly_canonical(model_dir / fs::path(raw_path), ec);
   if (ec) {
@@ -158,8 +153,8 @@ bool ResolveModelMetadataPath(const fs::path &model_dir,
   return true;
 }
 
-void AddScalarParam(std::map<std::string, std::string> *params,
-                    std::string_view key, const json &value) {
+void AddScalarParam(std::map<std::string, std::string>* params, std::string_view key,
+                    const json& value) {
   if (!params || key.empty()) {
     return;
   }
@@ -174,9 +169,8 @@ void AddScalarParam(std::map<std::string, std::string> *params,
   }
 }
 
-void ResolveModelFileField(const fs::path &dir, const fs::path &model_root,
-                           const json &obj, std::string_view field,
-                           std::string_view file_key, ModelInfo *info) {
+void ResolveModelFileField(const fs::path& dir, const fs::path& model_root, const json& obj,
+                           std::string_view field, std::string_view file_key, ModelInfo* info) {
   if (!info || !obj.is_object() || !obj.contains(field) || !obj[field].is_string()) {
     return;
   }
@@ -186,8 +180,7 @@ void ResolveModelFileField(const fs::path &dir, const fs::path &model_root,
   }
   fs::path resolved_path;
   std::string path_error;
-  if (!ResolveModelMetadataPath(dir, model_root, raw_path, &resolved_path,
-                                &path_error)) {
+  if (!ResolveModelMetadataPath(dir, model_root, raw_path, &resolved_path, &path_error)) {
     info->rejected_files[std::string(file_key)] = raw_path;
     return;
   }
@@ -198,8 +191,7 @@ bool FamilyUsesTokenizerAsset(std::string_view family) {
   return family == "funasr_nano" || family == "qwen3_asr";
 }
 
-ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
-                         std::string *error) {
+ModelInfo ParseModelJson(const fs::path& dir, const fs::path& json_path, std::string* error) {
   ModelInfo info;
   try {
     std::ifstream file(json_path);
@@ -209,8 +201,7 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
     const fs::path model_root = fs::weakly_canonical(dir, root_ec);
     if (root_ec) {
       if (error) {
-        *error = "failed to resolve model root '" + dir.string() +
-                 "': " + root_ec.message();
+        *error = "failed to resolve model root '" + dir.string() + "': " + root_ec.message();
       }
       return info;
     }
@@ -223,50 +214,38 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
     info.supports_hotwords = j.value("supports_hotwords", false);
     info.size_bytes = j.value("size_bytes", uint64_t{0});
     info.recognizer_config =
-        j.contains("recognizer") && j["recognizer"].is_object()
-            ? j["recognizer"]
-            : json::object();
-    info.model_config =
-        j.contains("model") && j["model"].is_object() ? j["model"]
-                                                       : json::object();
+        j.contains("recognizer") && j["recognizer"].is_object() ? j["recognizer"] : json::object();
+    info.model_config = j.contains("model") && j["model"].is_object() ? j["model"] : json::object();
 
-    ResolveModelFileField(dir, model_root, info.model_config, "tokens", "tokens",
+    ResolveModelFileField(dir, model_root, info.model_config, "tokens", "tokens", &info);
+    ResolveModelFileField(dir, model_root, info.model_config, "bpe_vocab", "bpe_vocab", &info);
+    ResolveModelFileField(dir, model_root, info.model_config, "bpe_model", "bpe_model", &info);
+    ResolveModelFileField(dir, model_root, info.model_config, "telespeech_ctc", "telespeech_ctc",
                           &info);
-    ResolveModelFileField(dir, model_root, info.model_config, "bpe_vocab",
-                          "bpe_vocab", &info);
-    ResolveModelFileField(dir, model_root, info.model_config, "bpe_model",
-                          "bpe_model", &info);
-    ResolveModelFileField(dir, model_root, info.model_config, "telespeech_ctc",
-                          "telespeech_ctc", &info);
 
     if (info.recognizer_config.contains("lm_config") &&
         info.recognizer_config["lm_config"].is_object()) {
-      ResolveModelFileField(dir, model_root, info.recognizer_config["lm_config"],
-                            "model", "lm", &info);
+      ResolveModelFileField(dir, model_root, info.recognizer_config["lm_config"], "model", "lm",
+                            &info);
       AddScalarParam(&info.params, "lm_scale",
                      info.recognizer_config["lm_config"].value("scale", 0.0));
     }
-    ResolveModelFileField(dir, model_root, info.recognizer_config,
-                          "hotwords_file", "hotwords_file", &info);
-    ResolveModelFileField(dir, model_root, info.recognizer_config, "rule_fsts",
-                          "rule_fsts", &info);
-    ResolveModelFileField(dir, model_root, info.recognizer_config, "rule_fars",
-                          "rule_fars", &info);
+    ResolveModelFileField(dir, model_root, info.recognizer_config, "hotwords_file", "hotwords_file",
+                          &info);
+    ResolveModelFileField(dir, model_root, info.recognizer_config, "rule_fsts", "rule_fsts", &info);
+    ResolveModelFileField(dir, model_root, info.recognizer_config, "rule_fars", "rule_fars", &info);
     if (info.recognizer_config.contains("ctc_fst_decoder_config") &&
         info.recognizer_config["ctc_fst_decoder_config"].is_object()) {
-      ResolveModelFileField(dir, model_root,
-                            info.recognizer_config["ctc_fst_decoder_config"],
+      ResolveModelFileField(dir, model_root, info.recognizer_config["ctc_fst_decoder_config"],
                             "graph", "graph", &info);
       AddScalarParam(&info.params, "ctc_fst_max_active",
-                     info.recognizer_config["ctc_fst_decoder_config"].value(
-                         "max_active", 0));
+                     info.recognizer_config["ctc_fst_decoder_config"].value("max_active", 0));
     }
-    if (info.recognizer_config.contains("hr") &&
-        info.recognizer_config["hr"].is_object()) {
-      ResolveModelFileField(dir, model_root, info.recognizer_config["hr"],
-                            "lexicon", "hr_lexicon", &info);
-      ResolveModelFileField(dir, model_root, info.recognizer_config["hr"],
-                            "rule_fsts", "hr_rule_fsts", &info);
+    if (info.recognizer_config.contains("hr") && info.recognizer_config["hr"].is_object()) {
+      ResolveModelFileField(dir, model_root, info.recognizer_config["hr"], "lexicon", "hr_lexicon",
+                            &info);
+      ResolveModelFileField(dir, model_root, info.recognizer_config["hr"], "rule_fsts",
+                            "hr_rule_fsts", &info);
     }
 
     AddScalarParam(&info.params, "decoding_method",
@@ -276,34 +255,25 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
     AddScalarParam(&info.params, "enable_endpoint",
                    info.recognizer_config.value("enable_endpoint", 0));
     AddScalarParam(&info.params, "rule1_min_trailing_silence",
-                   info.recognizer_config.value("rule1_min_trailing_silence",
-                                                0.0));
+                   info.recognizer_config.value("rule1_min_trailing_silence", 0.0));
     AddScalarParam(&info.params, "rule2_min_trailing_silence",
-                   info.recognizer_config.value("rule2_min_trailing_silence",
-                                                0.0));
+                   info.recognizer_config.value("rule2_min_trailing_silence", 0.0));
     AddScalarParam(&info.params, "rule3_min_utterance_length",
-                   info.recognizer_config.value("rule3_min_utterance_length",
-                                                0.0));
+                   info.recognizer_config.value("rule3_min_utterance_length", 0.0));
     AddScalarParam(&info.params, "hotwords_score",
                    info.recognizer_config.value("hotwords_score", 0.0));
     AddScalarParam(&info.params, "blank_penalty",
                    info.recognizer_config.value("blank_penalty", 0.0));
 
-    AddScalarParam(&info.params, "num_threads",
-                   info.model_config.value("num_threads", 0));
-    AddScalarParam(&info.params, "debug",
-                   info.model_config.value("debug", 0));
-    AddScalarParam(&info.params, "provider",
-                   info.model_config.value("provider", ""));
-    AddScalarParam(&info.params, "model_type",
-                   info.model_config.value("model_type", ""));
-    AddScalarParam(&info.params, "modeling_unit",
-                   info.model_config.value("modeling_unit", ""));
+    AddScalarParam(&info.params, "num_threads", info.model_config.value("num_threads", 0));
+    AddScalarParam(&info.params, "debug", info.model_config.value("debug", 0));
+    AddScalarParam(&info.params, "provider", info.model_config.value("provider", ""));
+    AddScalarParam(&info.params, "model_type", info.model_config.value("model_type", ""));
+    AddScalarParam(&info.params, "modeling_unit", info.model_config.value("modeling_unit", ""));
 
-    if (info.model_config.contains(info.family) &&
-        info.model_config[info.family].is_object()) {
-      const auto &family_config = info.model_config[info.family];
-      for (const auto &[key, val] : family_config.items()) {
+    if (info.model_config.contains(info.family) && info.model_config[info.family].is_object()) {
+      const auto& family_config = info.model_config[info.family];
+      for (const auto& [key, val] : family_config.items()) {
         if (val.is_string()) {
           ResolveModelFileField(dir, model_root, family_config, key, key, &info);
         }
@@ -311,7 +281,7 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
       }
     }
 
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     if (error) {
       *error = "failed to parse '" + json_path.string() + "': " + e.what();
     }
@@ -321,38 +291,36 @@ ModelInfo ParseModelJson(const fs::path &dir, const fs::path &json_path,
 }
 
 // Check that the tokens file exists (required for all model types)
-bool HasTokens(const ModelInfo &info) {
+bool HasTokens(const ModelInfo& info) {
   return !info.File("tokens").empty() && fs::exists(info.File("tokens"));
 }
 
-bool HasTokenizer(const ModelInfo &info) {
+bool HasTokenizer(const ModelInfo& info) {
   return !info.File("tokenizer").empty() && fs::exists(info.File("tokenizer"));
 }
 
-bool HasRequiredTextAsset(const ModelInfo &info) {
-  return FamilyUsesTokenizerAsset(info.family) ? HasTokenizer(info)
-                                               : HasTokens(info);
+bool HasRequiredTextAsset(const ModelInfo& info) {
+  return FamilyUsesTokenizerAsset(info.family) ? HasTokenizer(info) : HasTokens(info);
 }
 
-std::string RequiredTextAssetField(const ModelInfo &info) {
-  return FamilyUsesTokenizerAsset(info.family) ? "model.tokenizer"
-                                               : "model.tokens";
+std::string RequiredTextAssetField(const ModelInfo& info) {
+  return FamilyUsesTokenizerAsset(info.family) ? "model.tokenizer" : "model.tokens";
 }
 
-std::string RequiredTextAssetPathKey(const ModelInfo &info) {
+std::string RequiredTextAssetPathKey(const ModelInfo& info) {
   return FamilyUsesTokenizerAsset(info.family) ? "tokenizer" : "tokens";
 }
 
 // Check that at least one model/encoder file exists
-bool HasModelFiles(const ModelInfo &info) {
-  for (const auto &[key, path] : info.files) {
-    if (key == "tokens" || key == "tokenizer" || key == "bpe_vocab" ||
-        key == "bpe_model" || key == "hotwords_file" || key == "lm" ||
-        key == "rule_fsts" || key == "rule_fars" || key == "graph" ||
-        key == "hr_lexicon" || key == "hr_rule_fsts") {
+bool HasModelFiles(const ModelInfo& info) {
+  for (const auto& [key, path] : info.files) {
+    if (key == "tokens" || key == "tokenizer" || key == "bpe_vocab" || key == "bpe_model" ||
+        key == "hotwords_file" || key == "lm" || key == "rule_fsts" || key == "rule_fars" ||
+        key == "graph" || key == "hr_lexicon" || key == "hr_rule_fsts") {
       continue;
     }
-    if (!path.empty() && fs::exists(path)) return true;
+    if (!path.empty() && fs::exists(path))
+      return true;
   }
   return false;
 }
@@ -374,7 +342,7 @@ std::string ModelInfo::RuntimeLanguageHint() const {
   };
 
   if (model_config.contains(family) && model_config[family].is_object()) {
-    const auto &family_config = model_config[family];
+    const auto& family_config = model_config[family];
     if (family_config.contains("language") && family_config["language"].is_string()) {
       return family_config["language"].get<std::string>();
     }
@@ -395,7 +363,7 @@ std::string ModelInfo::RuntimeLanguageHint() const {
 // ---------------------------------------------------------------------------
 
 // static
-fs::path ModelManager::NormalizeBaseDir(const std::string &raw_path) {
+fs::path ModelManager::NormalizeBaseDir(const std::string& raw_path) {
   if (raw_path.empty()) {
     return vinput::path::DefaultModelBaseDir();
   }
@@ -415,10 +383,9 @@ fs::path ModelManager::RelativePathForId(std::string_view model_id) {
   return relative_path;
 }
 
-std::string
-ModelManager::IdFromRelativePath(const std::filesystem::path &relative_path) {
+std::string ModelManager::IdFromRelativePath(const std::filesystem::path& relative_path) {
   std::vector<std::string> relative_segments;
-  for (const auto &component : relative_path) {
+  for (const auto& component : relative_path) {
     const std::string part = component.string();
     if (part.empty() || part == "." || part == "..") {
       return {};
@@ -449,13 +416,12 @@ fs::path ModelManager::ModelDir(std::string_view model_id) const {
   return fs::path(base_dir_) / relative_path;
 }
 
-ModelManager::ModelManager(const std::string &base_dir,
-                           const std::string &model_id) {
+ModelManager::ModelManager(const std::string& base_dir, const std::string& model_id) {
   base_dir_ = NormalizeBaseDir(base_dir).string();
   model_id_ = model_id;
 }
 
-bool ModelManager::EnsureModels(std::string *error) {
+bool ModelManager::EnsureModels(std::string* error) {
   auto dir = ModelDir(model_id_);
   auto json_path = dir / "vinput-model.json";
 
@@ -473,26 +439,23 @@ bool ModelManager::EnsureModels(std::string *error) {
       if (!parse_error.empty()) {
         *error = std::move(parse_error);
       } else {
-        *error = "'vinput-model.json' is missing family for model '" +
-                 model_id_ + "'";
+        *error = "'vinput-model.json' is missing family for model '" + model_id_ + "'";
       }
     }
     return false;
   }
 
   if (!info.rejected_files.empty()) {
-    const auto &[key, raw_path] = *info.rejected_files.begin();
+    const auto& [key, raw_path] = *info.rejected_files.begin();
     if (error) {
-      *error = "'vinput-model.json' contains invalid path for '" + key +
-               "': " + raw_path;
+      *error = "'vinput-model.json' contains invalid path for '" + key + "': " + raw_path;
     }
     return false;
   }
 
   if (!HasRequiredTextAsset(info)) {
     if (error) {
-      *error = RequiredTextAssetPathKey(info) +
-               " file not found for model '" + model_id_ + "'";
+      *error = RequiredTextAssetPathKey(info) + " file not found for model '" + model_id_ + "'";
     }
     return false;
   }
@@ -507,7 +470,7 @@ bool ModelManager::EnsureModels(std::string *error) {
   return true;
 }
 
-ModelInfo ModelManager::GetModelInfo(std::string *error) const {
+ModelInfo ModelManager::GetModelInfo(std::string* error) const {
   auto dir = ModelDir(model_id_);
   auto json_path = dir / "vinput-model.json";
 
@@ -518,37 +481,31 @@ ModelInfo ModelManager::GetModelInfo(std::string *error) const {
   return ParseModelJson(dir, json_path, error);
 }
 
-std::string ModelManager::GetBaseDir() const { return base_dir_; }
+std::string ModelManager::GetBaseDir() const {
+  return base_dir_;
+}
 
 std::vector<std::string> ModelManager::ListModels() const {
   std::vector<std::string> models;
   // Install layout is fixed: models/<engine>/<name>/vinput-model.json
   // (id: model.<engine>.<name>). Only walk that shallow tree.
-  ForEachInstalledModelDir(base_dir_,
-                           [&](const std::string &model_id, const fs::path &,
-                               const fs::path &) { models.push_back(model_id); });
+  ForEachInstalledModelDir(base_dir_, [&](const std::string& model_id, const fs::path&,
+                                          const fs::path&) { models.push_back(model_id); });
 
   std::sort(models.begin(), models.end());
   models.erase(std::unique(models.begin(), models.end()), models.end());
   return models;
 }
 
-std::string ModelManager::GetModelId() const { return model_id_; }
-
-bool ModelManager::IsValidModelDir(const std::string &model_id) const {
-  const auto dir = ModelDir(model_id);
-  const auto json_path = dir / "vinput-model.json";
-  return fs::exists(json_path) && fs::is_regular_file(json_path);
+std::string ModelManager::GetModelId() const {
+  return model_id_;
 }
 
-std::vector<ModelSummary>
-ModelManager::ListDetailed(const std::string &active_model) const {
+std::vector<ModelSummary> ModelManager::ListDetailed(const std::string& active_model) const {
   std::vector<ModelSummary> summaries;
   // Same shallow install layout as ListModels / ModelRepository::InstallModel.
   ForEachInstalledModelDir(
-      base_dir_,
-      [&](const std::string &model_id, const fs::path &,
-          const fs::path &json_path) {
+      base_dir_, [&](const std::string& model_id, const fs::path&, const fs::path& json_path) {
         ModelSummary s;
         s.id = model_id;
         try {
@@ -565,34 +522,33 @@ ModelManager::ListDetailed(const std::string &active_model) const {
           return;
         }
 
-        s.state = (model_id == active_model) ? ModelState::Active
-                                           : ModelState::Installed;
+        s.state = (model_id == active_model) ? ModelState::Active : ModelState::Installed;
         summaries.push_back(std::move(s));
       });
 
   std::sort(summaries.begin(), summaries.end(),
-            [](const ModelSummary &a, const ModelSummary &b) {
-              return a.id < b.id;
-            });
+            [](const ModelSummary& a, const ModelSummary& b) { return a.id < b.id; });
   return summaries;
 }
 
-bool ModelManager::Validate(const std::string &model_id,
-                            std::string *error) const {
+bool ModelManager::Validate(const std::string& model_id, std::string* error) const {
   const auto dir = ModelDir(model_id);
   if (dir.empty()) {
-    if (error) *error = "invalid model id: " + model_id;
+    if (error)
+      *error = "invalid model id: " + model_id;
     return false;
   }
 
   if (!fs::exists(dir) || !fs::is_directory(dir)) {
-    if (error) *error = "model directory does not exist: " + dir.string();
+    if (error)
+      *error = "model directory does not exist: " + dir.string();
     return false;
   }
 
   const auto json_path = dir / "vinput-model.json";
   if (!fs::exists(json_path) || !fs::is_regular_file(json_path)) {
-    if (error) *error = "vinput-model.json not found in " + dir.string();
+    if (error)
+      *error = "vinput-model.json not found in " + dir.string();
     return false;
   }
 
@@ -611,10 +567,9 @@ bool ModelManager::Validate(const std::string &model_id,
   }
 
   if (!info.rejected_files.empty()) {
-    const auto &[key, raw_path] = *info.rejected_files.begin();
+    const auto& [key, raw_path] = *info.rejected_files.begin();
     if (error) {
-      *error = "vinput-model.json contains out-of-bounds file path for '" +
-               key + "': " + raw_path;
+      *error = "vinput-model.json contains out-of-bounds file path for '" + key + "': " + raw_path;
     }
     return false;
   }
@@ -624,50 +579,54 @@ bool ModelManager::Validate(const std::string &model_id,
     auto asset_path = info.File(path_key);
     if (asset_path.empty()) {
       if (error)
-        *error =
-            "vinput-model.json missing required field: " +
-            RequiredTextAssetField(info);
+        *error = "vinput-model.json missing required field: " + RequiredTextAssetField(info);
     } else {
-      if (error) *error = path_key + " file not found: " + asset_path;
+      if (error)
+        *error = path_key + " file not found: " + asset_path;
     }
     return false;
   }
 
   if (!HasModelFiles(info)) {
-    if (error) *error = "no model/encoder files found in model directory";
+    if (error)
+      *error = "no model/encoder files found in model directory";
     return false;
   }
 
   return true;
 }
 
-bool ModelManager::Remove(const std::string &model_id,
-                          std::string *error) const {
+bool ModelManager::Remove(const std::string& model_id, std::string* error) const {
   const fs::path requested_dir = ModelDir(model_id);
   if (requested_dir.empty()) {
-    if (error) *error = "invalid model id: " + model_id;
+    if (error)
+      *error = "invalid model id: " + model_id;
     return false;
   }
 
   std::error_code ec;
   const auto dir = fs::weakly_canonical(requested_dir, ec);
   if (ec) {
-    if (error) *error = "failed to resolve model directory: " + ec.message();
+    if (error)
+      *error = "failed to resolve model directory: " + ec.message();
     return false;
   }
   const auto base = fs::weakly_canonical(fs::path(base_dir_), ec);
   if (ec) {
-    if (error) *error = "failed to resolve model base directory: " + ec.message();
+    if (error)
+      *error = "failed to resolve model base directory: " + ec.message();
     return false;
   }
 
   if (!IsPathWithinRoot(dir, base)) {
-    if (error) *error = "invalid model id: " + model_id;
+    if (error)
+      *error = "invalid model id: " + model_id;
     return false;
   }
 
   if (!fs::exists(dir)) {
-    if (error) *error = "model directory does not exist: " + dir.string();
+    if (error)
+      *error = "model directory does not exist: " + dir.string();
     return false;
   }
 

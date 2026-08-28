@@ -11,4 +11,4 @@ inline constexpr auto kDaemonFailureCooldown = std::chrono::milliseconds(1500);
 inline constexpr int kInfoNotificationTimeoutMs = 3000;
 inline constexpr int kErrorNotificationTimeoutMs = 5000;
 
-}  // namespace vinput::runtime
+} // namespace vinput::runtime

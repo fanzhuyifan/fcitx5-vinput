@@ -36,20 +36,17 @@ struct Config {
 int NormalizeCandidateCount(int candidate_count);
 bool IsBuiltinSceneId(std::string_view scene_id);
 bool IsBuiltinSceneLabelKey(std::string_view label);
-void NormalizeDefinition(Definition *scene);
-bool ValidateDefinition(const Definition &scene, std::string *error,
-                        bool require_id = true);
+void NormalizeDefinition(Definition* scene);
+bool ValidateDefinition(const Definition& scene, std::string* error, bool require_id = true);
 
-const Definition *Find(const Config &config, std::string_view scene_id);
-const Definition &Resolve(const Config &config, std::string_view scene_id);
-std::string DisplayLabel(const Definition &scene);
+const Definition* Find(const Config& config, std::string_view scene_id);
+const Definition& Resolve(const Config& config, std::string_view scene_id);
+std::string DisplayLabel(const Definition& scene);
 
-bool AddScene(Config *config, const Definition &def, std::string *error);
-bool UpdateScene(Config *config, const std::string &id, const Definition &def,
-                 std::string *error);
-bool RemoveScene(Config *config, const std::string &id, bool force,
-                 std::string *error);
-bool SetActiveScene(Config *config, const std::string &id, std::string *error);
-int ClearProviderReferences(Config *config, std::string_view provider_id);
+bool AddScene(Config* config, const Definition& def, std::string* error);
+bool UpdateScene(Config* config, const std::string& id, const Definition& def, std::string* error);
+bool RemoveScene(Config* config, const std::string& id, bool force, std::string* error);
+bool SetActiveScene(Config* config, const std::string& id, std::string* error);
+int ClearProviderReferences(Config* config, std::string_view provider_id);
 
 } // namespace vinput::scene

@@ -4,8 +4,6 @@
 
 namespace vinput::path {
 std::string_view DaemonServiceUnitName();
-std::string_view CliExecutableName();
-std::filesystem::path CliExecutablePath();
 std::filesystem::path DaemonExecutablePath();
 std::filesystem::path DaemonServiceUnitInstallPath();
 std::filesystem::path DaemonServiceUnitTemplatePath();

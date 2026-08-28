@@ -10,19 +10,18 @@ namespace vinput::config {
 
 using json = nlohmann::ordered_json;
 
-bool GetConfigValue(const std::string &pointer, std::string *value,
-                    std::string *error) {
+bool GetConfigValue(const std::string& pointer, std::string* value, std::string* error) {
   CoreConfig config = LoadCoreConfig();
   NormalizeCoreConfig(&config);
   json j = config;
 
   try {
-    const json &node = j.at(json::json_pointer(pointer));
+    const json& node = j.at(json::json_pointer(pointer));
     if (value) {
       *value = node.is_string() ? node.get<std::string>() : node.dump();
     }
     return true;
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     if (error) {
       *error = std::string("Config path not found: ") + e.what();
     }
@@ -30,8 +29,7 @@ bool GetConfigValue(const std::string &pointer, std::string *value,
   }
 }
 
-bool SetConfigValue(const std::string &pointer, const std::string &value,
-                    std::string *error) {
+bool SetConfigValue(const std::string& pointer, const std::string& value, std::string* error) {
   CoreConfig config = LoadCoreConfig();
   NormalizeCoreConfig(&config);
   json j = config;
@@ -39,13 +37,13 @@ bool SetConfigValue(const std::string &pointer, const std::string &value,
   json parsed_value;
   try {
     parsed_value = json::parse(value);
-  } catch (const json::parse_error &) {
+  } catch (const json::parse_error&) {
     parsed_value = value;
   }
 
   try {
     j.at(json::json_pointer(pointer)) = std::move(parsed_value);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     if (error) {
       *error = std::string("Config path not found: ") + e.what();
     }
@@ -58,8 +56,7 @@ bool SetConfigValue(const std::string &pointer, const std::string &value,
       if (error) {
         std::string validation_error;
         NormalizeCoreConfig(&updated);
-        if (ValidateCoreConfig(updated, &validation_error) &&
-            validation_error.empty()) {
+        if (ValidateCoreConfig(updated, &validation_error) && validation_error.empty()) {
           *error = "Failed to save config.";
         } else {
           *error = validation_error;
@@ -68,7 +65,7 @@ bool SetConfigValue(const std::string &pointer, const std::string &value,
       return false;
     }
     return true;
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     if (error) {
       *error = std::string("Invalid value: ") + e.what();
     }
@@ -76,7 +73,7 @@ bool SetConfigValue(const std::string &pointer, const std::string &value,
   }
 }
 
-std::filesystem::path GetEditTarget(const std::string &target) {
+std::filesystem::path GetEditTarget(const std::string& target) {
   std::filesystem::path path;
   if (target == "core") {
     path = vinput::path::CoreConfigPath();

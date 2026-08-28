@@ -10,19 +10,17 @@ namespace {
 
 std::string TrimAsciiWhitespace(std::string_view text) {
   size_t begin = 0;
-  while (begin < text.size() &&
-         std::isspace(static_cast<unsigned char>(text[begin]))) {
+  while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) {
     begin++;
   }
   size_t end = text.size();
-  while (end > begin &&
-         std::isspace(static_cast<unsigned char>(text[end - 1]))) {
+  while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) {
     end--;
   }
   return std::string(text.substr(begin, end - begin));
 }
 
-bool ConsumePrefix(std::string_view *text, std::string_view prefix) {
+bool ConsumePrefix(std::string_view* text, std::string_view prefix) {
   if (!text->starts_with(prefix)) {
     return false;
   }
@@ -30,8 +28,8 @@ bool ConsumePrefix(std::string_view *text, std::string_view prefix) {
   return true;
 }
 
-bool ParseQuotedValue(std::string_view text, std::string_view prefix,
-                      std::string_view *value, std::string_view *tail) {
+bool ParseQuotedValue(std::string_view text, std::string_view prefix, std::string_view* value,
+                      std::string_view* tail) {
   if (!text.starts_with(prefix)) {
     return false;
   }
@@ -51,8 +49,7 @@ bool ParseQuotedValue(std::string_view text, std::string_view prefix,
   return true;
 }
 
-ErrorInfo AdoptNested(ErrorInfo nested, std::string_view raw_message,
-                      std::string_view subject) {
+ErrorInfo AdoptNested(ErrorInfo nested, std::string_view raw_message, std::string_view subject) {
   if (nested.raw_message.empty()) {
     nested.raw_message = std::string(raw_message);
   }
@@ -74,55 +71,45 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
     return MakeErrorInfo(kErrorCodeUnknown, {}, {}, std::string(text));
   }
 
-  if (ParseQuotedValue(text, "ASR provider ", &value, &tail) &&
-      ConsumePrefix(&tail, ": ")) {
+  if (ParseQuotedValue(text, "ASR provider ", &value, &tail) && ConsumePrefix(&tail, ": ")) {
     if (tail == "failed to start.") {
-      return MakeErrorInfo(kErrorCodeAsrProviderStartFailed,
-                           std::string(value), {}, original);
+      return MakeErrorInfo(kErrorCodeAsrProviderStartFailed, std::string(value), {}, original);
     }
     if (ConsumePrefix(&tail, "failed to start. ")) {
-      return MakeErrorInfo(kErrorCodeAsrProviderStartFailed,
-                           std::string(value), TrimAsciiWhitespace(tail),
-                           original);
+      return MakeErrorInfo(kErrorCodeAsrProviderStartFailed, std::string(value),
+                           TrimAsciiWhitespace(tail), original);
     }
     if (tail == "timed out.") {
-      return MakeErrorInfo(kErrorCodeAsrProviderTimeout,
-                           std::string(value), {}, original);
+      return MakeErrorInfo(kErrorCodeAsrProviderTimeout, std::string(value), {}, original);
     }
     if (ConsumePrefix(&tail, "timed out. ")) {
       return MakeErrorInfo(kErrorCodeAsrProviderTimeout, std::string(value),
                            TrimAsciiWhitespace(tail), original);
     }
     if (tail == "failed.") {
-      return MakeErrorInfo(kErrorCodeAsrProviderFailed,
-                           std::string(value), {}, original);
+      return MakeErrorInfo(kErrorCodeAsrProviderFailed, std::string(value), {}, original);
     }
     if (ConsumePrefix(&tail, "failed. ")) {
-      return MakeErrorInfo(kErrorCodeAsrProviderFailed,
-                           std::string(value), TrimAsciiWhitespace(tail), original);
+      return MakeErrorInfo(kErrorCodeAsrProviderFailed, std::string(value),
+                           TrimAsciiWhitespace(tail), original);
     }
     if (tail == "returned no text.") {
-      return MakeErrorInfo(kErrorCodeAsrProviderNoText,
-                           std::string(value), {}, original);
+      return MakeErrorInfo(kErrorCodeAsrProviderNoText, std::string(value), {}, original);
     }
   }
 
-  if (ParseQuotedValue(text, "Local ASR model check failed for provider ",
-                       &value, &tail)) {
+  if (ParseQuotedValue(text, "Local ASR model check failed for provider ", &value, &tail)) {
     if (ConsumePrefix(&tail, ": ")) {
       return AdoptNested(ClassifyErrorText(tail), text, value);
     }
-    return MakeErrorInfo(kErrorCodeLocalAsrModelCheckFailed,
-                         std::string(value), {}, original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelCheckFailed, std::string(value), {}, original);
   }
 
-  if (ParseQuotedValue(text, "Failed to initialize local ASR provider ",
-                       &value, &tail)) {
+  if (ParseQuotedValue(text, "Failed to initialize local ASR provider ", &value, &tail)) {
     if (ConsumePrefix(&tail, ": ")) {
       return AdoptNested(ClassifyErrorText(tail), text, value);
     }
-    return MakeErrorInfo(kErrorCodeLocalAsrProviderInitFailed,
-                         std::string(value), {}, original);
+    return MakeErrorInfo(kErrorCodeLocalAsrProviderInitFailed, std::string(value), {}, original);
   }
 
   if (ConsumePrefix(&text, "Failed to start recording: ")) {
@@ -133,8 +120,7 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
       }
       return nested;
     }
-    return MakeErrorInfo(kErrorCodeStartRecordingFailed, {},
-                         TrimAsciiWhitespace(text), original);
+    return MakeErrorInfo(kErrorCodeStartRecordingFailed, {}, TrimAsciiWhitespace(text), original);
   }
   if (text == "Failed to start recording.") {
     return MakeErrorInfo(kErrorCodeStartRecordingFailed, {}, {}, original);
@@ -148,8 +134,8 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
       }
       return nested;
     }
-    return MakeErrorInfo(kErrorCodeStartCommandRecordingFailed, {},
-                         TrimAsciiWhitespace(text), original);
+    return MakeErrorInfo(kErrorCodeStartCommandRecordingFailed, {}, TrimAsciiWhitespace(text),
+                         original);
   }
   if (text == "Failed to start command recording.") {
     return MakeErrorInfo(kErrorCodeStartCommandRecordingFailed, {}, {}, original);
@@ -174,8 +160,8 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
   }
 
   if (ConsumePrefix(&text, "missing 'vinput-model.json' in ")) {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelConfigMissing, {},
-                         TrimAsciiWhitespace(text), original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelConfigMissing, {}, TrimAsciiWhitespace(text),
+                         original);
   }
 
   const std::string normalized_text = TrimAsciiWhitespace(text);
@@ -185,45 +171,38 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
     return MakeErrorInfo(kErrorCodeLocalAsrModelConfigMissing, {}, {}, original);
   }
 
-  if (ParseQuotedValue(
-          normalized, "Local ASR model configuration is missing for provider ",
-          &value, &tail) &&
+  if (ParseQuotedValue(normalized, "Local ASR model configuration is missing for provider ", &value,
+                       &tail) &&
       tail == ".") {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelConfigMissing,
-                         std::string(value), {}, original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelConfigMissing, std::string(value), {}, original);
   }
 
   if (ParseQuotedValue(normalized, "", &value, &tail) &&
-      ConsumePrefix(&tail, " is missing family for model '") &&
-      !tail.empty() && tail.back() == '\'') {
+      ConsumePrefix(&tail, " is missing family for model '") && !tail.empty() &&
+      tail.back() == '\'') {
     tail.remove_suffix(1);
-    return MakeErrorInfo(kErrorCodeLocalAsrModelTypeMissing,
-                         std::string(value), std::string(tail), original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelTypeMissing, std::string(value), std::string(tail),
+                         original);
   }
 
   if (ParseQuotedValue(normalized, "", &value, &tail) &&
       ConsumePrefix(&tail, " contains invalid path for '")) {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelInvalidPath,
-                         std::string(value), TrimAsciiWhitespace(tail), original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelInvalidPath, std::string(value),
+                         TrimAsciiWhitespace(tail), original);
   }
 
-  if (ParseQuotedValue(normalized, "tokens file not found for model ", &value,
-                       nullptr)) {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelTokensMissing,
-                         std::string(value), {}, original);
+  if (ParseQuotedValue(normalized, "tokens file not found for model ", &value, nullptr)) {
+    return MakeErrorInfo(kErrorCodeLocalAsrModelTokensMissing, std::string(value), {}, original);
   }
 
-  if (ParseQuotedValue(normalized, "no model files found for model ", &value,
-                       nullptr)) {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelFilesMissing,
-                         std::string(value), {}, original);
+  if (ParseQuotedValue(normalized, "no model files found for model ", &value, nullptr)) {
+    return MakeErrorInfo(kErrorCodeLocalAsrModelFilesMissing, std::string(value), {}, original);
   }
 
-  if (ParseQuotedValue(normalized, "failed to resolve model root ", &value,
-                       &tail) &&
+  if (ParseQuotedValue(normalized, "failed to resolve model root ", &value, &tail) &&
       ConsumePrefix(&tail, ": ")) {
-    return MakeErrorInfo(kErrorCodeLocalAsrModelRootResolveFailed,
-                         std::string(value), TrimAsciiWhitespace(tail), original);
+    return MakeErrorInfo(kErrorCodeLocalAsrModelRootResolveFailed, std::string(value),
+                         TrimAsciiWhitespace(tail), original);
   }
 
   if (ParseQuotedValue(normalized, "failed to parse ", &value, &tail) &&
@@ -232,33 +211,26 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
                          TrimAsciiWhitespace(tail), original);
   }
 
-  if (ParseQuotedValue(normalized, "unsupported model family ", &value,
-                       nullptr)) {
-    return MakeErrorInfo(kErrorCodeLocalAsrUnsupportedModelType,
-                         std::string(value), {}, original);
+  if (ParseQuotedValue(normalized, "unsupported model family ", &value, nullptr)) {
+    return MakeErrorInfo(kErrorCodeLocalAsrUnsupportedModelType, std::string(value), {}, original);
   }
 
-  if (ParseQuotedValue(normalized,
-                       "failed to create sherpa-onnx recognizer for family ",
-                       &value, nullptr)) {
-    return MakeErrorInfo(kErrorCodeLocalAsrRecognizerCreateFailed,
-                         std::string(value), {}, original);
-  }
-
-  if (ParseQuotedValue(normalized, "failed to create VAD from ", &value,
+  if (ParseQuotedValue(normalized, "failed to create sherpa-onnx recognizer for family ", &value,
                        nullptr)) {
-    return MakeErrorInfo(kErrorCodeVadCreateFailed, std::string(value), {},
+    return MakeErrorInfo(kErrorCodeLocalAsrRecognizerCreateFailed, std::string(value), {},
                          original);
+  }
+
+  if (ParseQuotedValue(normalized, "failed to create VAD from ", &value, nullptr)) {
+    return MakeErrorInfo(kErrorCodeVadCreateFailed, std::string(value), {}, original);
   }
 
   if (normalized == "audio capture loop is not initialized") {
-    return MakeErrorInfo(kErrorCodeAudioCaptureLoopNotInitialized, {}, {},
-                         original);
+    return MakeErrorInfo(kErrorCodeAudioCaptureLoopNotInitialized, {}, {}, original);
   }
 
   if (normalized == "failed to create PipeWire thread loop") {
-    return MakeErrorInfo(kErrorCodePipeWireThreadLoopCreateFailed, {}, {},
-                         original);
+    return MakeErrorInfo(kErrorCodePipeWireThreadLoopCreateFailed, {}, {}, original);
   }
 
   if (ConsumePrefix(&normalized, "failed to start PipeWire thread loop: ")) {
@@ -268,54 +240,50 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
 
   normalized = text;
   if (normalized == "failed to allocate PipeWire properties") {
-    return MakeErrorInfo(kErrorCodePipeWirePropertiesAllocFailed, {}, {},
-                         original);
+    return MakeErrorInfo(kErrorCodePipeWirePropertiesAllocFailed, {}, {}, original);
   }
 
   if (normalized == "failed to create PipeWire stream") {
-    return MakeErrorInfo(kErrorCodePipeWireStreamCreateFailed, {}, {},
-                         original);
+    return MakeErrorInfo(kErrorCodePipeWireStreamCreateFailed, {}, {}, original);
   }
 
   if (ConsumePrefix(&normalized, "failed to connect PipeWire stream: ")) {
-    return MakeErrorInfo(kErrorCodePipeWireStreamConnectFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodePipeWireStreamConnectFailed, {}, TrimAsciiWhitespace(normalized),
+                         original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "failed to create eventfd: ")) {
-    return MakeErrorInfo(kErrorCodeDbusEventfdCreateFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodeDbusEventfdCreateFailed, {}, TrimAsciiWhitespace(normalized),
+                         original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "failed to open user bus: ")) {
-    return MakeErrorInfo(kErrorCodeDbusUserBusOpenFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodeDbusUserBusOpenFailed, {}, TrimAsciiWhitespace(normalized),
+                         original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "failed to add D-Bus vtable: ")) {
-    return MakeErrorInfo(kErrorCodeDbusVtableAddFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodeDbusVtableAddFailed, {}, TrimAsciiWhitespace(normalized),
+                         original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "failed to request D-Bus name: ")) {
-    return MakeErrorInfo(kErrorCodeDbusNameRequestFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodeDbusNameRequestFailed, {}, TrimAsciiWhitespace(normalized),
+                         original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "LLM request failed: ")) {
-    return MakeErrorInfo(kErrorCodeLlmRequestFailed, {},
-                         TrimAsciiWhitespace(normalized), original);
+    return MakeErrorInfo(kErrorCodeLlmRequestFailed, {}, TrimAsciiWhitespace(normalized), original);
   }
 
   normalized = text;
   if (ConsumePrefix(&normalized, "HTTP ")) {
-    return MakeErrorInfo(kErrorCodeLlmHttpFailed, {}, TrimAsciiWhitespace(text),
-                         original);
+    return MakeErrorInfo(kErrorCodeLlmHttpFailed, {}, TrimAsciiWhitespace(text), original);
   }
 
   normalized = text;
@@ -323,13 +291,11 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
     // Payload format: `<file_uri>: <reason>`. The reason may contain `: `
     // (e.g. errno strings), so a naive split is unsafe — anchor on the
     // `file:///` URI and consume up to the first whitespace.
-    static const std::regex kPromptLoadRe(
-        R"(^(file:///\S+):\s+(.+)$)");
+    static const std::regex kPromptLoadRe(R"(^(file:///\S+):\s+(.+)$)");
     const std::string body = TrimAsciiWhitespace(normalized);
     std::smatch m;
     if (std::regex_match(body, m, kPromptLoadRe)) {
-      return MakeErrorInfo(kErrorCodePromptFileLoadFailed, m[1].str(),
-                           m[2].str(), original);
+      return MakeErrorInfo(kErrorCodePromptFileLoadFailed, m[1].str(), m[2].str(), original);
     }
     return MakeErrorInfo(kErrorCodePromptFileLoadFailed, {}, body, original);
   }
@@ -343,8 +309,8 @@ ErrorInfo ClassifyKnownDetail(std::string_view text) {
 
 } // namespace
 
-ErrorInfo MakeErrorInfo(std::string code, std::string subject,
-                        std::string detail, std::string raw_message) {
+ErrorInfo MakeErrorInfo(std::string code, std::string subject, std::string detail,
+                        std::string raw_message) {
   ErrorInfo info;
   info.code = std::move(code);
   info.subject = std::move(subject);

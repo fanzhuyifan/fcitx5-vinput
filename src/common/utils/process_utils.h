@@ -30,13 +30,8 @@ struct SpawnedProcess {
   int stderr_fd = -1;
 };
 
-CommandResult RunCommandWithInput(const CommandSpec &spec,
-                                  std::span<const std::byte> input);
-bool SpawnDetached(const CommandSpec &spec,
-                   const std::filesystem::path &working_dir, pid_t *pid_out,
-                   std::string *error);
-bool SpawnForMonitoring(const CommandSpec &spec,
-                        const std::filesystem::path &working_dir,
-                        SpawnedProcess *process_out, std::string *error);
+CommandResult RunCommandWithInput(const CommandSpec& spec, std::span<const std::byte> input);
+bool SpawnForMonitoring(const CommandSpec& spec, const std::filesystem::path& working_dir,
+                        SpawnedProcess* process_out, std::string* error);
 
-}  // namespace vinput::process
+} // namespace vinput::process

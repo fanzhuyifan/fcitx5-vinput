@@ -14,7 +14,7 @@ struct Progress {
   double speed_bps = 0;
 };
 
-using ProgressCallback = std::function<void(const Progress &)>;
+using ProgressCallback = std::function<void(const Progress&)>;
 
 struct Options {
   long timeout_seconds = 30;
@@ -31,10 +31,9 @@ struct Result {
   std::string error;
 };
 
-bool DownloadText(const std::vector<std::string> &urls, const Options &options,
-                  std::string *content, Result *result = nullptr);
-bool DownloadFile(const std::vector<std::string> &urls,
-                  const std::filesystem::path &dest, const Options &options,
-                  Result *result = nullptr);
+bool DownloadText(const std::vector<std::string>& urls, const Options& options,
+                  std::string* content, Result* result = nullptr);
+bool DownloadFile(const std::vector<std::string>& urls, const std::filesystem::path& dest,
+                  const Options& options, Result* result = nullptr);
 
 } // namespace vinput::download

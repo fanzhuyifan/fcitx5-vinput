@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 
 namespace {
 
-fs::path ExpandConfigPath(const std::string &candidate) {
+fs::path ExpandConfigPath(const std::string& candidate) {
   if (candidate.empty()) {
     return {};
   }
@@ -36,8 +36,8 @@ fs::path ExpandConfigPath(const std::string &candidate) {
   return path.lexically_normal();
 }
 
-fs::path ResolveScriptPath(const LlmAdapter &adapter) {
-  for (const auto &arg : adapter.args) {
+fs::path ResolveScriptPath(const LlmAdapter& adapter) {
+  for (const auto& arg : adapter.args) {
     const fs::path path = ExpandConfigPath(arg);
     if (path.empty()) {
       continue;
@@ -51,8 +51,7 @@ fs::path ResolveScriptPath(const LlmAdapter &adapter) {
   const fs::path command_path = ExpandConfigPath(adapter.command);
   if (!command_path.empty()) {
     std::error_code ec;
-    if (fs::exists(command_path, ec) && !ec &&
-        fs::is_regular_file(command_path, ec) && !ec) {
+    if (fs::exists(command_path, ec) && !ec && fs::is_regular_file(command_path, ec) && !ec) {
       return command_path;
     }
   }
@@ -60,8 +59,7 @@ fs::path ResolveScriptPath(const LlmAdapter &adapter) {
 }
 
 pid_t ReadPid(std::string_view adapter_id) {
-  std::ifstream file(vinput::path::AdapterRuntimeDir() /
-                     (std::string(adapter_id) + ".pid"));
+  std::ifstream file(vinput::path::AdapterRuntimeDir() / (std::string(adapter_id) + ".pid"));
   pid_t pid = -1;
   file >> pid;
   return pid;
@@ -74,9 +72,9 @@ bool ProcessExists(pid_t pid) {
   return kill(pid, 0) == 0 || errno == EPERM;
 }
 
-}  // namespace
+} // namespace
 
-vinput::process::CommandSpec BuildCommandSpec(const LlmAdapter &adapter) {
+vinput::process::CommandSpec BuildCommandSpec(const LlmAdapter& adapter) {
   vinput::process::CommandSpec spec;
   spec.command = adapter.command;
   spec.args = adapter.args;
@@ -84,7 +82,7 @@ vinput::process::CommandSpec BuildCommandSpec(const LlmAdapter &adapter) {
   return spec;
 }
 
-std::filesystem::path ResolveWorkingDir(const LlmAdapter &adapter) {
+std::filesystem::path ResolveWorkingDir(const LlmAdapter& adapter) {
   const fs::path script_path = ResolveScriptPath(adapter);
   if (!script_path.empty()) {
     const fs::path parent = script_path.parent_path();
@@ -98,11 +96,10 @@ std::filesystem::path ResolveWorkingDir(const LlmAdapter &adapter) {
 }
 
 std::filesystem::path PidPath(std::string_view adapter_id) {
-  return vinput::path::AdapterRuntimeDir() /
-         (std::string(adapter_id) + ".pid");
+  return vinput::path::AdapterRuntimeDir() / (std::string(adapter_id) + ".pid");
 }
 
-bool WritePidFile(std::string_view adapter_id, pid_t pid, std::string *error) {
+bool WritePidFile(std::string_view adapter_id, pid_t pid, std::string* error) {
   std::error_code ec;
   const fs::path runtime_dir = vinput::path::AdapterRuntimeDir();
   fs::create_directories(runtime_dir, ec);
@@ -142,7 +139,7 @@ bool IsRunning(std::string_view adapter_id) {
   return ProcessExists(ReadPid(adapter_id));
 }
 
-bool Stop(std::string_view adapter_id, std::string *error) {
+bool Stop(std::string_view adapter_id, std::string* error) {
   const pid_t pid = ReadPid(adapter_id);
   if (!ProcessExists(pid)) {
     RemovePidFile(adapter_id);
@@ -172,4 +169,4 @@ bool Stop(std::string_view adapter_id, std::string *error) {
   return true;
 }
 
-}  // namespace vinput::adapter
+} // namespace vinput::adapter

@@ -9,20 +9,26 @@ namespace vinput::scene {
 
 namespace {
 
-bool HasProvider(const Definition &scene) { return !scene.provider_id.empty(); }
+bool HasProvider(const Definition& scene) {
+  return !scene.provider_id.empty();
+}
 
-bool HasModel(const Definition &scene) { return !scene.model.empty(); }
+bool HasModel(const Definition& scene) {
+  return !scene.model.empty();
+}
 
-bool HasPrompt(const Definition &scene) { return !scene.prompt.empty(); }
+bool HasPrompt(const Definition& scene) {
+  return !scene.prompt.empty();
+}
 
-bool SetValidationError(std::string *error, std::string message) {
+bool SetValidationError(std::string* error, std::string message) {
   if (error) {
     *error = std::move(message);
   }
   return false;
 }
 
-const char *BuiltinSceneLabel(std::string_view scene_id) {
+const char* BuiltinSceneLabel(std::string_view scene_id) {
   if (scene_id == kRawSceneId) {
     return _("Raw");
   }
@@ -32,7 +38,7 @@ const char *BuiltinSceneLabel(std::string_view scene_id) {
   return nullptr;
 }
 
-const char *BuiltinSceneLabelFromKey(std::string_view label) {
+const char* BuiltinSceneLabelFromKey(std::string_view label) {
   if (label == kRawSceneLabelKey) {
     return _("Raw");
   }
@@ -62,7 +68,7 @@ bool IsBuiltinSceneLabelKey(std::string_view label) {
   return label == kRawSceneLabelKey || label == kCommandSceneLabelKey;
 }
 
-void NormalizeDefinition(Definition *scene) {
+void NormalizeDefinition(Definition* scene) {
   if (!scene) {
     return;
   }
@@ -78,14 +84,12 @@ void NormalizeDefinition(Definition *scene) {
   }
 }
 
-bool ValidateDefinition(const Definition &scene, std::string *error,
-                        bool require_id) {
+bool ValidateDefinition(const Definition& scene, std::string* error, bool require_id) {
   if (require_id && scene.id.empty()) {
     return SetValidationError(error, "Scene id must not be empty.");
   }
   if (scene.candidate_count < 0) {
-    return SetValidationError(error,
-                              "Scene candidate count must be 0 or greater.");
+    return SetValidationError(error, "Scene candidate count must be 0 or greater.");
   }
   if (scene.timeout_ms <= 0) {
     return SetValidationError(error, "Scene timeout must be greater than 0.");
@@ -94,18 +98,16 @@ bool ValidateDefinition(const Definition &scene, std::string *error,
   const bool has_provider = HasProvider(scene);
   const bool has_model = HasModel(scene);
   if (has_provider != has_model) {
-    return SetValidationError(
-        error, "Scene provider and model must be configured together.");
+    return SetValidationError(error, "Scene provider and model must be configured together.");
   }
   if ((has_provider || has_model) && !HasPrompt(scene)) {
-    return SetValidationError(
-        error, "Scene prompt must not be empty when provider/model is set.");
+    return SetValidationError(error, "Scene prompt must not be empty when provider/model is set.");
   }
   return true;
 }
 
-const Definition *Find(const Config &config, std::string_view scene_id) {
-  for (const auto &scene : config.scenes) {
+const Definition* Find(const Config& config, std::string_view scene_id) {
+  for (const auto& scene : config.scenes) {
     if (scene.id == scene_id) {
       return &scene;
     }
@@ -113,31 +115,31 @@ const Definition *Find(const Config &config, std::string_view scene_id) {
   return nullptr;
 }
 
-const Definition &Resolve(const Config &config, std::string_view scene_id) {
-  if (const auto *scene = Find(config, scene_id)) {
+const Definition& Resolve(const Config& config, std::string_view scene_id) {
+  if (const auto* scene = Find(config, scene_id)) {
     return *scene;
   }
-  if (const auto *scene = Find(config, config.activeSceneId)) {
+  if (const auto* scene = Find(config, config.activeSceneId)) {
     return *scene;
   }
   static const Definition empty;
   return empty;
 }
 
-std::string DisplayLabel(const Definition &scene) {
-  if (const char *builtin_label = BuiltinSceneLabelFromKey(scene.label)) {
+std::string DisplayLabel(const Definition& scene) {
+  if (const char* builtin_label = BuiltinSceneLabelFromKey(scene.label)) {
     return builtin_label;
   }
   if (!scene.label.empty()) {
     return scene.label;
   }
-  if (const char *builtin_label = BuiltinSceneLabel(scene.id)) {
+  if (const char* builtin_label = BuiltinSceneLabel(scene.id)) {
     return builtin_label;
   }
   return scene.id;
 }
 
-bool AddScene(Config *config, const Definition &def, std::string *error) {
+bool AddScene(Config* config, const Definition& def, std::string* error) {
   Definition normalized = def;
   NormalizeDefinition(&normalized);
   if (!ValidateDefinition(normalized, error)) {
@@ -152,9 +154,8 @@ bool AddScene(Config *config, const Definition &def, std::string *error) {
   return true;
 }
 
-bool UpdateScene(Config *config, const std::string &id, const Definition &def,
-                 std::string *error) {
-  for (auto &scene : config->scenes) {
+bool UpdateScene(Config* config, const std::string& id, const Definition& def, std::string* error) {
+  for (auto& scene : config->scenes) {
     if (scene.id == id) {
       Definition updated = scene;
       updated.label = def.label;
@@ -177,9 +178,8 @@ bool UpdateScene(Config *config, const std::string &id, const Definition &def,
   return false;
 }
 
-bool RemoveScene(Config *config, const std::string &id, bool force,
-                 std::string *error) {
-  if (const auto *scene = Find(*config, id); scene && scene->builtin) {
+bool RemoveScene(Config* config, const std::string& id, bool force, std::string* error) {
+  if (const auto* scene = Find(*config, id); scene && scene->builtin) {
     if (error)
       *error = "Cannot remove built-in scene '" + id + "'.";
     return false;
@@ -195,8 +195,7 @@ bool RemoveScene(Config *config, const std::string &id, bool force,
     if (it->id == id) {
       config->scenes.erase(it);
       if (config->activeSceneId == id) {
-        config->activeSceneId =
-            config->scenes.empty() ? "" : config->scenes.front().id;
+        config->activeSceneId = config->scenes.empty() ? "" : config->scenes.front().id;
       }
       return true;
     }
@@ -206,7 +205,7 @@ bool RemoveScene(Config *config, const std::string &id, bool force,
   return false;
 }
 
-bool SetActiveScene(Config *config, const std::string &id, std::string *error) {
+bool SetActiveScene(Config* config, const std::string& id, std::string* error) {
   if (!Find(*config, id)) {
     if (error)
       *error = "Scene id '" + id + "' not found.";
@@ -216,13 +215,13 @@ bool SetActiveScene(Config *config, const std::string &id, std::string *error) {
   return true;
 }
 
-int ClearProviderReferences(Config *config, std::string_view provider_id) {
+int ClearProviderReferences(Config* config, std::string_view provider_id) {
   if (!config || provider_id.empty()) {
     return 0;
   }
 
   int updated = 0;
-  for (auto &scene : config->scenes) {
+  for (auto& scene : config->scenes) {
     if (scene.provider_id != provider_id) {
       continue;
     }
