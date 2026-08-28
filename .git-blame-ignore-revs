@@ -1,3 +1,4 @@
 # Git blame ignore revisions file for fcitx5-vinput
 # List of commits that performed full repository formatting or large-scale lint refactoring.
 # Configure locally with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+95f2dc56cd90ccc6feed36cb71e26134fde83663
