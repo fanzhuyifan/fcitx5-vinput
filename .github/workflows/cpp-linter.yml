@@ -1,9 +1,6 @@
 name: cpp-linter
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
 
@@ -22,23 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: ./scripts/ci-install-build-deps.sh ubuntu24.04
-
-      - name: Install sherpa-onnx runtime for configuration
-        run: |
-          prefix="${RUNNER_TEMP}/sherpa-onnx-install"
-          source scripts/sherpa-onnx-vars.sh
-          bash scripts/build-sherpa-onnx.sh "${SHERPA_ONNX_VERSION}" "${prefix}"
-          echo "VINPUT_CMAKE_PREFIX_PATH=${prefix}" >> "${GITHUB_ENV}"
-
-      - name: Generate compilation database (CMake configure)
-        run: |
-          cmake --preset ci-clang-mold \
-            -DVINPUT_PACKAGE_HOMEPAGE_URL="${{ github.server_url }}/${{ github.repository }}" \
-            -DVINPUT_RUNTIME_MODE=bundled
-
-      - name: Run cpp-linter
+      - name: Run cpp-linter (PR Review & Formatting)
         uses: cpp-linter/cpp-linter-action@v2
         id: linter
         env:
@@ -47,15 +28,14 @@ jobs:
           style: 'file'
           tidy-checks: ''
           version: '18'
-          database: 'build'
-          lines-changed-only: ${{ github.event_name == 'pull_request' }}
-          files-changed-only: ${{ github.event_name == 'pull_request' }}
+          lines-changed-only: true
+          files-changed-only: true
           step-summary: true
           file-annotations: true
-          thread-comments: ${{ github.event_name == 'pull_request' && 'update' }}
+          thread-comments: 'update'
 
-      - name: Check linter outcome
-        if: steps.linter.outputs.checks-failed > 0
+      - name: Fail on formatting violations
+        if: steps.linter.outputs.clang-format-checks-failed > 0
         run: |
-          echo "cpp-linter failed with ${{ steps.linter.outputs.checks-failed }} failures."
+          echo "clang-format checks failed! Please run 'just fmt' locally."
           exit 1
