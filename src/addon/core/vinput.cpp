@@ -1,4 +1,16 @@
 #include "core/vinput.h"
+
+#include <chrono>
+#include <cstdint>
+#include <dbus_public.h>
+#include <fcitx-config/iniparser.h>
+#include <fcitx-utils/event.h>
+#include <fcitx/inputcontext.h>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <string>
+#include <string_view>
+
 #include "common/config/core_config.h"
 #include "common/dbus/dbus_interface.h"
 #include "common/i18n.h"
@@ -7,26 +19,14 @@
 #include "common/utils/path_utils.h"
 #include "common/utils/sandbox.h"
 #include "common/utils/string_utils.h"
+
 #include "dbus/notifier_dbus_object.h"
-
-#include <dbus_public.h>
-#include <fcitx-config/iniparser.h>
-#include <fcitx-utils/event.h>
-#include <fcitx/inputcontext.h>
-
-#include <chrono>
-#include <cstdint>
-#include <fstream>
-#include <string>
-#include <string_view>
-
-#include <nlohmann/json.hpp>
 
 using namespace vinput::dbus;
 
 namespace {
 
-constexpr const char *kContextSourceUser = "user";
+constexpr const char* kContextSourceUser = "user";
 constexpr uint64_t kContextFlushDelayUsec = 5 * 1000 * 1000; // 5 seconds
 
 int64_t CurrentUnixTimestamp() {
@@ -40,8 +40,7 @@ void ensureDaemonServiceInstalled() {
   if (!vinput::sandbox::IsInSandbox())
     return;
 
-  const std::filesystem::path dest =
-      vinput::path::DaemonServiceUnitInstallPath();
+  const std::filesystem::path dest = vinput::path::DaemonServiceUnitInstallPath();
   if (dest.empty()) {
     return;
   }
@@ -68,8 +67,7 @@ void ensureDaemonServiceInstalled() {
 
   std::string file_error;
   if (!vinput::file::EnsureParentDirectory(dest, &file_error)) {
-    FCITX_LOG(Error) << "vinput: failed to prepare systemd user dir: "
-                     << file_error;
+    FCITX_LOG(Error) << "vinput: failed to prepare systemd user dir: " << file_error;
     return;
   }
   if (!vinput::file::AtomicWriteTextFile(dest, content, &file_error)) {
@@ -79,89 +77,83 @@ void ensureDaemonServiceInstalled() {
   }
   FCITX_LOG(Info) << "vinput: installed vinput-daemon.service to " << dest;
 
-  auto reload_cmd = vinput::sandbox::WrapHostCommand(
-      {"systemctl", "--user", "daemon-reload"});
+  auto reload_cmd = vinput::sandbox::WrapHostCommand({"systemctl", "--user", "daemon-reload"});
   std::string cmd;
-  for (const auto &arg : reload_cmd) {
+  for (const auto& arg : reload_cmd) {
     if (!cmd.empty())
       cmd += ' ';
     cmd += arg;
   }
   int ret = system(cmd.c_str());
   if (ret != 0) {
-    FCITX_LOG(Error)
-        << "vinput: failed to reload systemd user daemon, return code: " << ret;
+    FCITX_LOG(Error) << "vinput: failed to reload systemd user daemon, return code: " << ret;
   }
 }
 } // namespace
 
-VinputEngine::VinputEngine(fcitx::Instance *instance) : instance_(instance) {
+VinputEngine::VinputEngine(fcitx::Instance* instance) : instance_(instance) {
   vinput::i18n::Init();
   ensureDaemonServiceInstalled();
   reloadConfig();
   event_dispatcher_.attach(&instance_->eventLoop());
 
   eventHandlers_.emplace_back(instance_->watchEvent(
-      fcitx::EventType::InputContextKeyEvent,
-      fcitx::EventWatcherPhase::PreInputMethod,
-      [this](fcitx::Event &event) { handleKeyEvent(event); }));
+      fcitx::EventType::InputContextKeyEvent, fcitx::EventWatcherPhase::PreInputMethod,
+      [this](fcitx::Event& event) { handleKeyEvent(event); }));
 
   eventHandlers_.emplace_back(instance_->watchEvent(
-      fcitx::EventType::InputContextCreated,
-      fcitx::EventWatcherPhase::PreInputMethod, [this](fcitx::Event &event) {
-        auto &icEvent = static_cast<fcitx::InputContextEvent &>(event);
-        auto *ic = icEvent.inputContext();
-        ic->setCapabilityFlags(ic->capabilityFlags() |
-                               fcitx::CapabilityFlag::SurroundingText);
+      fcitx::EventType::InputContextCreated, fcitx::EventWatcherPhase::PreInputMethod,
+      [this](fcitx::Event& event) {
+        auto& icEvent = static_cast<fcitx::InputContextEvent&>(event);
+        auto* ic = icEvent.inputContext();
+        ic->setCapabilityFlags(ic->capabilityFlags() | fcitx::CapabilityFlag::SurroundingText);
         rememberInputContext(ic);
       }));
 
-  eventHandlers_.emplace_back(instance_->watchEvent(
-      fcitx::EventType::InputContextDestroyed,
-      fcitx::EventWatcherPhase::PreInputMethod, [this](fcitx::Event &event) {
-        auto &icEvent = static_cast<fcitx::InputContextEvent &>(event);
-        auto *ic = icEvent.inputContext();
-        if (session_ && session_->ic == ic) {
-          session_.reset();
-        }
-        if (status_ic_ == ic) {
-          status_ic_ = nullptr;
-          stopStatusSyncIfIdle();
-        }
-        if (last_active_ic_ == ic) {
-          last_active_ic_ = nullptr;
-        }
-        if (scene_menu_ic_ == ic) {
-          resetSceneMenuState();
-        }
-        if (asr_menu_ic_ == ic) {
-          resetAsrMenuState();
-        }
-        if (result_menu_ic_ == ic) {
-          resetResultMenuState();
-        }
-        if (context_buffer_ic_ == ic) {
-          flushContextBuffer();
-        }
-      }));
+  eventHandlers_.emplace_back(
+      instance_->watchEvent(fcitx::EventType::InputContextDestroyed,
+                            fcitx::EventWatcherPhase::PreInputMethod, [this](fcitx::Event& event) {
+                              auto& icEvent = static_cast<fcitx::InputContextEvent&>(event);
+                              auto* ic = icEvent.inputContext();
+                              if (session_ && session_->ic == ic) {
+                                session_.reset();
+                              }
+                              if (status_ic_ == ic) {
+                                status_ic_ = nullptr;
+                                stopStatusSyncIfIdle();
+                              }
+                              if (last_active_ic_ == ic) {
+                                last_active_ic_ = nullptr;
+                              }
+                              if (scene_menu_ic_ == ic) {
+                                resetSceneMenuState();
+                              }
+                              if (asr_menu_ic_ == ic) {
+                                resetAsrMenuState();
+                              }
+                              if (result_menu_ic_ == ic) {
+                                resetResultMenuState();
+                              }
+                              if (context_buffer_ic_ == ic) {
+                                flushContextBuffer();
+                              }
+                            }));
 
-  eventHandlers_.emplace_back(instance_->watchEvent(
-      fcitx::EventType::InputContextCommitString,
-      fcitx::EventWatcherPhase::PostInputMethod, [this](fcitx::Event &event) {
-        auto &commitEvent =
-            static_cast<fcitx::CommitStringEvent &>(event);
-        onCommitString(commitEvent.text(), commitEvent.inputContext());
-      }));
+  eventHandlers_.emplace_back(
+      instance_->watchEvent(fcitx::EventType::InputContextCommitString,
+                            fcitx::EventWatcherPhase::PostInputMethod, [this](fcitx::Event& event) {
+                              auto& commitEvent = static_cast<fcitx::CommitStringEvent&>(event);
+                              onCommitString(commitEvent.text(), commitEvent.inputContext());
+                            }));
 
-  auto *dbus_addon = instance_->addonManager().addon("dbus");
+  auto* dbus_addon = instance_->addonManager().addon("dbus");
   if (dbus_addon) {
     bus_ = dbus_addon->call<fcitx::IDBusModule::bus>();
     notifier_dbus_ = std::make_unique<VinputNotifierDBusObject>(
-        [this](const vinput::dbus::ErrorInfo &notification) {
+        [this](const vinput::dbus::ErrorInfo& notification) {
           showDaemonNotification(notification);
         });
-    if (!bus_->addObjectVTable(vinput::dbus::kNotifierObjectPath,
-                               vinput::dbus::kNotifierInterface,
+    if (!bus_->addObjectVTable(vinput::dbus::kNotifierObjectPath, vinput::dbus::kNotifierInterface,
                                *notifier_dbus_)) {
       FCITX_LOG(Error) << "vinput: failed to register notifier DBus object";
       notifier_dbus_.reset();
@@ -200,11 +192,11 @@ void VinputEngine::save() {
   fcitx::safeSaveAsIni(config_, kVinputConfigPath);
 }
 
-const fcitx::Configuration *VinputEngine::getConfig() const {
+const fcitx::Configuration* VinputEngine::getConfig() const {
   return &config_;
 }
 
-void VinputEngine::setConfig(const fcitx::RawConfig &rawConfig) {
+void VinputEngine::setConfig(const fcitx::RawConfig& rawConfig) {
   config_.load(rawConfig, true);
   applySettings();
   save();
@@ -229,7 +221,7 @@ void VinputEngine::reloadSceneConfig() {
   active_scene_id_ = scene_config_.activeSceneId;
 
   int max_cl = 0;
-  for (const auto &s : scene_config_.scenes) {
+  for (const auto& s : scene_config_.scenes) {
     if (s.context_lines > max_cl) {
       max_cl = s.context_lines;
     }
@@ -237,15 +229,15 @@ void VinputEngine::reloadSceneConfig() {
   max_context_lines_ = max_cl;
 }
 
-void VinputEngine::rememberInputContext(fcitx::InputContext *ic) {
+void VinputEngine::rememberInputContext(fcitx::InputContext* ic) {
   if (!ic) {
     return;
   }
   last_active_ic_ = ic;
 }
 
-fcitx::InputContext *VinputEngine::resolveFrontendInputContext(
-    fcitx::InputContext *fallback_ic) const {
+fcitx::InputContext*
+VinputEngine::resolveFrontendInputContext(fcitx::InputContext* fallback_ic) const {
   if (session_) {
     return session_->ic;
   }
@@ -258,14 +250,12 @@ fcitx::InputContext *VinputEngine::resolveFrontendInputContext(
   return last_active_ic_;
 }
 
-void VinputEngine::appendContextEntry(const std::string &text,
-                                      const char *source) {
+void VinputEngine::appendContextEntry(const std::string& text, const char* source) {
   if (text.empty()) {
     return;
   }
   // Flush user buffer before writing non-user entries to preserve ordering.
-  if (source && std::string_view(source) != kContextSourceUser &&
-      !context_buffer_text_.empty()) {
+  if (source && std::string_view(source) != kContextSourceUser && !context_buffer_text_.empty()) {
     flushContextBuffer();
   }
   const auto path = vinput::path::ContextCachePath();
@@ -282,8 +272,7 @@ void VinputEngine::appendContextEntry(const std::string &text,
   {
     std::ofstream ofs(path, std::ios::app);
     if (ofs) {
-      ofs << entry.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace)
-          << '\n';
+      ofs << entry.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace) << '\n';
     }
   }
 
@@ -318,7 +307,7 @@ void VinputEngine::appendContextEntry(const std::string &text,
   }
 }
 
-void VinputEngine::suppressNextCommitContext(const std::string &text) {
+void VinputEngine::suppressNextCommitContext(const std::string& text) {
   if (text.empty()) {
     pending_suppressed_commit_text_.reset();
     return;
@@ -338,8 +327,7 @@ void VinputEngine::flushContextBuffer() {
   }
 }
 
-void VinputEngine::accumulateContextBuffer(const std::string &text,
-                                           fcitx::InputContext *ic) {
+void VinputEngine::accumulateContextBuffer(const std::string& text, fcitx::InputContext* ic) {
   // IC changed — flush old buffer first.
   if (ic != context_buffer_ic_ && !context_buffer_text_.empty()) {
     flushContextBuffer();
@@ -349,10 +337,8 @@ void VinputEngine::accumulateContextBuffer(const std::string &text,
   // Language-aware joining.
   if (!context_buffer_text_.empty()) {
     const bool cjk_boundary =
-        vinput::str::IsCjkCodepoint(
-            vinput::str::LastUtf8Codepoint(context_buffer_text_)) ||
-        vinput::str::IsCjkCodepoint(
-            vinput::str::FirstUtf8Codepoint(text));
+        vinput::str::IsCjkCodepoint(vinput::str::LastUtf8Codepoint(context_buffer_text_)) ||
+        vinput::str::IsCjkCodepoint(vinput::str::FirstUtf8Codepoint(text));
     if (!cjk_boundary && context_buffer_text_.back() != ' ') {
       context_buffer_text_ += ' ';
     }
@@ -360,20 +346,17 @@ void VinputEngine::accumulateContextBuffer(const std::string &text,
   context_buffer_text_ += text;
 
   // Sentence-ending punctuation → flush immediately.
-  const uint32_t last_cp =
-      vinput::str::LastUtf8Codepoint(context_buffer_text_);
+  const uint32_t last_cp = vinput::str::LastUtf8Codepoint(context_buffer_text_);
   if (vinput::str::IsSentenceEndingPunctuation(last_cp)) {
     flushContextBuffer();
     return;
   }
 
   // Reset 5s inactivity timer.
-  const auto fire_at =
-      fcitx::now(CLOCK_MONOTONIC) + kContextFlushDelayUsec;
+  const auto fire_at = fcitx::now(CLOCK_MONOTONIC) + kContextFlushDelayUsec;
   if (!context_flush_timer_) {
     context_flush_timer_ = instance_->eventLoop().addTimeEvent(
-        CLOCK_MONOTONIC, fire_at, 0,
-        [this](fcitx::EventSourceTime *, uint64_t) {
+        CLOCK_MONOTONIC, fire_at, 0, [this](fcitx::EventSourceTime*, uint64_t) {
           flushContextBuffer();
           return false;
         });
@@ -384,8 +367,7 @@ void VinputEngine::accumulateContextBuffer(const std::string &text,
   }
 }
 
-void VinputEngine::onCommitString(const std::string &text,
-                                  fcitx::InputContext *ic) {
+void VinputEngine::onCommitString(const std::string& text, fcitx::InputContext* ic) {
   if (text.empty()) {
     return;
   }
@@ -399,8 +381,7 @@ void VinputEngine::onCommitString(const std::string &text,
   accumulateContextBuffer(text, ic);
 }
 
-fcitx::AddonInstance *
-VinputEngineFactory::create(fcitx::AddonManager *manager) {
+fcitx::AddonInstance* VinputEngineFactory::create(fcitx::AddonManager* manager) {
   return new VinputEngine(manager->instance());
 }
 

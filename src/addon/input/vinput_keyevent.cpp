@@ -1,17 +1,17 @@
+#include <chrono>
+#include <fcitx-utils/key.h>
+#include <fcitx-utils/utf8.h>
+#include <fcitx/inputcontext.h>
+#include <string>
+
 #include "common/config/core_config.h"
 #include "common/dbus/dbus_interface.h"
 #include "common/i18n.h"
 #include "common/scene/postprocess_scene.h"
 #include "common/utils/debug_log.h"
-#include "core/vinput.h"
 
 #include "clipboard_public.h"
-#include <fcitx-utils/key.h>
-#include <fcitx-utils/utf8.h>
-#include <fcitx/inputcontext.h>
-
-#include <chrono>
-#include <string>
+#include "core/vinput.h"
 
 namespace {
 
@@ -19,7 +19,9 @@ constexpr auto kReleaseDebounce = std::chrono::milliseconds(500);
 constexpr auto kToggleThreshold = std::chrono::milliseconds(300);
 constexpr auto kTriggerDebounce = std::chrono::milliseconds(80);
 
-std::string NoSelectionPreeditText() { return _("Please select text first."); }
+std::string NoSelectionPreeditText() {
+  return _("Please select text first.");
+}
 
 std::string CommandDisabledPreeditText() {
   return _("Command mode is disabled (candidate count is 0).");
@@ -36,8 +38,8 @@ std::string DaemonNotRespondingPreeditText() {
 
 } // namespace
 
-void VinputEngine::handleKeyEvent(fcitx::Event &event) {
-  auto &keyEvent = static_cast<fcitx::KeyEvent &>(event);
+void VinputEngine::handleKeyEvent(fcitx::Event& event) {
+  auto& keyEvent = static_cast<fcitx::KeyEvent&>(event);
   rememberInputContext(keyEvent.inputContext());
 
   if (result_menu_visible_ && handleResultMenuKeyEvent(keyEvent)) {
@@ -52,8 +54,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
     return;
   }
 
-  if (!session_ && keyEvent.key().checkKeyList(asr_menu_key_) &&
-      !keyEvent.isRelease()) {
+  if (!session_ && keyEvent.key().checkKeyList(asr_menu_key_) && !keyEvent.isRelease()) {
     showAsrMenu(keyEvent.inputContext());
     keyEvent.filterAndAccept();
     return;
@@ -64,8 +65,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
     return;
   }
 
-  if (!session_ && keyEvent.key().checkKeyList(scene_menu_key_) &&
-      !keyEvent.isRelease()) {
+  if (!session_ && keyEvent.key().checkKeyList(scene_menu_key_) && !keyEvent.isRelease()) {
     showSceneMenu(keyEvent.inputContext());
     keyEvent.filterAndAccept();
     return;
@@ -83,8 +83,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
   const bool is_command = command_index >= 0;
 
   FCITX_LOG(Debug) << "vinput handleKeyEvent: " << keyEvent.key()
-                   << " is_release=" << keyEvent.isRelease()
-                   << " is_trigger=" << is_trigger
+                   << " is_release=" << keyEvent.isRelease() << " is_trigger=" << is_trigger
                    << " is_command=" << is_command;
 
   if ((is_trigger || is_command) && !keyEvent.isRelease()) {
@@ -98,8 +97,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
 
     cancelPendingStop();
 
-    if (session_ && session_->phase == Session::Phase::Recording &&
-        session_->trigger_released) {
+    if (session_ && session_->phase == Session::Phase::Recording && session_->trigger_released) {
       finishStopRecording();
       keyEvent.filterAndAccept();
       return;
@@ -110,23 +108,20 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
       return;
     }
 
-    auto *ic = keyEvent.inputContext();
-    auto trigger = is_trigger ? trigger_keys_[trigger_index]
-                              : command_keys_[command_index];
+    auto* ic = keyEvent.inputContext();
+    auto trigger = is_trigger ? trigger_keys_[trigger_index] : command_keys_[command_index];
 
     // Hold mode: defer start until key held >= kToggleThreshold
     if (trigger_mode_ == TriggerMode::Hold) {
       const std::string daemon_status = last_known_daemon_status_;
-      if (is_trigger && !session_ &&
-          daemon_status == vinput::dbus::kStatusRecording) {
+      if (is_trigger && !session_ && daemon_status == vinput::dbus::kStatusRecording) {
         hideResultMenu();
         enterRecordingState(ic, trigger, false);
         finishStopRecording();
         keyEvent.filterAndAccept();
         return;
       }
-      if (!daemon_status.empty() &&
-          daemon_status != vinput::dbus::kStatusIdle) {
+      if (!daemon_status.empty() && daemon_status != vinput::dbus::kStatusIdle) {
         applyDaemonStatusLocally(daemon_status, ic, is_command);
         keyEvent.filterAndAccept();
         return;
@@ -136,18 +131,16 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
       const auto fire_at_usec =
           fcitx::now(CLOCK_MONOTONIC) +
           static_cast<uint64_t>(
-              std::chrono::duration_cast<std::chrono::microseconds>(
-                  kToggleThreshold)
-                  .count());
+              std::chrono::duration_cast<std::chrono::microseconds>(kToggleThreshold).count());
       pending_start_event_ = instance_->eventLoop().addTimeEvent(
           CLOCK_MONOTONIC, fire_at_usec, 0,
-          [this, ic, trigger, is_command](fcitx::EventSourceTime *, uint64_t) {
+          [this, ic, trigger, is_command](fcitx::EventSourceTime*, uint64_t) {
             hideResultMenu();
 
             if (is_command) {
               {
                 auto core_config = LoadCoreConfig();
-                const auto *cmd_scene = FindCommandScene(core_config);
+                const auto* cmd_scene = FindCommandScene(core_config);
                 if (!cmd_scene || cmd_scene->candidate_count <= 0) {
                   finishFrontendSession(ic);
                   updatePreedit(ic, CommandDisabledPreeditText());
@@ -155,8 +148,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
                   return false;
                 }
                 if (cmd_scene->provider_id.empty() ||
-                    ResolveLlmProvider(core_config, cmd_scene->provider_id) ==
-                        nullptr) {
+                    ResolveLlmProvider(core_config, cmd_scene->provider_id) == nullptr) {
                   finishFrontendSession(ic);
                   updatePreedit(ic, CommandNoProviderPreeditText());
                   pending_start_event_.reset();
@@ -164,27 +156,21 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
                 }
               }
               std::string selected_text;
-              auto &surrounding = ic->surroundingText();
-              if (surrounding.isValid() &&
-                  surrounding.cursor() != surrounding.anchor()) {
-                const auto &text = surrounding.text();
-                auto char_from =
-                    std::min(surrounding.cursor(), surrounding.anchor());
-                auto char_to =
-                    std::max(surrounding.cursor(), surrounding.anchor());
+              auto& surrounding = ic->surroundingText();
+              if (surrounding.isValid() && surrounding.cursor() != surrounding.anchor()) {
+                const auto& text = surrounding.text();
+                auto char_from = std::min(surrounding.cursor(), surrounding.anchor());
+                auto char_to = std::max(surrounding.cursor(), surrounding.anchor());
                 if (fcitx::utf8::validate(text)) {
-                  auto byte_from =
-                      fcitx::utf8::ncharByteLength(text.begin(), char_from);
-                  auto byte_len = fcitx::utf8::ncharByteLength(
-                      std::next(text.begin(), byte_from), char_to - char_from);
+                  auto byte_from = fcitx::utf8::ncharByteLength(text.begin(), char_from);
+                  auto byte_len = fcitx::utf8::ncharByteLength(std::next(text.begin(), byte_from),
+                                                               char_to - char_from);
                   selected_text = text.substr(byte_from, byte_len);
                 }
               }
               if (selected_text.empty()) {
-                if (auto *clipboard =
-                        instance_->addonManager().addon("clipboard")) {
-                  auto primary =
-                      clipboard->call<fcitx::IClipboard::primary>(ic);
+                if (auto* clipboard = instance_->addonManager().addon("clipboard")) {
+                  auto primary = clipboard->call<fcitx::IClipboard::primary>(ic);
                   if (fcitx::utf8::validate(primary)) {
                     selected_text = std::move(primary);
                   }
@@ -196,27 +182,23 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
                 } else {
                   clearPreedit(ic);
                 }
-                vinput::debug::Log(
-                    "command trigger ignored because no selection text is "
-                    "available\n");
+                vinput::debug::Log("command trigger ignored because no selection text is "
+                                   "available\n");
                 updatePreedit(ic, NoSelectionPreeditText());
                 pending_start_event_.reset();
                 return false;
               }
               enterPendingStartState(ic, trigger, true);
-              FCITX_LOG(Debug)
-                  << "vinput: command key held, selected_text length="
-                  << selected_text.size();
+              FCITX_LOG(Debug) << "vinput: command key held, selected_text length="
+                               << selected_text.size();
               if (!callStartCommandRecording(selected_text)) {
                 finishFrontendSession(ic);
                 if (!bus_) {
-                  vinput::debug::Log(
-                      "command trigger fallback: daemon bus unavailable\n");
+                  vinput::debug::Log("command trigger fallback: daemon bus unavailable\n");
                   updatePreedit(ic, DaemonUnavailablePreeditText());
                 } else if (!daemonSyncAllowed()) {
-                  vinput::debug::Log(
-                      "command trigger fallback: daemon sync throttled "
-                      "after timeout/failure\n");
+                  vinput::debug::Log("command trigger fallback: daemon sync throttled "
+                                     "after timeout/failure\n");
                   updatePreedit(ic, DaemonNotRespondingPreeditText());
                 }
               }
@@ -226,13 +208,11 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
               if (!callStartRecording()) {
                 finishFrontendSession(ic);
                 if (!bus_) {
-                  vinput::debug::Log(
-                      "record trigger fallback: daemon bus unavailable\n");
+                  vinput::debug::Log("record trigger fallback: daemon bus unavailable\n");
                   updatePreedit(ic, DaemonUnavailablePreeditText());
                 } else if (!daemonSyncAllowed()) {
-                  vinput::debug::Log(
-                      "record trigger fallback: daemon sync throttled "
-                      "after timeout/failure\n");
+                  vinput::debug::Log("record trigger fallback: daemon sync throttled "
+                                     "after timeout/failure\n");
                   updatePreedit(ic, DaemonNotRespondingPreeditText());
                 }
               }
@@ -247,8 +227,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
 
     // Tap / Both mode: start immediately on press
     const std::string daemon_status = last_known_daemon_status_;
-    if (is_trigger && !session_ &&
-        daemon_status == vinput::dbus::kStatusRecording) {
+    if (is_trigger && !session_ && daemon_status == vinput::dbus::kStatusRecording) {
       hideResultMenu();
       enterRecordingState(ic, trigger, false);
       finishStopRecording();
@@ -266,7 +245,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
       // Check command scene has candidate_count > 0 and a valid provider
       {
         auto core_config = LoadCoreConfig();
-        const auto *cmd_scene = FindCommandScene(core_config);
+        const auto* cmd_scene = FindCommandScene(core_config);
         if (!cmd_scene || cmd_scene->candidate_count <= 0) {
           finishFrontendSession(ic);
           updatePreedit(ic, CommandDisabledPreeditText());
@@ -274,8 +253,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
           return;
         }
         if (cmd_scene->provider_id.empty() ||
-            ResolveLlmProvider(core_config, cmd_scene->provider_id) ==
-                nullptr) {
+            ResolveLlmProvider(core_config, cmd_scene->provider_id) == nullptr) {
           finishFrontendSession(ic);
           updatePreedit(ic, CommandNoProviderPreeditText());
           keyEvent.filterAndAccept();
@@ -283,22 +261,20 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
         }
       }
       std::string selected_text;
-      auto &surrounding = ic->surroundingText();
-      if (surrounding.isValid() &&
-          surrounding.cursor() != surrounding.anchor()) {
-        const auto &text = surrounding.text();
+      auto& surrounding = ic->surroundingText();
+      if (surrounding.isValid() && surrounding.cursor() != surrounding.anchor()) {
+        const auto& text = surrounding.text();
         auto char_from = std::min(surrounding.cursor(), surrounding.anchor());
         auto char_to = std::max(surrounding.cursor(), surrounding.anchor());
         if (fcitx::utf8::validate(text)) {
-          auto byte_from =
-              fcitx::utf8::ncharByteLength(text.begin(), char_from);
-          auto byte_len = fcitx::utf8::ncharByteLength(
-              std::next(text.begin(), byte_from), char_to - char_from);
+          auto byte_from = fcitx::utf8::ncharByteLength(text.begin(), char_from);
+          auto byte_len =
+              fcitx::utf8::ncharByteLength(std::next(text.begin(), byte_from), char_to - char_from);
           selected_text = text.substr(byte_from, byte_len);
         }
       }
       if (selected_text.empty()) {
-        if (auto *clipboard = instance_->addonManager().addon("clipboard")) {
+        if (auto* clipboard = instance_->addonManager().addon("clipboard")) {
           auto primary = clipboard->call<fcitx::IClipboard::primary>(ic);
           if (fcitx::utf8::validate(primary)) {
             selected_text = std::move(primary);
@@ -311,8 +287,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
         } else {
           clearPreedit(ic);
         }
-        vinput::debug::Log(
-            "command trigger ignored because no selection text is available\n");
+        vinput::debug::Log("command trigger ignored because no selection text is available\n");
         updatePreedit(ic, NoSelectionPreeditText());
         keyEvent.filterAndAccept();
         return;
@@ -323,8 +298,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
       if (!callStartCommandRecording(selected_text)) {
         finishFrontendSession(ic);
         if (!bus_) {
-          vinput::debug::Log(
-              "command trigger fallback: daemon bus unavailable\n");
+          vinput::debug::Log("command trigger fallback: daemon bus unavailable\n");
           updatePreedit(ic, DaemonUnavailablePreeditText());
         } else if (!daemonSyncAllowed()) {
           vinput::debug::Log("command trigger fallback: daemon sync throttled "
@@ -338,8 +312,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
       if (!callStartRecording()) {
         finishFrontendSession(ic);
         if (!bus_) {
-          vinput::debug::Log(
-              "record trigger fallback: daemon bus unavailable\n");
+          vinput::debug::Log("record trigger fallback: daemon bus unavailable\n");
           updatePreedit(ic, DaemonUnavailablePreeditText());
         } else if (!daemonSyncAllowed()) {
           vinput::debug::Log("record trigger fallback: daemon sync throttled "
@@ -353,8 +326,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
   }
 
   // Hold mode: cancel deferred start on early release, otherwise push-to-talk
-  if (trigger_mode_ == TriggerMode::Hold &&
-      (is_trigger || is_command) && keyEvent.isRelease()) {
+  if (trigger_mode_ == TriggerMode::Hold && (is_trigger || is_command) && keyEvent.isRelease()) {
     if (pending_start_event_ && pending_start_event_->isEnabled()) {
       cancelPendingStart();
       keyEvent.filterAndAccept();
@@ -374,8 +346,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
 
   // Tap mode: release events are irrelevant (toggle on press only);
   // just mark trigger_released so the next press can toggle off.
-  if (trigger_mode_ == TriggerMode::Tap &&
-      (is_trigger || is_command) && keyEvent.isRelease()) {
+  if (trigger_mode_ == TriggerMode::Tap && (is_trigger || is_command) && keyEvent.isRelease()) {
     if (session_) {
       session_->trigger_released = true;
     }
@@ -384,8 +355,8 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
   }
 
   // Both mode: push-to-talk stop on release if held long enough
-  if (session_ && session_->phase == Session::Phase::Recording &&
-      keyEvent.isRelease() && isReleaseOfActiveTrigger(keyEvent.key())) {
+  if (session_ && session_->phase == Session::Phase::Recording && keyEvent.isRelease() &&
+      isReleaseOfActiveTrigger(keyEvent.key())) {
     session_->trigger_released = true;
     auto held = std::chrono::steady_clock::now() - session_->press_time;
     if (held >= kToggleThreshold) {
@@ -405,7 +376,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event &event) {
   }
 }
 
-bool VinputEngine::isReleaseOfActiveTrigger(const fcitx::Key &key) const {
+bool VinputEngine::isReleaseOfActiveTrigger(const fcitx::Key& key) const {
   if (!session_) {
     return false;
   }
@@ -413,8 +384,7 @@ bool VinputEngine::isReleaseOfActiveTrigger(const fcitx::Key &key) const {
   const auto release_key = key.normalize();
   const auto trigger_key = session_->trigger.normalize();
 
-  if (trigger_key.isModifier() &&
-      release_key.isReleaseOfModifier(trigger_key)) {
+  if (trigger_key.isModifier() && release_key.isReleaseOfModifier(trigger_key)) {
     return true;
   }
 
@@ -423,12 +393,10 @@ bool VinputEngine::isReleaseOfActiveTrigger(const fcitx::Key &key) const {
       return true;
     }
     return release_key.states().testAny(trigger_key.states()) &&
-           (release_key.states() & trigger_key.states()) ==
-               trigger_key.states();
+           (release_key.states() & trigger_key.states()) == trigger_key.states();
   }
 
-  const auto released_modifier_state =
-      fcitx::Key::keySymToStates(release_key.sym());
+  const auto released_modifier_state = fcitx::Key::keySymToStates(release_key.sym());
   return released_modifier_state.toInteger() != 0 &&
          trigger_key.states().testAny(released_modifier_state);
 }
@@ -449,14 +417,11 @@ void VinputEngine::scheduleStopRecording() {
   const auto fire_at_usec =
       fcitx::now(CLOCK_MONOTONIC) +
       static_cast<uint64_t>(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              kReleaseDebounce)
-              .count());
+          std::chrono::duration_cast<std::chrono::microseconds>(kReleaseDebounce).count());
 
   if (!pending_stop_event_) {
     pending_stop_event_ = instance_->eventLoop().addTimeEvent(
-        CLOCK_MONOTONIC, fire_at_usec, 0,
-        [this](fcitx::EventSourceTime *, uint64_t) {
+        CLOCK_MONOTONIC, fire_at_usec, 0, [this](fcitx::EventSourceTime*, uint64_t) {
           finishStopRecording();
           return false;
         });
@@ -469,16 +434,18 @@ void VinputEngine::scheduleStopRecording() {
 }
 
 void VinputEngine::finishStopRecording() {
-  if (!session_ || session_->phase != Session::Phase::Recording) {
+  if (!session_.has_value() || session_->phase != Session::Phase::Recording) {
     return;
   }
 
   reloadSceneConfig();
-  const auto &scene = vinput::scene::Resolve(scene_config_, active_scene_id_);
+  if (!session_.has_value()) {
+    return;
+  }
+  const auto& scene = vinput::scene::Resolve(scene_config_, active_scene_id_);
   active_scene_id_ = scene.id;
   session_->phase = Session::Phase::Busy;
   session_->trigger = fcitx::Key();
-  enterBusyState(session_->ic, session_->command_mode,
-                 _("... Recognizing ..."));
+  enterBusyState(session_->ic, session_->command_mode, _("... Recognizing ..."));
   callStopRecording(scene.id);
 }
