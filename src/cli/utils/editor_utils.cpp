@@ -44,8 +44,7 @@ bool ParseEditorCommand(const char* command, std::vector<std::string>* args) {
       continue;
     }
 
-    if (!in_single_quote && !in_double_quote &&
-        std::isspace(static_cast<unsigned char>(ch))) {
+    if (!in_single_quote && !in_double_quote && std::isspace(static_cast<unsigned char>(ch))) {
       if (!current.empty()) {
         args->push_back(current);
         current.clear();
@@ -67,7 +66,7 @@ bool ParseEditorCommand(const char* command, std::vector<std::string>* args) {
   return !args->empty();
 }
 
-}  // namespace
+} // namespace
 
 int OpenInEditor(const std::filesystem::path& file_path) {
   const char* editor = getenv("VISUAL");

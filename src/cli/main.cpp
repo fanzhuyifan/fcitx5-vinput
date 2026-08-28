@@ -3,15 +3,17 @@
 #include <string>
 #include <unistd.h>
 
+#include "common/i18n.h"
+
 #include "cli/action.h"
-#include "cli/control/register.h"
 #include "cli/config/register.h"
+#include "cli/control/register.h"
 #include "cli/utils/cli_context.h"
 #include "cli/utils/formatter.h"
-#include "common/i18n.h"
+
 #include "config.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   vinput::i18n::Init();
 
   CLI::App app{_("vinput - Voice input manager")};

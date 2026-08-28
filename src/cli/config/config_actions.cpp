@@ -4,12 +4,12 @@
 #include <iostream>
 #include <string>
 
-#include "cli/utils/editor_utils.h"
 #include "common/config/config_router.h"
 #include "common/i18n.h"
 
-int RunConfigDomainGet(const std::string &path, Formatter &fmt,
-                       const CliContext &ctx) {
+#include "cli/utils/editor_utils.h"
+
+int RunConfigDomainGet(const std::string& path, Formatter& fmt, const CliContext& ctx) {
   std::string value, error;
   if (!vinput::config::GetConfigValue(path, &value, &error)) {
     fmt.PrintError(error);
@@ -23,9 +23,8 @@ int RunConfigDomainGet(const std::string &path, Formatter &fmt,
   return 0;
 }
 
-int RunConfigDomainSet(const std::string &path, const std::string &value_arg,
-                       bool from_stdin, Formatter &fmt,
-                       const CliContext &ctx) {
+int RunConfigDomainSet(const std::string& path, const std::string& value_arg, bool from_stdin,
+                       Formatter& fmt, const CliContext& ctx) {
   (void)ctx;
   std::string value = value_arg;
   if (from_stdin) {
@@ -46,8 +45,7 @@ int RunConfigDomainSet(const std::string &path, const std::string &value_arg,
   return 0;
 }
 
-int RunConfigDomainEdit(const std::string &target, Formatter &fmt,
-                        const CliContext &ctx) {
+int RunConfigDomainEdit(const std::string& target, Formatter& fmt, const CliContext& ctx) {
   (void)ctx;
   if (target != "core" && target != "fcitx") {
     fmt.PrintError(_("Unsupported config target. Use 'core' or 'fcitx'."));

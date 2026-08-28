@@ -3,16 +3,16 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "cli/runtime/dbus_client.h"
-#include "cli/utils/cli_helpers.h"
 #include "common/dbus/dbus_interface.h"
 #include "common/i18n.h"
 #include "common/utils/string_utils.h"
 
+#include "cli/runtime/dbus_client.h"
+#include "cli/utils/cli_helpers.h"
+
 namespace {
 
-bool EnsureDaemon(vinput::cli::DbusClient &dbus, Formatter &fmt,
-                  const CliContext &ctx) {
+bool EnsureDaemon(vinput::cli::DbusClient& dbus, Formatter& fmt, const CliContext& ctx) {
   std::string err;
   if (!dbus.IsDaemonRunning(&err)) {
     std::string msg = err.empty() ? _("Daemon is not running.") : err;
@@ -26,9 +26,9 @@ bool EnsureDaemon(vinput::cli::DbusClient &dbus, Formatter &fmt,
   return true;
 }
 
-}  // namespace
+} // namespace
 
-int RunRecordingControlStart(Formatter &fmt, const CliContext &ctx) {
+int RunRecordingControlStart(Formatter& fmt, const CliContext& ctx) {
   vinput::cli::DbusClient dbus;
   if (!EnsureDaemon(dbus, fmt, ctx))
     return 1;
@@ -51,8 +51,7 @@ int RunRecordingControlStart(Formatter &fmt, const CliContext &ctx) {
   return 0;
 }
 
-int RunRecordingControlStop(const std::string &scene_id, Formatter &fmt,
-                            const CliContext &ctx) {
+int RunRecordingControlStop(const std::string& scene_id, Formatter& fmt, const CliContext& ctx) {
   vinput::cli::DbusClient dbus;
   if (!EnsureDaemon(dbus, fmt, ctx))
     return 1;
@@ -77,14 +76,12 @@ int RunRecordingControlStop(const std::string &scene_id, Formatter &fmt,
   } else if (resolved.empty()) {
     fmt.PrintInfo(_("Recording stopped."));
   } else {
-    fmt.PrintInfo(vinput::str::FmtStr(_("Recording stopped (scene: %s)."),
-                                      resolved.c_str()));
+    fmt.PrintInfo(vinput::str::FmtStr(_("Recording stopped (scene: %s)."), resolved.c_str()));
   }
   return 0;
 }
 
-int RunRecordingControlToggle(const std::string &scene_id, Formatter &fmt,
-                              const CliContext &ctx) {
+int RunRecordingControlToggle(const std::string& scene_id, Formatter& fmt, const CliContext& ctx) {
   vinput::cli::DbusClient dbus;
   if (!EnsureDaemon(dbus, fmt, ctx))
     return 1;
@@ -121,16 +118,13 @@ int RunRecordingControlToggle(const std::string &scene_id, Formatter &fmt,
     } else if (resolved.empty()) {
       fmt.PrintInfo(_("Recording stopped."));
     } else {
-      fmt.PrintInfo(vinput::str::FmtStr(_("Recording stopped (scene: %s)."),
-                                        resolved.c_str()));
+      fmt.PrintInfo(vinput::str::FmtStr(_("Recording stopped (scene: %s)."), resolved.c_str()));
     }
     return 0;
   }
 
-  if (status == vinput::dbus::kStatusInferring ||
-      status == vinput::dbus::kStatusPostprocessing) {
-    std::string msg =
-        vinput::str::FmtStr(_("Daemon is busy (status: %s)."), status.c_str());
+  if (status == vinput::dbus::kStatusInferring || status == vinput::dbus::kStatusPostprocessing) {
+    std::string msg = vinput::str::FmtStr(_("Daemon is busy (status: %s)."), status.c_str());
     if (ctx.json_output) {
       fmt.PrintJson({{"ok", false}, {"error", msg}});
     } else {

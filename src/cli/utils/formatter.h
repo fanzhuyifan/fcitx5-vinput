@@ -1,14 +1,21 @@
 #pragma once
 
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <nlohmann/json.hpp>
+
 #include "cli/utils/cli_context.h"
 
 class Formatter {
 public:
+  Formatter() = default;
+  Formatter(const Formatter&) = default;
+  Formatter& operator=(const Formatter&) = default;
+  Formatter(Formatter&&) = default;
+  Formatter& operator=(Formatter&&) = default;
   virtual ~Formatter() = default;
+
   virtual void PrintTable(const std::vector<std::string>& headers,
                           const std::vector<std::vector<std::string>>& rows) = 0;
   virtual void PrintKeyValue(const std::string& key, const std::string& value) = 0;
@@ -33,11 +40,11 @@ public:
 
 private:
   bool use_color_;
-  std::string Green(const std::string& s) const;
-  std::string Red(const std::string& s) const;
-  std::string Yellow(const std::string& s) const;
-  std::string Gray(const std::string& s) const;
-  std::string Bold(const std::string& s) const;
+  [[nodiscard]] std::string Green(const std::string& s) const;
+  [[nodiscard]] std::string Red(const std::string& s) const;
+  [[nodiscard]] std::string Yellow(const std::string& s) const;
+  [[nodiscard]] std::string Gray(const std::string& s) const;
+  [[nodiscard]] std::string Bold(const std::string& s) const;
 };
 
 class JsonFormatter : public Formatter {

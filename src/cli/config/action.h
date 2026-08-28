@@ -6,4 +6,4 @@ namespace vinput::cli::config {
 
 using CliAction = vinput::cli::CliAction;
 
-}  // namespace vinput::cli::config
+} // namespace vinput::cli::config

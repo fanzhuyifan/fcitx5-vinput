@@ -7,6 +7,6 @@
 
 namespace vinput::cli {
 
-using CliAction = std::function<int(Formatter &, const CliContext &)>;
+using CliAction = std::function<int(Formatter&, const CliContext&)>;
 
-}  // namespace vinput::cli
+} // namespace vinput::cli

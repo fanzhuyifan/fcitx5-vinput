@@ -6,6 +6,6 @@
 
 namespace vinput::cli::control {
 
-void RegisterControlCli(CLI::App &app, CliAction *action);
+void RegisterControlCli(CLI::App& app, CliAction* action);
 
-}  // namespace vinput::cli::control
+} // namespace vinput::cli::control

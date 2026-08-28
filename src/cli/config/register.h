@@ -6,6 +6,6 @@
 
 namespace vinput::cli::config {
 
-void RegisterConfigCli(CLI::App &app, CliAction *action);
+void RegisterConfigCli(CLI::App& app, CliAction* action);
 
-}  // namespace vinput::cli::config
+} // namespace vinput::cli::config

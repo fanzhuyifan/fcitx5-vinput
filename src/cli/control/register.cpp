@@ -6,12 +6,12 @@
 
 namespace vinput::cli::control {
 
-void RegisterDaemonCommands(CLI::App &app, CliAction *action);
-void RegisterRecordingCommands(CLI::App &app, CliAction *action);
+void RegisterDaemonCommands(CLI::App& app, CliAction* action);
+void RegisterRecordingCommands(CLI::App& app, CliAction* action);
 
-void RegisterControlCli(CLI::App &app, CliAction *action) {
+void RegisterControlCli(CLI::App& app, CliAction* action) {
   RegisterDaemonCommands(app, action);
   RegisterRecordingCommands(app, action);
 }
 
-}  // namespace vinput::cli::control
+} // namespace vinput::cli::control

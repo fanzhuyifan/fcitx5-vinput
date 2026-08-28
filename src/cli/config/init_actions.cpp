@@ -10,20 +10,17 @@
 
 namespace fs = std::filesystem;
 
-int RunConfigInit(bool force, Formatter &fmt, const CliContext &ctx) {
+int RunConfigInit(bool force, Formatter& fmt, const CliContext& ctx) {
   (void)ctx;
   bool any_created = false;
 
   auto config_path = vinput::path::CoreConfigPath();
   if (fs::exists(config_path) && !force) {
-    fmt.PrintInfo(
-        vinput::str::FmtStr(_("Config already exists: %s"),
-                            config_path.string()));
+    fmt.PrintInfo(vinput::str::FmtStr(_("Config already exists: %s"), config_path.string()));
   } else {
     std::string error;
     if (InitializeCoreConfig(&error)) {
-      fmt.PrintSuccess(
-          vinput::str::FmtStr(_("Created config: %s"), config_path.string()));
+      fmt.PrintSuccess(vinput::str::FmtStr(_("Created config: %s"), config_path.string()));
       any_created = true;
     } else {
       fmt.PrintError(error.empty() ? _("Failed to create config") : error);
@@ -33,18 +30,14 @@ int RunConfigInit(bool force, Formatter &fmt, const CliContext &ctx) {
 
   auto model_dir = vinput::path::DefaultModelBaseDir();
   if (fs::exists(model_dir)) {
-    fmt.PrintInfo(
-        vinput::str::FmtStr(_("Model dir already exists: %s"),
-                            model_dir.string()));
+    fmt.PrintInfo(vinput::str::FmtStr(_("Model dir already exists: %s"), model_dir.string()));
   } else {
     std::string error;
     if (!vinput::file::EnsureParentDirectory(model_dir / ".keep", &error)) {
-      fmt.PrintError(
-          vinput::str::FmtStr(_("Failed to create model dir: %s"), error));
+      fmt.PrintError(vinput::str::FmtStr(_("Failed to create model dir: %s"), error));
       return 1;
     }
-    fmt.PrintSuccess(
-        vinput::str::FmtStr(_("Created model dir: %s"), model_dir.string()));
+    fmt.PrintSuccess(vinput::str::FmtStr(_("Created model dir: %s"), model_dir.string()));
     any_created = true;
   }
 
