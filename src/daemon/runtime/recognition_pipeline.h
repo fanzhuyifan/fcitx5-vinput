@@ -1,15 +1,16 @@
 #pragma once
 
-#include "common/asr/recognition_result.h"
-#include "common/config/core_config.h"
-#include "common/dbus/error_info.h"
-#include "daemon/asr/runtime/recognition_contract.h"
-#include "daemon/postprocess/post_processor.h"
-
 #include <functional>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "common/asr/recognition_result.h"
+#include "common/config/core_config.h"
+#include "common/dbus/error_info.h"
+
+#include "daemon/asr/runtime/recognition_contract.h"
+#include "daemon/postprocess/post_processor.h"
 
 namespace vinput::daemon::runtime {
 
@@ -32,14 +33,14 @@ struct RecognitionPipelineResult {
 
 class RecognitionPipeline {
 public:
-  explicit RecognitionPipeline(PostProcessor *post_processor);
+  explicit RecognitionPipeline(PostProcessor* post_processor);
 
-  RecognitionPipelineResult Process(
-      const RecognitionOrder &order, const CoreConfig &settings,
-      const std::function<void()> &on_enter_postprocessing = {}) const;
+  RecognitionPipelineResult
+  Process(const RecognitionOrder& order, const CoreConfig& settings,
+          const std::function<void()>& on_enter_postprocessing = {}) const;
 
 private:
-  PostProcessor *post_processor_ = nullptr;
+  PostProcessor* post_processor_ = nullptr;
 };
 
-}  // namespace vinput::daemon::runtime
+} // namespace vinput::daemon::runtime

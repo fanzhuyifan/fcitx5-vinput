@@ -47,8 +47,8 @@ class RecognitionSession {
 public:
   virtual ~RecognitionSession() = default;
 
-  virtual bool PushAudio(std::span<const int16_t> pcm, std::string *error) = 0;
-  virtual bool Finish(std::string *error) = 0;
+  virtual bool PushAudio(std::span<const int16_t> pcm, std::string* error) = 0;
+  virtual bool Finish(std::string* error) = 0;
   virtual void Cancel() = 0;
   virtual std::vector<RecognitionEvent> PollEvents() = 0;
 };
@@ -58,8 +58,7 @@ public:
   virtual ~AsrBackend() = default;
 
   virtual BackendDescriptor Describe() const = 0;
-  virtual std::unique_ptr<RecognitionSession>
-  CreateSession(std::string *error) = 0;
+  virtual std::unique_ptr<RecognitionSession> CreateSession(std::string* error) = 0;
 };
 
-}  // namespace vinput::daemon::asr
+} // namespace vinput::daemon::asr

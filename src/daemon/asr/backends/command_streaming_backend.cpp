@@ -1,29 +1,28 @@
 #include "daemon/asr/backends/command_streaming_backend.h"
 
-#include "common/utils/string_utils.h"
-
-#include <fcntl.h>
-#include <nlohmann/json.hpp>
-#include <poll.h>
-#include <spawn.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <fcntl.h>
 #include <map>
+#include <nlohmann/json.hpp>
 #include <optional>
+#include <poll.h>
 #include <span>
+#include <spawn.h>
 #include <string>
 #include <string_view>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
-extern char **environ;
+#include "common/utils/string_utils.h"
+
+extern char** environ;
 
 namespace vinput::daemon::asr {
 
@@ -44,46 +43,46 @@ bool SetNonBlocking(int fd) {
   return fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
 }
 
-void CloseIfOpen(int *fd) {
+void CloseIfOpen(int* fd) {
   if (*fd >= 0) {
     close(*fd);
     *fd = -1;
   }
 }
 
-std::vector<char *> BuildArgv(const CommandAsrProvider &provider,
-                              std::vector<std::string> *storage) {
+std::vector<char*> BuildArgv(const CommandAsrProvider& provider,
+                             std::vector<std::string>* storage) {
   storage->clear();
   storage->reserve(provider.args.size() + 1);
   storage->push_back(provider.command);
-  for (const auto &arg : provider.args) {
+  for (const auto& arg : provider.args) {
     storage->push_back(arg);
   }
 
-  std::vector<char *> argv;
+  std::vector<char*> argv;
   argv.reserve(storage->size() + 1);
-  for (auto &entry : *storage) {
+  for (auto& entry : *storage) {
     argv.push_back(entry.data());
   }
   argv.push_back(nullptr);
   return argv;
 }
 
-std::vector<char *> BuildEnvp(const std::map<std::string, std::string> &env,
-                              std::vector<std::string> *storage) {
+std::vector<char*> BuildEnvp(const std::map<std::string, std::string>& env,
+                             std::vector<std::string>* storage) {
   storage->clear();
 
-  for (char **entry = environ; entry && *entry; ++entry) {
+  for (char** entry = environ; entry && *entry; ++entry) {
     storage->push_back(*entry);
   }
 
-  for (const auto &[key, value] : env) {
+  for (const auto& [key, value] : env) {
     if (key.empty()) {
       continue;
     }
     bool replaced = false;
     const std::string prefix = key + "=";
-    for (auto &item : *storage) {
+    for (auto& item : *storage) {
       if (item.rfind(prefix, 0) == 0) {
         item = prefix + value;
         replaced = true;
@@ -95,9 +94,9 @@ std::vector<char *> BuildEnvp(const std::map<std::string, std::string> &env,
     }
   }
 
-  std::vector<char *> envp;
+  std::vector<char*> envp;
   envp.reserve(storage->size() + 1);
-  for (auto &entry : *storage) {
+  for (auto& entry : *storage) {
     envp.push_back(entry.data());
   }
   envp.push_back(nullptr);
@@ -124,10 +123,8 @@ std::string EncodeBase64(std::span<const std::byte> data) {
   out.reserve(((data.size() + 2) / 3) * 4);
   for (std::size_t i = 0; i < data.size(); i += 3) {
     const std::uint32_t b0 = static_cast<unsigned char>(data[i]);
-    const std::uint32_t b1 =
-        i + 1 < data.size() ? static_cast<unsigned char>(data[i + 1]) : 0;
-    const std::uint32_t b2 =
-        i + 2 < data.size() ? static_cast<unsigned char>(data[i + 2]) : 0;
+    const std::uint32_t b1 = i + 1 < data.size() ? static_cast<unsigned char>(data[i + 1]) : 0;
+    const std::uint32_t b2 = i + 2 < data.size() ? static_cast<unsigned char>(data[i + 2]) : 0;
     const std::uint32_t chunk = (b0 << 16) | (b1 << 8) | b2;
 
     out.push_back(kTable[(chunk >> 18) & 0x3f]);
@@ -148,8 +145,7 @@ struct ChildProcess {
   int exit_code = -1;
 };
 
-bool SpawnChild(const CommandAsrProvider &provider, ChildProcess *child,
-                std::string *error) {
+bool SpawnChild(const CommandAsrProvider& provider, ChildProcess* child, std::string* error) {
   if (!child) {
     if (error) {
       *error = "child process output is null";
@@ -190,13 +186,13 @@ bool SpawnChild(const CommandAsrProvider &provider, ChildProcess *child,
   posix_spawn_file_actions_addclose(&actions, stderr_pipe[0]);
 
   std::vector<std::string> argv_storage;
-  std::vector<char *> argv = BuildArgv(provider, &argv_storage);
+  std::vector<char*> argv = BuildArgv(provider, &argv_storage);
   std::vector<std::string> env_storage;
-  std::vector<char *> envp = BuildEnvp(provider.env, &env_storage);
+  std::vector<char*> envp = BuildEnvp(provider.env, &env_storage);
 
   pid_t pid = -1;
-  const int rc = posix_spawnp(&pid, provider.command.c_str(), &actions, nullptr,
-                              argv.data(), envp.data());
+  const int rc =
+      posix_spawnp(&pid, provider.command.c_str(), &actions, nullptr, argv.data(), envp.data());
   posix_spawn_file_actions_destroy(&actions);
 
   CloseIfOpen(&stdin_pipe[0]);
@@ -242,8 +238,7 @@ bool HasTimedOut(Clock::time_point deadline) {
 
 int RemainingMs(Clock::time_point deadline, int fallback_ms) {
   const auto remaining =
-      std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now())
-          .count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now()).count();
   if (remaining <= 0) {
     return 0;
   }
@@ -252,14 +247,13 @@ int RemainingMs(Clock::time_point deadline, int fallback_ms) {
 
 class CommandStreamingSession : public RecognitionSession {
 public:
-  CommandStreamingSession(const CommandAsrProvider &provider,
-                          std::string provider_id)
+  CommandStreamingSession(const CommandAsrProvider& provider, std::string provider_id)
       : provider_(provider), provider_id_(std::move(provider_id)),
         deadline_(Clock::time_point::max()) {}
 
   ~CommandStreamingSession() override { Terminate(false); }
 
-  bool PushAudio(std::span<const int16_t> pcm, std::string *error) override {
+  bool PushAudio(std::span<const int16_t> pcm, std::string* error) override {
     if (finished_) {
       if (error) {
         *error = "Recognition session already finished.";
@@ -276,7 +270,7 @@ public:
     }
 
     if (!pcm.empty()) {
-      const auto *bytes = reinterpret_cast<const std::byte *>(pcm.data());
+      const auto* bytes = reinterpret_cast<const std::byte*>(pcm.data());
       pending_chunk_.assign(bytes, bytes + pcm.size() * sizeof(int16_t));
     }
 
@@ -290,7 +284,7 @@ public:
     return true;
   }
 
-  bool Finish(std::string *error) override {
+  bool Finish(std::string* error) override {
     if (finished_) {
       if (error) {
         error->clear();
@@ -354,7 +348,7 @@ public:
 
     if (error) {
       if (saw_error_ && !events_.empty()) {
-        for (const auto &event : events_) {
+        for (const auto& event : events_) {
           if (event.kind == RecognitionEventKind::Error) {
             *error = event.error;
             return false;
@@ -384,7 +378,7 @@ public:
   }
 
 private:
-  bool EnsureStarted(std::string *error) {
+  bool EnsureStarted(std::string* error) {
     if (started_) {
       return true;
     }
@@ -403,7 +397,7 @@ private:
     return true;
   }
 
-  bool FlushPendingChunk(bool commit, std::string *error) {
+  bool FlushPendingChunk(bool commit, std::string* error) {
     if (pending_chunk_.empty()) {
       if (error) {
         error->clear();
@@ -420,14 +414,14 @@ private:
     return SendJsonLine(payload, error);
   }
 
-  bool SendControlEvent(std::string_view type, std::string *error) {
+  bool SendControlEvent(std::string_view type, std::string* error) {
     json payload = {
         {"type", type},
     };
     return SendJsonLine(payload, error);
   }
 
-  bool SendJsonLine(const json &payload, std::string *error) {
+  bool SendJsonLine(const json& payload, std::string* error) {
     if (child_.stdin_closed || child_.stdin_fd < 0) {
       if (error) {
         *error = "provider stdin is already closed.";
@@ -464,14 +458,12 @@ private:
       }
       if (fd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
         if (error) {
-          *error = FormatProviderError(std::move(stderr_tail_),
-                                       "provider closed stdin.");
+          *error = FormatProviderError(std::move(stderr_tail_), "provider closed stdin.");
         }
         return false;
       }
 
-      const ssize_t written =
-          write(child_.stdin_fd, line.data() + offset, line.size() - offset);
+      const ssize_t written = write(child_.stdin_fd, line.data() + offset, line.size() - offset);
       if (written > 0) {
         offset += static_cast<std::size_t>(written);
         PumpIo(0, nullptr);
@@ -493,7 +485,7 @@ private:
     return true;
   }
 
-  bool PumpIo(int poll_timeout_ms, std::string *error) {
+  bool PumpIo(int poll_timeout_ms, std::string* error) {
     if (!started_) {
       if (error) {
         error->clear();
@@ -518,8 +510,7 @@ private:
       ++nfds;
     }
 
-    const int timeout_ms =
-        HasTimedOut(deadline_) ? 0 : RemainingMs(deadline_, poll_timeout_ms);
+    const int timeout_ms = HasTimedOut(deadline_) ? 0 : RemainingMs(deadline_, poll_timeout_ms);
     if (nfds > 0) {
       const int rc = poll(fds, nfds, timeout_ms);
       if (rc < 0 && errno != EINTR) {
@@ -545,8 +536,7 @@ private:
     }
 
     ReapChild();
-    if (child_.child_exited && child_.exit_code != 0 && !saw_error_ &&
-        !saw_final_text_) {
+    if (child_.child_exited && child_.exit_code != 0 && !saw_error_ && !saw_final_text_) {
       QueueError(FormatProviderError(std::move(stderr_tail_), "failed."));
     }
     if (error) {
@@ -555,7 +545,7 @@ private:
     return true;
   }
 
-  bool DrainStdout(std::string *error) {
+  bool DrainStdout(std::string* error) {
     char buffer[4096];
     while (true) {
       const ssize_t n = read(child_.stdout_fd, buffer, sizeof(buffer));
@@ -609,7 +599,7 @@ private:
     }
   }
 
-  void ConsumeStdoutLines(std::string *error) {
+  void ConsumeStdoutLines(std::string* error) {
     while (true) {
       const std::size_t newline = stdout_buffer_.find('\n');
       if (newline == std::string::npos) {
@@ -640,25 +630,23 @@ private:
         continue;
       }
       stderr_tail_ = line;
-      std::fprintf(stderr, "vinput: command streaming stderr: %s\n",
-                   line.c_str());
+      std::fprintf(stderr, "vinput: command streaming stderr: %s\n", line.c_str());
     }
     if (flush_tail) {
       const std::string tail = Trim(stderr_buffer_);
       stderr_buffer_.clear();
       if (!tail.empty()) {
         stderr_tail_ = tail;
-        std::fprintf(stderr, "vinput: command streaming stderr: %s\n",
-                     tail.c_str());
+        std::fprintf(stderr, "vinput: command streaming stderr: %s\n", tail.c_str());
       }
     }
   }
 
-  bool HandleOutputLine(const std::string &line, std::string *error) {
+  bool HandleOutputLine(const std::string& line, std::string* error) {
     json payload;
     try {
       payload = json::parse(line);
-    } catch (const std::exception &ex) {
+    } catch (const std::exception& ex) {
       if (error) {
         *error = std::string("invalid streaming provider JSON: ") + ex.what();
       }
@@ -772,8 +760,7 @@ private:
 
 class CommandStreamingBackend : public AsrBackend {
 public:
-  explicit CommandStreamingBackend(CommandAsrProvider provider)
-      : provider_(std::move(provider)) {}
+  explicit CommandStreamingBackend(CommandAsrProvider provider) : provider_(std::move(provider)) {}
 
   BackendDescriptor Describe() const override {
     BackendDescriptor descriptor;
@@ -787,7 +774,7 @@ public:
     return descriptor;
   }
 
-  std::unique_ptr<RecognitionSession> CreateSession(std::string *error) override {
+  std::unique_ptr<RecognitionSession> CreateSession(std::string* error) override {
     if (provider_.command.empty()) {
       if (error) {
         *error = "Command ASR provider has empty command.";
@@ -804,11 +791,10 @@ private:
   CommandAsrProvider provider_;
 };
 
-}  // namespace
+} // namespace
 
-std::unique_ptr<AsrBackend>
-CreateCommandStreamingBackend(const CommandAsrProvider &provider,
-                              std::string *error) {
+std::unique_ptr<AsrBackend> CreateCommandStreamingBackend(const CommandAsrProvider& provider,
+                                                          std::string* error) {
   if (provider.command.empty()) {
     if (error) {
       *error = "Command ASR provider has empty command.";
@@ -821,4 +807,4 @@ CreateCommandStreamingBackend(const CommandAsrProvider &provider,
   return std::make_unique<CommandStreamingBackend>(provider);
 }
 
-}  // namespace vinput::daemon::asr
+} // namespace vinput::daemon::asr

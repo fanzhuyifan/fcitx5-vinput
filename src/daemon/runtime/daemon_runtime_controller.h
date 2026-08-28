@@ -1,13 +1,5 @@
 #pragma once
 
-#include "daemon/asr/runtime/recognition_contract.h"
-#include "daemon/asr/runtime/recognition_session_manager.h"
-#include "daemon/audio/audio_capture.h"
-#include "daemon/audio/output_ducker.h"
-#include "common/dbus/dbus_interface.h"
-#include "daemon/runtime/dbus_service.h"
-#include "daemon/runtime/recognition_pipeline.h"
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -18,6 +10,15 @@
 #include <thread>
 #include <vector>
 
+#include "common/dbus/dbus_interface.h"
+
+#include "daemon/asr/runtime/recognition_contract.h"
+#include "daemon/asr/runtime/recognition_session_manager.h"
+#include "daemon/audio/audio_capture.h"
+#include "daemon/audio/output_ducker.h"
+#include "daemon/runtime/dbus_service.h"
+#include "daemon/runtime/recognition_pipeline.h"
+
 namespace vinput::daemon::remote {
 class RemoteTextService;
 }
@@ -26,17 +27,15 @@ namespace vinput::daemon::runtime {
 
 class DaemonRuntimeController {
 public:
-  DaemonRuntimeController(
-      AudioCapture *capture, DbusService *dbus,
-      vinput::daemon::asr::RecognitionSessionManager *recognition_manager,
-      RecognitionPipeline *pipeline,
-      vinput::daemon::remote::RemoteTextService *remote_text_service = nullptr);
+  DaemonRuntimeController(AudioCapture* capture, DbusService* dbus,
+                          vinput::daemon::asr::RecognitionSessionManager* recognition_manager,
+                          RecognitionPipeline* pipeline,
+                          vinput::daemon::remote::RemoteTextService* remote_text_service = nullptr);
   ~DaemonRuntimeController();
 
   DbusService::MethodResult StartRecording();
-  DbusService::MethodResult StartCommandRecording(
-      const std::string &selected_text);
-  DbusService::MethodResult StopRecording(const std::string &scene_id);
+  DbusService::MethodResult StartCommandRecording(const std::string& selected_text);
+  DbusService::MethodResult StopRecording(const std::string& scene_id);
   DbusService::MethodResult ReloadAsrBackend();
   std::string GetStatus() const;
   vinput::dbus::AsrBackendState GetAsrBackendState() const;
@@ -48,27 +47,23 @@ public:
 
 private:
   DbusService::MethodResult StartRecordingInternal(bool is_command,
-                                                   const std::string &selected_text);
-  bool SynchronizeAsrBackend(std::string *error = nullptr);
+                                                   const std::string& selected_text);
+  bool SynchronizeAsrBackend(std::string* error = nullptr);
   void MaybeApplyPendingAsrBackendReload();
   void HandleIncomingAudio(std::span<const int16_t> pcm);
-  void EmitStreamingEvents(
-      vinput::daemon::asr::RecognitionSession *session,
-      std::string *latest_partial_text = nullptr);
   void ScheduleCaptureStopOnMainThread();
   void RestoreOutputIfDucked();
-  std::shared_ptr<vinput::daemon::asr::RecognitionSession>
-  ReleaseActiveSessionLocked();
+  std::shared_ptr<vinput::daemon::asr::RecognitionSession> ReleaseActiveSessionLocked();
   void SetPhase(vinput::dbus::Status new_phase);
   void ResetToIdle();
   void WorkerMain();
 
-  AudioCapture *capture_ = nullptr;
-  DbusService *dbus_ = nullptr;
+  AudioCapture* capture_ = nullptr;
+  DbusService* dbus_ = nullptr;
   vinput::daemon::audio::OutputDucker output_ducker_;
-  vinput::daemon::asr::RecognitionSessionManager *recognition_manager_ = nullptr;
-  RecognitionPipeline *pipeline_ = nullptr;
-  vinput::daemon::remote::RemoteTextService *remote_text_service_ = nullptr;
+  vinput::daemon::asr::RecognitionSessionManager* recognition_manager_ = nullptr;
+  RecognitionPipeline* pipeline_ = nullptr;
+  vinput::daemon::remote::RemoteTextService* remote_text_service_ = nullptr;
 
   mutable std::mutex state_mutex_;
   mutable std::mutex session_io_mutex_;
@@ -96,4 +91,4 @@ private:
   std::thread worker_;
 };
 
-}  // namespace vinput::daemon::runtime
+} // namespace vinput::daemon::runtime

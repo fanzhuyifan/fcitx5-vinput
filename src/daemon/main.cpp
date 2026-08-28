@@ -1,43 +1,43 @@
-#include "daemon/audio/audio_capture.h"
-#include "common/llm/adapter_manager.h"
-#include "common/config/core_config.h"
-#include "common/dbus/dbus_interface.h"
-#include "common/i18n.h"
-#include "common/utils/process_utils.h"
-#include "common/utils/debug_log.h"
-#include "common/utils/string_utils.h"
-#include "daemon/asr/runtime/recognition_session_manager.h"
-#include "daemon/runtime/daemon_runtime_controller.h"
-#include "daemon/runtime/dbus_service.h"
-#include "daemon/runtime/recognition_pipeline.h"
-#include "daemon/remote/remote_text_service.h"
-#include "daemon/postprocess/post_processor.h"
-
-#include <poll.h>
-#include <signal.h>
-#include <sys/eventfd.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
 #include <atomic>
 #include <condition_variable>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <poll.h>
 #include <string>
+#include <sys/eventfd.h>
+#include <sys/wait.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
-static std::atomic<bool> g_running{true};
+#include "common/config/core_config.h"
+#include "common/dbus/dbus_interface.h"
+#include "common/i18n.h"
+#include "common/llm/adapter_manager.h"
+#include "common/utils/debug_log.h"
+#include "common/utils/process_utils.h"
+#include "common/utils/string_utils.h"
 
-static void signal_handler(int sig) {
+#include "daemon/asr/runtime/recognition_session_manager.h"
+#include "daemon/audio/audio_capture.h"
+#include "daemon/postprocess/post_processor.h"
+#include "daemon/remote/remote_text_service.h"
+#include "daemon/runtime/daemon_runtime_controller.h"
+#include "daemon/runtime/dbus_service.h"
+#include "daemon/runtime/recognition_pipeline.h"
+
+namespace {
+
+std::atomic<bool> g_running{true};
+
+void signal_handler(int sig) {
   (void)sig;
   g_running = false;
 }
-
-namespace {
 
 std::string ReadAvailableText(int fd) {
   std::string text;
@@ -63,8 +63,7 @@ constexpr auto kAdapterGracefulStopTimeout = std::chrono::seconds(2);
 constexpr auto kAdapterForceKillTimeout = std::chrono::seconds(3);
 constexpr auto kAdapterPollInterval = std::chrono::milliseconds(100);
 
-bool WaitForProcessExit(pid_t pid, std::chrono::milliseconds timeout,
-                        int *status_out = nullptr) {
+bool WaitForProcessExit(pid_t pid, std::chrono::milliseconds timeout, int* status_out = nullptr) {
   if (pid <= 0) {
     return true;
   }
@@ -107,7 +106,11 @@ void TerminateProcessBounded(pid_t pid) {
 
 class AdapterSupervisor {
 public:
-  explicit AdapterSupervisor(DbusService *dbus) : dbus_(dbus) {}
+  explicit AdapterSupervisor(DbusService* dbus) : dbus_(dbus) {}
+  AdapterSupervisor(const AdapterSupervisor&) = delete;
+  AdapterSupervisor& operator=(const AdapterSupervisor&) = delete;
+  AdapterSupervisor(AdapterSupervisor&&) = delete;
+  AdapterSupervisor& operator=(AdapterSupervisor&&) = delete;
 
   ~AdapterSupervisor() {
     Shutdown();
@@ -116,12 +119,11 @@ public:
     }
   }
 
-  bool Start(std::string *error) {
+  bool Start(std::string* error) {
     wake_fd_ = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (wake_fd_ < 0) {
       if (error) {
-        *error = std::string("failed to create adapter wake fd: ") +
-                 strerror(errno);
+        *error = std::string("failed to create adapter wake fd: ") + strerror(errno);
       }
       return false;
     }
@@ -134,15 +136,14 @@ public:
 
     try {
       thread_ = std::thread([this]() { Run(); });
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       {
         std::lock_guard<std::mutex> lock(mutex_);
         running_ = false;
         stop_requested_ = true;
       }
       if (error) {
-        *error =
-            std::string("failed to start adapter supervisor thread: ") + e.what();
+        *error = std::string("failed to start adapter supervisor thread: ") + e.what();
       }
       close(wake_fd_);
       wake_fd_ = -1;
@@ -170,11 +171,11 @@ public:
     }
   }
 
-  DbusService::MethodResult StartAdapter(const std::string &adapter_id) {
+  DbusService::MethodResult StartAdapter(const std::string& adapter_id) {
     return SubmitRequest(Request::Type::Start, adapter_id);
   }
 
-  DbusService::MethodResult StopAdapter(const std::string &adapter_id) {
+  DbusService::MethodResult StopAdapter(const std::string& adapter_id) {
     return SubmitRequest(Request::Type::Stop, adapter_id);
   }
 
@@ -196,8 +197,7 @@ private:
     std::condition_variable cv;
   };
 
-  DbusService::MethodResult SubmitRequest(Request::Type type,
-                                          const std::string &adapter_id) {
+  DbusService::MethodResult SubmitRequest(Request::Type type, const std::string& adapter_id) {
     auto request = std::make_shared<Request>();
     request->type = type;
     request->adapter_id = adapter_id;
@@ -205,8 +205,7 @@ private:
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if (!running_ || stop_requested_) {
-        return DbusService::MethodResult::Failure(
-            "adapter supervisor is not running");
+        return DbusService::MethodResult::Failure("adapter supervisor is not running");
       }
       pending_requests_.push_back(request);
     }
@@ -243,7 +242,7 @@ private:
     dbus_->EmitNotification(vinput::dbus::MakeRawError(notification));
   }
 
-  void FlushAdapterBuffer(ManagedAdapter &adapter, bool flush_partial) {
+  void FlushAdapterBuffer(ManagedAdapter& adapter, bool flush_partial) {
     size_t start = 0;
     while (true) {
       const size_t end = adapter.stderr_buffer.find('\n', start);
@@ -255,8 +254,7 @@ private:
         line.pop_back();
       }
       if (!line.empty()) {
-        vinput::debug::Log("adapter[%s] stderr: %s\n", adapter.id.c_str(),
-                           line.c_str());
+        vinput::debug::Log("adapter[%s] stderr: %s\n", adapter.id.c_str(), line.c_str());
         EmitNotification(line);
       }
       start = end + 1;
@@ -266,40 +264,35 @@ private:
     if (flush_partial) {
       std::string line = vinput::str::TrimAsciiWhitespace(adapter.stderr_buffer);
       if (!line.empty()) {
-        vinput::debug::Log("adapter[%s] stderr: %s\n", adapter.id.c_str(),
-                           line.c_str());
+        vinput::debug::Log("adapter[%s] stderr: %s\n", adapter.id.c_str(), line.c_str());
         EmitNotification(line);
       }
       adapter.stderr_buffer.clear();
     }
   }
 
-  DbusService::MethodResult HandleStartRequest(const std::string &adapter_id) {
+  DbusService::MethodResult HandleStartRequest(const std::string& adapter_id) {
     auto runtime_settings = LoadCoreConfig();
     NormalizeCoreConfig(&runtime_settings);
-    const auto *adapter = ResolveLlmAdapter(runtime_settings, adapter_id);
+    const auto* adapter = ResolveLlmAdapter(runtime_settings, adapter_id);
     if (!adapter) {
       return DbusService::MethodResult::Failure("adapter not found");
     }
 
-    if (adapters_.find(adapter_id) != adapters_.end() ||
-        vinput::adapter::IsRunning(adapter_id)) {
+    if (adapters_.find(adapter_id) != adapters_.end() || vinput::adapter::IsRunning(adapter_id)) {
       return DbusService::MethodResult::Failure("adapter is already running");
     }
 
     if (adapter->command.empty()) {
-      return DbusService::MethodResult::Failure(
-          "adapter command is not configured");
+      return DbusService::MethodResult::Failure("adapter command is not configured");
     }
 
     std::string error;
     const auto spec = vinput::adapter::BuildCommandSpec(*adapter);
     const auto working_dir = vinput::adapter::ResolveWorkingDir(*adapter);
     vinput::process::SpawnedProcess process;
-    if (!vinput::process::SpawnForMonitoring(spec, working_dir,
-                                             &process, &error)) {
-      return DbusService::MethodResult::Failure(
-          error.empty() ? "failed to start adapter" : error);
+    if (!vinput::process::SpawnForMonitoring(spec, working_dir, &process, &error)) {
+      return DbusService::MethodResult::Failure(error.empty() ? "failed to start adapter" : error);
     }
 
     usleep(250000);
@@ -319,22 +312,22 @@ private:
       TerminateProcessBounded(process.pid);
       close(process.stderr_fd);
       process.stderr_fd = -1;
-      return DbusService::MethodResult::Failure(
-          error.empty() ? "failed to persist adapter pid" : error);
+      return DbusService::MethodResult::Failure(error.empty() ? "failed to persist adapter pid"
+                                                              : error);
     }
 
     adapters_.emplace(adapter_id, ManagedAdapter{
-                                     .id = adapter_id,
-                                     .pid = process.pid,
-                                     .stderr_fd = process.stderr_fd,
-                                     .stderr_buffer = {},
-                                 });
+                                      .id = adapter_id,
+                                      .pid = process.pid,
+                                      .stderr_fd = process.stderr_fd,
+                                      .stderr_buffer = {},
+                                  });
     vinput::debug::Log("adapter started id=%s pid=%d\n", adapter_id.c_str(),
                        static_cast<int>(process.pid));
     return DbusService::MethodResult::Success();
   }
 
-  DbusService::MethodResult HandleStopRequest(const std::string &adapter_id) {
+  DbusService::MethodResult HandleStopRequest(const std::string& adapter_id) {
     auto runtime_settings = LoadCoreConfig();
     NormalizeCoreConfig(&runtime_settings);
     if (!ResolveLlmAdapter(runtime_settings, adapter_id)) {
@@ -361,8 +354,7 @@ private:
 
     std::string error;
     if (!vinput::adapter::Stop(adapter_id, &error)) {
-      return DbusService::MethodResult::Failure(
-          error.empty() ? "failed to stop adapter" : error);
+      return DbusService::MethodResult::Failure(error.empty() ? "failed to stop adapter" : error);
     }
 
     vinput::debug::Log("adapter stopped id=%s\n", adapter_id.c_str());
@@ -376,7 +368,7 @@ private:
       requests.swap(pending_requests_);
     }
 
-    for (const auto &request : requests) {
+    for (const auto& request : requests) {
       DbusService::MethodResult result;
       if (request->type == Request::Type::Start) {
         result = HandleStartRequest(request->adapter_id);
@@ -395,7 +387,7 @@ private:
 
   void ReapExitedAdapters() {
     std::vector<std::string> exited_ids;
-    for (auto &[id, adapter] : adapters_) {
+    for (auto& [id, adapter] : adapters_) {
       int status = 0;
       if (waitpid(adapter.pid, &status, WNOHANG) != adapter.pid) {
         continue;
@@ -410,15 +402,13 @@ private:
         adapter.stderr_fd = -1;
       }
 
-      vinput::debug::Log(
-          "adapter exited id=%s code=%d\n", adapter.id.c_str(),
-          WIFEXITED(status)
-              ? WEXITSTATUS(status)
-              : (WIFSIGNALED(status) ? 128 + WTERMSIG(status) : -1));
+      vinput::debug::Log("adapter exited id=%s code=%d\n", adapter.id.c_str(),
+                         WIFEXITED(status) ? WEXITSTATUS(status)
+                                           : (WIFSIGNALED(status) ? 128 + WTERMSIG(status) : -1));
       exited_ids.push_back(id);
     }
 
-    for (const auto &id : exited_ids) {
+    for (const auto& id : exited_ids) {
       vinput::adapter::RemovePidFile(id);
       adapters_.erase(id);
     }
@@ -431,7 +421,7 @@ private:
 
     std::vector<std::string> adapter_ids;
     adapter_ids.reserve(adapters_.size());
-    for (const auto &[id, adapter] : adapters_) {
+    for (const auto& [id, adapter] : adapters_) {
       if (adapter.stderr_fd < 0) {
         continue;
       }
@@ -444,8 +434,7 @@ private:
     const int ret = poll(fds.data(), static_cast<nfds_t>(fds.size()), 1000);
     if (ret < 0) {
       if (errno != EINTR) {
-        fprintf(stderr, "vinput-daemon: adapter poll error: %s\n",
-                strerror(errno));
+        fprintf(stderr, "vinput-daemon: adapter poll error: %s\n", strerror(errno));
       }
       return;
     }
@@ -461,10 +450,9 @@ private:
         continue;
       }
 
-      ManagedAdapter &adapter = it->second;
-      const pollfd &fd = fds[i + 1];
-      if ((fd.revents & (POLLIN | POLLHUP | POLLERR)) == 0 ||
-          adapter.stderr_fd < 0) {
+      ManagedAdapter& adapter = it->second;
+      const pollfd& fd = fds[i + 1];
+      if ((fd.revents & (POLLIN | POLLHUP | POLLERR)) == 0 || adapter.stderr_fd < 0) {
         continue;
       }
 
@@ -481,7 +469,7 @@ private:
   }
 
   void ShutdownAdapters() {
-    for (auto &[id, adapter] : adapters_) {
+    for (auto& [id, adapter] : adapters_) {
       if (adapter.stderr_fd >= 0) {
         close(adapter.stderr_fd);
         adapter.stderr_fd = -1;
@@ -510,7 +498,7 @@ private:
     ShutdownAdapters();
   }
 
-  DbusService *dbus_ = nullptr;
+  DbusService* dbus_ = nullptr;
   int wake_fd_ = -1;
   std::thread thread_;
   std::mutex mutex_;
@@ -520,9 +508,9 @@ private:
   std::map<std::string, ManagedAdapter> adapters_;
 };
 
-}  // namespace
+} // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   vinput::i18n::Init();
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
@@ -566,41 +554,30 @@ int main(int argc, char *argv[]) {
   // --- Single-slot state (all protected by state_mutex) ---
   AdapterSupervisor adapter_supervisor(&dbus);
   vinput::daemon::remote::RemoteTextService remote_text_service;
-  vinput::daemon::runtime::RecognitionPipeline recognition_pipeline(
-      &post_processor);
+  vinput::daemon::runtime::RecognitionPipeline recognition_pipeline(&post_processor);
   vinput::daemon::runtime::DaemonRuntimeController runtime_controller(
-      &capture, &dbus, &recognition_manager, &recognition_pipeline,
-      &remote_text_service);
+      &capture, &dbus, &recognition_manager, &recognition_pipeline, &remote_text_service);
 
-  dbus.SetStartHandler([&]() {
-    return runtime_controller.StartRecording();
-  });
+  dbus.SetStartHandler([&]() { return runtime_controller.StartRecording(); });
 
-  dbus.SetStartCommandHandler([&](const std::string &selected_text) {
+  dbus.SetStartCommandHandler([&](const std::string& selected_text) {
     return runtime_controller.StartCommandRecording(selected_text);
   });
 
-  dbus.SetStopHandler(
-      [&](const std::string &scene_id) -> DbusService::MethodResult {
+  dbus.SetStopHandler([&](const std::string& scene_id) -> DbusService::MethodResult {
     return runtime_controller.StopRecording(scene_id);
   });
 
   dbus.SetStatusHandler([&]() -> std::string { return runtime_controller.GetStatus(); });
   dbus.SetAsrBackendStateHandler(
-      [&]() -> vinput::dbus::AsrBackendState {
-        return runtime_controller.GetAsrBackendState();
-      });
-  dbus.SetReloadAsrBackendHandler([&]() {
-    return runtime_controller.ReloadAsrBackend();
-  });
+      [&]() -> vinput::dbus::AsrBackendState { return runtime_controller.GetAsrBackendState(); });
+  dbus.SetReloadAsrBackendHandler([&]() { return runtime_controller.ReloadAsrBackend(); });
 
-  dbus.SetStartAdapterHandler(
-      [&](const std::string &adapter_id) -> DbusService::MethodResult {
+  dbus.SetStartAdapterHandler([&](const std::string& adapter_id) -> DbusService::MethodResult {
     return adapter_supervisor.StartAdapter(adapter_id);
   });
 
-  dbus.SetStopAdapterHandler(
-      [&](const std::string &adapter_id) -> DbusService::MethodResult {
+  dbus.SetStopAdapterHandler([&](const std::string& adapter_id) -> DbusService::MethodResult {
     return adapter_supervisor.StopAdapter(adapter_id);
   });
 

@@ -1,18 +1,19 @@
 #include "vad_trimmer.h"
 
-#include <sherpa-onnx/c-api/c-api.h>
-
 #include <algorithm>
 #include <cstdio>
+#include <sherpa-onnx/c-api/c-api.h>
 
 VadTrimmer::VadTrimmer() = default;
 
-VadTrimmer::~VadTrimmer() { Shutdown(); }
+VadTrimmer::~VadTrimmer() {
+  Shutdown();
+}
 
-bool VadTrimmer::Init(const std::string &model_path, int sample_rate,
-                      const std::string &provider, const VadTrimParams &params,
-                      std::string *error) {
-  if (vad_) return true;
+bool VadTrimmer::Init(const std::string& model_path, int sample_rate, const std::string& provider,
+                      const VadTrimParams& params, std::string* error) {
+  if (vad_)
+    return true;
 
   params_ = params;
   SherpaOnnxVadModelConfig config = {};
@@ -44,9 +45,9 @@ bool VadTrimmer::Init(const std::string &model_path, int sample_rate,
   return true;
 }
 
-std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
-                                    int /*sample_rate*/) {
-  if (!vad_ || samples.empty()) return samples;
+std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sample_rate*/) {
+  if (!vad_ || samples.empty())
+    return samples;
 
   SherpaOnnxVoiceActivityDetectorReset(vad_);
 
@@ -55,8 +56,7 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
   const int n = static_cast<int>(samples.size());
   int offset = 0;
   for (; offset + window_size <= n; offset += window_size) {
-    SherpaOnnxVoiceActivityDetectorAcceptWaveform(vad_, samples.data() + offset,
-                                                  window_size);
+    SherpaOnnxVoiceActivityDetectorAcceptWaveform(vad_, samples.data() + offset, window_size);
   }
   if (offset < n) {
     std::vector<float> padded_tail(window_size, 0.0f);
@@ -64,31 +64,26 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
     for (int i = 0; i < remaining; ++i) {
       padded_tail[i] = samples[offset + i];
     }
-    SherpaOnnxVoiceActivityDetectorAcceptWaveform(vad_, padded_tail.data(),
-                                                  window_size);
+    SherpaOnnxVoiceActivityDetectorAcceptWaveform(vad_, padded_tail.data(), window_size);
   }
   SherpaOnnxVoiceActivityDetectorFlush(vad_);
 
   const int padding_samples = std::max(
-      0, static_cast<int>(static_cast<long long>(params_.speech_pad_ms) *
-                          sample_rate_ / 1000));
+      0, static_cast<int>(static_cast<long long>(params_.speech_pad_ms) * sample_rate_ / 1000));
   std::vector<float> result;
   int first_start = -1;
   int last_end = -1;
   while (!SherpaOnnxVoiceActivityDetectorEmpty(vad_)) {
-    const SherpaOnnxSpeechSegment *seg =
-        SherpaOnnxVoiceActivityDetectorFront(vad_);
+    const SherpaOnnxSpeechSegment* seg = SherpaOnnxVoiceActivityDetectorFront(vad_);
     if (seg && seg->n > 0) {
-      int start =
-          std::max(0, static_cast<int>(seg->start) - padding_samples);
-      int end = std::min(n, static_cast<int>(seg->start) +
-                                static_cast<int>(seg->n) + padding_samples);
+      int start = std::max(0, static_cast<int>(seg->start) - padding_samples);
+      int end =
+          std::min(n, static_cast<int>(seg->start) + static_cast<int>(seg->n) + padding_samples);
       if (first_start < 0) {
         first_start = start;
       }
       last_end = end;
-      result.insert(result.end(), samples.begin() + start,
-                    samples.begin() + end);
+      result.insert(result.end(), samples.begin() + start, samples.begin() + end);
     }
     if (seg) {
       SherpaOnnxDestroySpeechSegment(seg);
@@ -111,7 +106,9 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float> &samples,
   return result;
 }
 
-bool VadTrimmer::Available() const { return vad_ != nullptr; }
+bool VadTrimmer::Available() const {
+  return vad_ != nullptr;
+}
 
 void VadTrimmer::Shutdown() {
   if (vad_) {

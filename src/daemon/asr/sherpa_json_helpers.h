@@ -6,7 +6,7 @@
 
 namespace vinput::daemon::asr {
 
-inline float SafeStof(const std::string &s, float default_val) {
+inline float SafeStof(const std::string& s, float default_val) {
   try {
     return std::stof(s);
   } catch (...) {
@@ -14,7 +14,7 @@ inline float SafeStof(const std::string &s, float default_val) {
   }
 }
 
-inline int SafeStoi(const std::string &s, int default_val) {
+inline int SafeStoi(const std::string& s, int default_val) {
   try {
     return std::stoi(s);
   } catch (...) {
@@ -22,20 +22,19 @@ inline int SafeStoi(const std::string &s, int default_val) {
   }
 }
 
-inline std::string JsonString(const nlohmann::json &obj, std::string_view key,
-                              const std::string &default_val = {}) {
+inline std::string JsonString(const nlohmann::json& obj, std::string_view key,
+                              const std::string& default_val = {}) {
   if (!obj.is_object() || !obj.contains(key) || !obj[key].is_string()) {
     return default_val;
   }
   return obj[key].get<std::string>();
 }
 
-inline int JsonInt(const nlohmann::json &obj, std::string_view key,
-                   int default_val) {
+inline int JsonInt(const nlohmann::json& obj, std::string_view key, int default_val) {
   if (!obj.is_object() || !obj.contains(key)) {
     return default_val;
   }
-  const auto &value = obj[key];
+  const auto& value = obj[key];
   if (value.is_number_integer()) {
     return value.get<int>();
   }
@@ -48,12 +47,11 @@ inline int JsonInt(const nlohmann::json &obj, std::string_view key,
   return default_val;
 }
 
-inline float JsonFloat(const nlohmann::json &obj, std::string_view key,
-                       float default_val) {
+inline float JsonFloat(const nlohmann::json& obj, std::string_view key, float default_val) {
   if (!obj.is_object() || !obj.contains(key)) {
     return default_val;
   }
-  const auto &value = obj[key];
+  const auto& value = obj[key];
   if (value.is_number()) {
     return value.get<float>();
   }
@@ -63,12 +61,11 @@ inline float JsonFloat(const nlohmann::json &obj, std::string_view key,
   return default_val;
 }
 
-inline bool JsonBool(const nlohmann::json &obj, std::string_view key,
-                     bool default_val = false) {
+inline bool JsonBool(const nlohmann::json& obj, std::string_view key, bool default_val = false) {
   if (!obj.is_object() || !obj.contains(key)) {
     return default_val;
   }
-  const auto &value = obj[key];
+  const auto& value = obj[key];
   if (value.is_boolean()) {
     return value.get<bool>();
   }

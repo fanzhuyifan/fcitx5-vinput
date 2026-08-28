@@ -1,72 +1,79 @@
 #include "post_processor.h"
 
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <curl/curl.h>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+#include <string_view>
+
 #include "common/llm/defaults.h"
 #include "common/utils/debug_log.h"
 #include "common/utils/path_utils.h"
 #include "common/utils/url_utils.h"
+
 #include "daemon/postprocess/prompt_template.h"
-
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
-
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cstdlib>
-#include <cstdio>
-#include <fstream>
-#include <optional>
-
-#include <string>
-#include <string_view>
 
 namespace {
 
 using json = nlohmann::json;
 constexpr std::size_t kMaxLoggedResponseBytes = 2048;
-constexpr std::size_t kMaxResponseBytes = 1 * 1024 * 1024; // 1 MB limit
+constexpr std::size_t kMaxResponseBytes = 1ULL * 1024ULL * 1024ULL; // 1 MB limit
 constexpr long kDefaultConnectTimeoutMs = 5000;
 
 struct CurlGuard {
-  CURL *curl = nullptr;
-  struct curl_slist *headers = nullptr;
+  CURL* curl = nullptr;
+  struct curl_slist* headers = nullptr;
+
+  CurlGuard() = default;
+  CurlGuard(const CurlGuard&) = delete;
+  CurlGuard& operator=(const CurlGuard&) = delete;
+  CurlGuard(CurlGuard&&) = delete;
+  CurlGuard& operator=(CurlGuard&&) = delete;
 
   ~CurlGuard() {
-    if (headers) curl_slist_free_all(headers);
-    if (curl) curl_easy_cleanup(curl);
+    if (headers) {
+      curl_slist_free_all(headers);
+    }
+    if (curl) {
+      curl_easy_cleanup(curl);
+    }
   }
 };
 
 struct CurlRequestContext {
-  const std::atomic<bool> *cancel_flag = nullptr;
+  const std::atomic<bool>* cancel_flag = nullptr;
 };
 
-size_t WriteResponseCallback(char *ptr, size_t size, size_t nmemb,
-                             void *userdata) {
+size_t WriteResponseCallback(char* ptr, size_t size, size_t nmemb, void* userdata) {
   const size_t total = size * nmemb;
   if (!userdata || !ptr || total == 0) {
     return 0;
   }
 
-  auto *response = static_cast<std::string *>(userdata);
+  auto* response = static_cast<std::string*>(userdata);
   if (response->size() + total > kMaxResponseBytes)
     return 0;
   response->append(ptr, total);
   return total;
 }
 
-int ProgressCallback(void *clientp, curl_off_t, curl_off_t, curl_off_t,
-                     curl_off_t) {
-  const auto *ctx = static_cast<const CurlRequestContext *>(clientp);
+int ProgressCallback(void* clientp, curl_off_t, curl_off_t, curl_off_t, curl_off_t) {
+  const auto* ctx = static_cast<const CurlRequestContext*>(clientp);
   if (!ctx || !ctx->cancel_flag) {
     return 0;
   }
   return ctx->cancel_flag->load(std::memory_order_relaxed) ? 1 : 0;
 }
 
-std::string TrimAsciiWhitespace(std::string text) {
+std::string_view TrimAsciiWhitespace(std::string_view text) {
   const auto begin = text.find_first_not_of(" \t\r\n");
-  if (begin == std::string::npos) {
+  if (begin == std::string_view::npos) {
     return {};
   }
 
@@ -80,16 +87,13 @@ json BuildCandidatesResponseFormat() {
   };
 }
 
-std::string BuildRequestUrl(const std::string &base_url) {
+std::string BuildRequestUrl(const std::string& base_url) {
   if (base_url.empty()) {
     return {};
   }
 
-  constexpr std::string_view kChatCompletions =
-      vinput::llm::kOpenAiChatCompletionsPath;
-  if (base_url.size() >= kChatCompletions.size() &&
-      base_url.compare(base_url.size() - kChatCompletions.size(),
-                       kChatCompletions.size(), kChatCompletions) == 0) {
+  constexpr std::string_view kChatCompletions = vinput::llm::kOpenAiChatCompletionsPath;
+  if (std::string_view(base_url).ends_with(kChatCompletions)) {
     return base_url;
   }
 
@@ -105,54 +109,48 @@ std::string QuoteForLog(std::string_view text) {
   return std::string(text);
 }
 
-void LogResponseSummary(const LlmProvider &provider, const std::string &url,
-                        long status_code, double total_time_ms) {
-  vinput::debug::Log(
-      "LLM request provider=%s url=%s status=%ld time=%.1fms\n",
-      provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
-      status_code, total_time_ms);
+void LogResponseSummary(const LlmProvider& provider, const std::string& url, long status_code,
+                        double total_time_ms) {
+  vinput::debug::Log("LLM request provider=%s url=%s status=%ld time=%.1fms\n",
+                     provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
+                     status_code, total_time_ms);
 }
 
-void LogLlmInput(const LlmProvider &provider, const std::string &url,
-                 std::string_view text) {
+void LogLlmInput(const LlmProvider& provider, const std::string& url, std::string_view text) {
   vinput::debug::Log("LLM input provider=%s url=%s: %s\n",
-                     provider.id.empty() ? "(unnamed)" : provider.id.c_str(),
-                     url.c_str(), QuoteForLog(text).c_str());
+                     provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
+                     QuoteForLog(text).c_str());
 }
 
-void LogLlmRequest(const LlmProvider &provider, const std::string &url,
-                   const curl_slist *headers, std::string_view body) {
+void LogLlmRequest(const LlmProvider& provider, const std::string& url, const curl_slist* headers,
+                   std::string_view body) {
   // Debug-only: dump headers and body verbatim. The API key is included in
   // plain text since this is gated by VINPUT_DEBUG and intended for local
   // inspection; users who share logs are responsible for redacting first.
   std::string header_dump;
-  for (const curl_slist *n = headers; n != nullptr; n = n->next) {
+  for (const curl_slist* n = headers; n != nullptr; n = n->next) {
     if (!header_dump.empty()) {
       header_dump.append("; ");
     }
     header_dump.append(n->data ? n->data : "");
   }
-  vinput::debug::Log(
-      "LLM request provider=%s url=%s headers=[%s]\n",
-      provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
-      header_dump.c_str());
+  vinput::debug::Log("LLM request provider=%s url=%s headers=[%s]\n",
+                     provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
+                     header_dump.c_str());
   vinput::debug::Log("LLM request body: %s\n", QuoteForLog(body).c_str());
 }
 
-void LogResponseBody(const char *prefix, const std::string &url,
-                     std::string_view body) {
-  vinput::debug::Log("%s %s: %s\n", prefix, url.c_str(),
-                     QuoteForLog(body).c_str());
+void LogResponseBody(const char* prefix, const std::string& url, std::string_view body) {
+  vinput::debug::Log("%s %s: %s\n", prefix, url.c_str(), QuoteForLog(body).c_str());
 }
 
-std::vector<std::string> ExtractCandidates(const json &response) {
+std::vector<std::string> ExtractCandidates(const json& response) {
   const auto choices_it = response.find("choices");
-  if (choices_it == response.end() || !choices_it->is_array() ||
-      choices_it->empty()) {
+  if (choices_it == response.end() || !choices_it->is_array() || choices_it->empty()) {
     return {};
   }
 
-  const auto &choice = (*choices_it)[0];
+  const auto& choice = (*choices_it)[0];
   const auto message_it = choice.find("message");
   if (message_it == choice.end() || !message_it->is_object()) {
     return {};
@@ -166,7 +164,7 @@ std::vector<std::string> ExtractCandidates(const json &response) {
   json content_json;
   try {
     content_json = json::parse(content_it->get<std::string>());
-  } catch (const std::exception &) {
+  } catch (const std::exception&) {
     return {};
   }
 
@@ -176,13 +174,13 @@ std::vector<std::string> ExtractCandidates(const json &response) {
   }
 
   std::vector<std::string> candidates;
-  for (const auto &value : *candidates_it) {
+  for (const auto& value : *candidates_it) {
     if (!value.is_string()) {
       continue;
     }
-    auto candidate = TrimAsciiWhitespace(value.get<std::string>());
+    const auto candidate = TrimAsciiWhitespace(value.get<std::string>());
     if (!candidate.empty()) {
-      candidates.push_back(std::move(candidate));
+      candidates.emplace_back(candidate);
     }
   }
 
@@ -229,9 +227,7 @@ std::string BuildContextPrefix(int max_lines) {
     return {};
   }
   const auto start =
-      (static_cast<int>(lines.size()) > max_lines)
-          ? lines.end() - max_lines
-          : lines.begin();
+      (static_cast<int>(lines.size()) > max_lines) ? lines.end() - max_lines : lines.begin();
   std::string result = "Recent input history (use to fix ASR errors):\n";
   for (auto it = start; it != lines.end(); ++it) {
     result += *it;
@@ -266,21 +262,17 @@ std::string BuildConstraintsSuffix(int candidate_count) {
 // to prevent the merge from breaking response parsing. Everything else passes
 // through so provider-specific knobs like enable_thinking / reasoning /
 // thinking / top_p work without a whitelist.
-void MergeExtraBody(json &request, const nlohmann::json &extra,
-                    const LlmProvider &provider) {
+void MergeExtraBody(json& request, const nlohmann::json& extra, const LlmProvider& provider) {
   if (!extra.is_object() || extra.empty()) {
     return;
   }
-  static constexpr std::array<std::string_view, 3> kProtected = {
-      "messages", "stream", "response_format"};
+  static constexpr std::array<std::string_view, 3> kProtected = {"messages", "stream",
+                                                                 "response_format"};
   for (auto it = extra.begin(); it != extra.end(); ++it) {
-    const std::string &key = it.key();
-    if (std::find(kProtected.begin(), kProtected.end(), key) !=
-        kProtected.end()) {
-      vinput::debug::Log(
-          "LLM extra_body provider=%s: ignoring protected key '%s'\n",
-          provider.id.empty() ? "(unnamed)" : provider.id.c_str(),
-          key.c_str());
+    const std::string& key = it.key();
+    if (std::find(kProtected.begin(), kProtected.end(), key) != kProtected.end()) {
+      vinput::debug::Log("LLM extra_body provider=%s: ignoring protected key '%s'\n",
+                         provider.id.empty() ? "(unnamed)" : provider.id.c_str(), key.c_str());
       continue;
     }
     request[key] = it.value();
@@ -288,14 +280,11 @@ void MergeExtraBody(json &request, const nlohmann::json &extra,
 }
 
 std::optional<std::vector<std::string>>
-RewriteWithOpenAiCompatible(const std::string &text,
-                            const vinput::scene::Definition &scene,
-                            const LlmProvider &provider, int candidate_count,
-                            std::string *error_out,
-                            const std::string &task_prompt = {},
-                            const std::atomic<bool> *cancel_flag = nullptr,
-                            std::string_view asr_var = {},
-                            std::string_view selected_var = {}) {
+RewriteWithOpenAiCompatible(const std::string& text, const vinput::scene::Definition& scene,
+                            const LlmProvider& provider, int candidate_count,
+                            std::string* error_out, const std::string& task_prompt = {},
+                            const std::atomic<bool>* cancel_flag = nullptr,
+                            std::string_view asr_var = {}, std::string_view selected_var = {}) {
   if (scene.prompt.empty() && task_prompt.empty()) {
     return std::nullopt;
   }
@@ -317,15 +306,12 @@ RewriteWithOpenAiCompatible(const std::string &text,
   // has already resolved command_scene.prompt before deciding whether to
   // splice in the ASR command, so task_prompt is always content.
   std::string base_prompt = task_prompt.empty() ? scene.prompt : task_prompt;
-  if (task_prompt.empty() &&
-      vinput::prompt_template::IsFileUri(base_prompt)) {
+  if (task_prompt.empty() && vinput::prompt_template::IsFileUri(base_prompt)) {
     std::string load_err;
-    auto loaded =
-        vinput::prompt_template::LoadFromFileUri(base_prompt, &load_err);
+    auto loaded = vinput::prompt_template::LoadFromFileUri(base_prompt, &load_err);
     if (!loaded) {
       if (error_out) {
-        *error_out =
-            "Prompt file load failed: " + base_prompt + ": " + load_err;
+        *error_out = "Prompt file load failed: " + base_prompt + ": " + load_err;
       }
       return std::nullopt;
     }
@@ -385,12 +371,10 @@ RewriteWithOpenAiCompatible(const std::string &text,
   MergeExtraBody(request, provider.extra_body, provider);
   const std::string request_body = request.dump();
 
-  guard.headers =
-      curl_slist_append(nullptr, vinput::llm::kJsonContentTypeHeader);
+  guard.headers = curl_slist_append(nullptr, vinput::llm::kJsonContentTypeHeader);
   if (!provider.api_key.empty()) {
-    const std::string auth =
-        std::string(vinput::llm::kAuthorizationHeader) + ": " +
-        vinput::llm::kBearerPrefix + provider.api_key;
+    const std::string auth = std::string(vinput::llm::kAuthorizationHeader) + ": " +
+                             vinput::llm::kBearerPrefix + provider.api_key;
     guard.headers = curl_slist_append(guard.headers, auth.c_str());
   }
 
@@ -401,13 +385,11 @@ RewriteWithOpenAiCompatible(const std::string &text,
   curl_easy_setopt(guard.curl, CURLOPT_POST, 1L);
   curl_easy_setopt(guard.curl, CURLOPT_HTTPHEADER, guard.headers);
   curl_easy_setopt(guard.curl, CURLOPT_POSTFIELDS, request_body.c_str());
-  curl_easy_setopt(guard.curl, CURLOPT_POSTFIELDSIZE,
-                   static_cast<long>(request_body.size()));
+  curl_easy_setopt(guard.curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(request_body.size()));
   curl_easy_setopt(guard.curl, CURLOPT_WRITEFUNCTION, WriteResponseCallback);
   curl_easy_setopt(
       guard.curl, CURLOPT_CONNECTTIMEOUT_MS,
-      static_cast<long>(
-          std::min(scene.timeout_ms, static_cast<int>(kDefaultConnectTimeoutMs))));
+      static_cast<long>(std::min(scene.timeout_ms, static_cast<int>(kDefaultConnectTimeoutMs))));
   curl_easy_setopt(guard.curl, CURLOPT_TIMEOUT_MS, scene.timeout_ms);
   curl_easy_setopt(guard.curl, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(guard.curl, CURLOPT_USERAGENT, vinput::llm::kHttpUserAgent);
@@ -427,15 +409,13 @@ RewriteWithOpenAiCompatible(const std::string &text,
   curl_easy_getinfo(guard.curl, CURLINFO_TOTAL_TIME, &total_time_sec);
   const double total_time_ms = total_time_sec * 1000.0;
 
-  const bool cancelled =
-      curl_code == CURLE_ABORTED_BY_CALLBACK && cancel_flag &&
-      cancel_flag->load(std::memory_order_relaxed);
+  const bool cancelled = curl_code == CURLE_ABORTED_BY_CALLBACK && cancel_flag &&
+                         cancel_flag->load(std::memory_order_relaxed);
 
   if (cancelled) {
-    vinput::debug::Log(
-        "LLM request provider=%s url=%s cancelled during shutdown after %.1fms\n",
-        provider.id.empty() ? "(unnamed)" : provider.id.c_str(),
-        url.c_str(), total_time_ms);
+    vinput::debug::Log("LLM request provider=%s url=%s cancelled during shutdown after %.1fms\n",
+                       provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
+                       total_time_ms);
     if (error_out) {
       error_out->clear();
     }
@@ -443,25 +423,24 @@ RewriteWithOpenAiCompatible(const std::string &text,
   }
 
   if (curl_code != CURLE_OK) {
-    const std::string msg =
-        std::string("LLM request failed: ") + curl_easy_strerror(curl_code);
-    fprintf(stderr,
-            "vinput-daemon: LLM request provider=%s url=%s failed after %.1fms: %s\n",
-            provider.id.empty() ? "(unnamed)" : provider.id.c_str(),
-            url.c_str(), total_time_ms, curl_easy_strerror(curl_code));
-    if (error_out) *error_out = msg;
+    const std::string msg = std::string("LLM request failed: ") + curl_easy_strerror(curl_code);
+    fprintf(stderr, "vinput-daemon: LLM request provider=%s url=%s failed after %.1fms: %s\n",
+            provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(), total_time_ms,
+            curl_easy_strerror(curl_code));
+    if (error_out)
+      *error_out = msg;
     return std::nullopt;
   }
 
   LogResponseSummary(provider, url, status_code, total_time_ms);
 
   if (status_code < 200 || status_code >= 300) {
-    const std::string msg =
-        "HTTP " + std::to_string(status_code) + ": " + response_body;
+    const std::string msg = "HTTP " + std::to_string(status_code) + ": " + response_body;
     if (vinput::debug::Enabled()) {
       LogResponseBody("LLM error response from", url, response_body);
     }
-    if (error_out) *error_out = msg;
+    if (error_out)
+      *error_out = msg;
     return std::nullopt;
   }
 
@@ -472,17 +451,15 @@ RewriteWithOpenAiCompatible(const std::string &text,
   json response;
   try {
     response = json::parse(response_body);
-  } catch (const std::exception &e) {
-    fprintf(stderr,
-            "vinput-daemon: failed to parse LLM response JSON from %s: %s\n",
-            url.c_str(), e.what());
+  } catch (const std::exception& e) {
+    fprintf(stderr, "vinput-daemon: failed to parse LLM response JSON from %s: %s\n", url.c_str(),
+            e.what());
     return std::nullopt;
   }
 
   const auto error_it = response.find("error");
   if (error_it != response.end()) {
-    fprintf(stderr, "vinput-daemon: LLM response from %s contains error\n",
-            url.c_str());
+    fprintf(stderr, "vinput-daemon: LLM response from %s contains error\n", url.c_str());
     if (vinput::debug::Enabled()) {
       LogResponseBody("LLM parsed error payload from", url, error_it->dump());
     }
@@ -501,8 +478,7 @@ RewriteWithOpenAiCompatible(const std::string &text,
   return candidates;
 }
 
-void AppendCandidate(vinput::result::Payload &payload, std::string text,
-                     const char *source) {
+void AppendCandidate(vinput::result::Payload& payload, std::string text, const char* source) {
   text = TrimAsciiWhitespace(std::move(text));
   if (text.empty()) {
     return;
@@ -517,55 +493,52 @@ void AppendCandidate(vinput::result::Payload &payload, std::string text,
 PostProcessor::PostProcessor() {
   const CURLcode code = curl_global_init(CURL_GLOBAL_DEFAULT);
   if (code != CURLE_OK) {
-    fprintf(stderr, "vinput-daemon: curl_global_init failed: %s\n",
-            curl_easy_strerror(code));
+    fprintf(stderr, "vinput-daemon: curl_global_init failed: %s\n", curl_easy_strerror(code));
   }
 }
 
-PostProcessor::~PostProcessor() { curl_global_cleanup(); }
+PostProcessor::~PostProcessor() {
+  curl_global_cleanup();
+}
 
 void PostProcessor::Shutdown() {
   shutting_down_.store(true, std::memory_order_relaxed);
 }
 
-vinput::result::Payload
-PostProcessor::Process(const std::string &raw_text,
-                       const vinput::scene::Definition &scene,
-                       const CoreConfig &settings,
-                       std::string *error_out) const {
-  std::string normalized = TrimAsciiWhitespace(raw_text);
+vinput::result::Payload PostProcessor::Process(const std::string& raw_text,
+                                               const vinput::scene::Definition& scene,
+                                               const CoreConfig& settings,
+                                               std::string* error_out) const {
+  std::string normalized = std::string(TrimAsciiWhitespace(raw_text));
   if (normalized.empty()) {
     return {};
   }
 
-  const int candidate_count =
-      vinput::scene::NormalizeCandidateCount(scene.candidate_count);
+  const int candidate_count = vinput::scene::NormalizeCandidateCount(scene.candidate_count);
 
   vinput::result::Payload fallback;
   AppendCandidate(fallback, normalized, vinput::result::kSourceRaw);
   fallback.commitText = normalized;
 
-  const LlmProvider *provider =
-      ResolveLlmProvider(settings, scene.provider_id);
+  const LlmProvider* provider = ResolveLlmProvider(settings, scene.provider_id);
   if (!provider || candidate_count == 0 || scene.prompt.empty()) {
     return fallback;
   }
 
-  auto rewritten =
-      RewriteWithOpenAiCompatible(normalized, scene, *provider, candidate_count,
-                                  error_out, {}, &shutting_down_);
+  auto rewritten = RewriteWithOpenAiCompatible(normalized, scene, *provider, candidate_count,
+                                               error_out, {}, &shutting_down_);
   if (!rewritten.has_value()) {
     return fallback;
   }
 
   vinput::result::Payload payload;
   AppendCandidate(payload, normalized, vinput::result::kSourceRaw);
-  for (auto &text : *rewritten) {
+  for (auto& text : *rewritten) {
     AppendCandidate(payload, std::move(text), vinput::result::kSourceLlm);
   }
 
   payload.commitText = normalized;
-  for (const auto &candidate : payload.candidates) {
+  for (const auto& candidate : payload.candidates) {
     if (candidate.source == vinput::result::kSourceLlm) {
       payload.commitText = candidate.text;
       break;
@@ -576,16 +549,13 @@ PostProcessor::Process(const std::string &raw_text,
 }
 
 vinput::result::Payload
-PostProcessor::ProcessCommand(const std::string &asr_text,
-                              const std::string &selected_text,
-                              const vinput::scene::Definition &command_scene,
-                              const CoreConfig &settings,
-                              std::string *error_out) const {
-  std::string normalized_asr = TrimAsciiWhitespace(asr_text);
+PostProcessor::ProcessCommand(const std::string& asr_text, const std::string& selected_text,
+                              const vinput::scene::Definition& command_scene,
+                              const CoreConfig& settings, std::string* error_out) const {
+  std::string normalized_asr = std::string(TrimAsciiWhitespace(asr_text));
 
   vinput::result::Payload fallback;
-  const std::string &fallback_text =
-      normalized_asr.empty() ? selected_text : normalized_asr;
+  const std::string& fallback_text = normalized_asr.empty() ? selected_text : normalized_asr;
   AppendCandidate(fallback, fallback_text, vinput::result::kSourceRaw);
   fallback.commitText = fallback_text;
 
@@ -596,8 +566,7 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   const int command_candidate_count =
       vinput::scene::NormalizeCandidateCount(command_scene.candidate_count);
 
-  const LlmProvider *provider =
-      ResolveLlmProvider(settings, command_scene.provider_id);
+  const LlmProvider* provider = ResolveLlmProvider(settings, command_scene.provider_id);
   if (!provider || command_candidate_count == 0) {
     return fallback;
   }
@@ -607,12 +576,10 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   std::string task_prompt = command_scene.prompt;
   if (vinput::prompt_template::IsFileUri(task_prompt)) {
     std::string load_err;
-    auto loaded =
-        vinput::prompt_template::LoadFromFileUri(task_prompt, &load_err);
+    auto loaded = vinput::prompt_template::LoadFromFileUri(task_prompt, &load_err);
     if (!loaded) {
       if (error_out) {
-        *error_out =
-            "Prompt file load failed: " + task_prompt + ": " + load_err;
+        *error_out = "Prompt file load failed: " + task_prompt + ": " + load_err;
       }
       return fallback;
     }
@@ -622,8 +589,7 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   // Interpolation mode ({{asr}}/{{selected}}/{{context}}): author owns layout.
   // Legacy mode: wrap ASR command and selected text in Vinput-scoped XML tags
   // so data is clearly separated from prompt instructions.
-  const bool use_template =
-      vinput::prompt_template::HasInterpolation(task_prompt);
+  const bool use_template = vinput::prompt_template::HasInterpolation(task_prompt);
   std::string_view asr_var;
   std::string_view selected_var;
   if (use_template) {
@@ -645,10 +611,8 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   // substituted via {{asr}}/{{selected}} (interpolation). Pass empty text to
   // avoid double-appending.
   auto rewritten =
-      RewriteWithOpenAiCompatible("", command_scene, *provider,
-                                  command_candidate_count, error_out,
-                                  task_prompt, &shutting_down_,
-                                  asr_var, selected_var);
+      RewriteWithOpenAiCompatible("", command_scene, *provider, command_candidate_count, error_out,
+                                  task_prompt, &shutting_down_, asr_var, selected_var);
 
   vinput::result::Payload payload;
   // 1st: original selected text (always)
@@ -657,14 +621,14 @@ PostProcessor::ProcessCommand(const std::string &asr_text,
   AppendCandidate(payload, normalized_asr, vinput::result::kSourceAsr);
   // 3rd+: LLM results (if available)
   if (rewritten.has_value()) {
-    for (auto &text : *rewritten) {
+    for (auto& text : *rewritten) {
       AppendCandidate(payload, std::move(text), vinput::result::kSourceLlm);
     }
   }
 
   // commitText is the first LLM result
   payload.commitText = selected_text;
-  for (const auto &c : payload.candidates) {
+  for (const auto& c : payload.candidates) {
     if (c.source == vinput::result::kSourceLlm) {
       payload.commitText = c.text;
       break;

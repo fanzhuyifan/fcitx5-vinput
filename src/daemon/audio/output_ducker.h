@@ -15,8 +15,8 @@ public:
   OutputDucker() = default;
   ~OutputDucker() = default;
 
-  OutputDucker(const OutputDucker &) = delete;
-  OutputDucker &operator=(const OutputDucker &) = delete;
+  OutputDucker(const OutputDucker&) = delete;
+  OutputDucker& operator=(const OutputDucker&) = delete;
 
   // Lower the default sink to (current_volume * scale). scale is clamped to
   // [0.0, 1.0]. Idempotent: a second call while already ducked is a no-op.
@@ -31,4 +31,4 @@ private:
   double saved_volume_ = 0.0;
 };
 
-}  // namespace vinput::daemon::audio
+} // namespace vinput::daemon::audio

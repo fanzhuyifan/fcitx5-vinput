@@ -18,10 +18,10 @@ public:
   RemoteTextService() = default;
   ~RemoteTextService();
 
-  RemoteTextService(const RemoteTextService &) = delete;
-  RemoteTextService &operator=(const RemoteTextService &) = delete;
+  RemoteTextService(const RemoteTextService&) = delete;
+  RemoteTextService& operator=(const RemoteTextService&) = delete;
 
-  bool Synchronize(const CoreConfig &config, std::string *error);
+  bool Synchronize(const CoreConfig& config, std::string* error);
   void Shutdown();
 
   std::vector<std::string> ListEndpoints() const;
@@ -33,13 +33,13 @@ private:
     std::string api_key;
   };
 
-  bool ExtractSettings(const CoreConfig &config, Settings *settings,
-                       bool *should_run, std::string *error) const;
-  bool Start(const Settings &settings, std::string *error);
-  bool OpenListenSocket(const Settings &settings, std::string *error);
+  bool ExtractSettings(const CoreConfig& config, Settings* settings, bool* should_run,
+                       std::string* error) const;
+  bool Start(const Settings& settings, std::string* error);
+  bool OpenListenSocket(const Settings& settings, std::string* error);
   void AcceptLoop();
   void HandleClient(int fd);
-  void HandleHttpRequest(int fd, const std::string &request);
+  void HandleHttpRequest(int fd, const std::string& request);
   void HandleRealtime(int fd, bool peer_is_loopback);
   void HandleInput(int fd);
   bool AuthenticateInput(int fd);
@@ -90,4 +90,4 @@ private:
   std::vector<int> client_fds_;
 };
 
-}  // namespace vinput::daemon::remote
+} // namespace vinput::daemon::remote

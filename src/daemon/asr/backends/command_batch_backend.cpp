@@ -1,11 +1,11 @@
 #include "daemon/asr/backends/command_batch_backend.h"
 
-#include "common/utils/process_utils.h"
-#include "common/utils/string_utils.h"
-
 #include <cstddef>
 #include <span>
 #include <utility>
+
+#include "common/utils/process_utils.h"
+#include "common/utils/string_utils.h"
 
 namespace vinput::daemon::asr {
 
@@ -24,7 +24,7 @@ public:
   CommandBatchSession(vinput::process::CommandSpec command, std::string provider_id)
       : command_(std::move(command)), provider_id_(std::move(provider_id)) {}
 
-  bool PushAudio(std::span<const int16_t> pcm, std::string *error) override {
+  bool PushAudio(std::span<const int16_t> pcm, std::string* error) override {
     if (finished_) {
       if (error) {
         *error = "Recognition session already finished.";
@@ -38,7 +38,7 @@ public:
     return true;
   }
 
-  bool Finish(std::string *error) override {
+  bool Finish(std::string* error) override {
     if (finished_) {
       if (error) {
         error->clear();
@@ -47,29 +47,28 @@ public:
     }
 
     finished_ = true;
-    const auto *bytes = reinterpret_cast<const std::byte *>(pcm_.data());
+    const auto* bytes = reinterpret_cast<const std::byte*>(pcm_.data());
     auto command_result = vinput::process::RunCommandWithInput(
-        command_,
-        std::span<const std::byte>(bytes, pcm_.size() * sizeof(int16_t)));
+        command_, std::span<const std::byte>(bytes, pcm_.size() * sizeof(int16_t)));
 
     if (command_result.launch_failed) {
-      events_.push_back({RecognitionEventKind::Error, {},
-                         FormatProviderError(std::move(command_result.stderr_text),
-                                             "failed to start.")});
+      events_.push_back(
+          {RecognitionEventKind::Error,
+           {},
+           FormatProviderError(std::move(command_result.stderr_text), "failed to start.")});
     } else if (command_result.timed_out) {
-      events_.push_back({RecognitionEventKind::Error, {},
-                         FormatProviderError(std::move(command_result.stderr_text),
-                                             "timed out.")});
+      events_.push_back({RecognitionEventKind::Error,
+                         {},
+                         FormatProviderError(std::move(command_result.stderr_text), "timed out.")});
     } else if (command_result.exit_code != 0) {
-      events_.push_back({RecognitionEventKind::Error, {},
-                         FormatProviderError(std::move(command_result.stderr_text),
-                                             "failed.")});
+      events_.push_back({RecognitionEventKind::Error,
+                         {},
+                         FormatProviderError(std::move(command_result.stderr_text), "failed.")});
     } else {
-      std::string text =
-          vinput::str::TrimAsciiWhitespace(command_result.stdout_text);
+      std::string text = vinput::str::TrimAsciiWhitespace(command_result.stdout_text);
       if (text.empty()) {
-        events_.push_back({RecognitionEventKind::Error, {},
-                           FormatProviderError({}, "returned no text.")});
+        events_.push_back(
+            {RecognitionEventKind::Error, {}, FormatProviderError({}, "returned no text.")});
       } else {
         events_.push_back({RecognitionEventKind::FinalText, std::move(text), {}});
       }
@@ -117,13 +116,11 @@ public:
     descriptor.provider_id = provider_id_;
     descriptor.provider_type = vinput::asr::kCommandProviderType;
     descriptor.backend_id = "command-batch";
-    descriptor.capabilities.audio_delivery_mode =
-        AudioDeliveryMode::Buffered;
+    descriptor.capabilities.audio_delivery_mode = AudioDeliveryMode::Buffered;
     return descriptor;
   }
 
-  std::unique_ptr<RecognitionSession>
-  CreateSession(std::string *error) override {
+  std::unique_ptr<RecognitionSession> CreateSession(std::string* error) override {
     if (error) {
       error->clear();
     }
@@ -135,10 +132,10 @@ private:
   std::string provider_id_;
 };
 
-}  // namespace
+} // namespace
 
-std::unique_ptr<AsrBackend>
-CreateCommandBatchBackend(const CommandAsrProvider &provider, std::string *error) {
+std::unique_ptr<AsrBackend> CreateCommandBatchBackend(const CommandAsrProvider& provider,
+                                                      std::string* error) {
   if (provider.command.empty()) {
     if (error) {
       *error = "Command ASR provider has empty command.";
@@ -158,4 +155,4 @@ CreateCommandBatchBackend(const CommandAsrProvider &provider, std::string *error
   return std::make_unique<CommandBatchBackend>(std::move(command), provider.id);
 }
 
-}  // namespace vinput::daemon::asr
+} // namespace vinput::daemon::asr

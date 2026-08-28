@@ -1,34 +1,32 @@
 #include "daemon/postprocess/prompt_template.h"
 
-#include "common/utils/debug_log.h"
-
 #include <cerrno>
 #include <cstring>
 #include <fstream>
 #include <regex>
 #include <sys/stat.h>
 
+#include "common/utils/debug_log.h"
+
 namespace vinput::prompt_template {
 
 namespace {
 
 constexpr std::string_view kFileUriPrefix = "file:///";
-constexpr size_t kMaxPromptFileBytes = 256 * 1024;  // 256 KiB safety cap
+constexpr size_t kMaxPromptFileBytes = 256ULL * 1024ULL; // 256 KiB safety cap
 
-}  // namespace
+} // namespace
 
 bool IsFileUri(std::string_view s) {
-  return s.size() >= kFileUriPrefix.size() &&
-         s.substr(0, kFileUriPrefix.size()) == kFileUriPrefix;
+  return s.starts_with(kFileUriPrefix);
 }
 
 bool HasInterpolation(std::string_view s) {
   return s.find("{{") != std::string_view::npos;
 }
 
-std::optional<std::string> LoadFromFileUri(std::string_view uri,
-                                           std::string *error) {
-  auto fail = [&](const char *msg) -> std::optional<std::string> {
+std::optional<std::string> LoadFromFileUri(std::string_view uri, std::string* error) {
+  auto fail = [&](const char* msg) -> std::optional<std::string> {
     if (error) {
       *error = msg;
     }
@@ -46,7 +44,7 @@ std::optional<std::string> LoadFromFileUri(std::string_view uri,
   }
   const std::string path(path_view);
 
-  struct stat st {};
+  struct stat st{};
   if (::stat(path.c_str(), &st) != 0) {
     if (error) {
       *error = std::string("stat failed: ") + std::strerror(errno);
@@ -66,21 +64,20 @@ std::optional<std::string> LoadFromFileUri(std::string_view uri,
   // oversize without loading the whole file.
   std::string content;
   content.resize(kMaxPromptFileBytes + 1);
-  ifs.read(&content[0], static_cast<std::streamsize>(content.size()));
+  ifs.read(content.data(), static_cast<std::streamsize>(content.size()));
   const std::streamsize got = ifs.gcount();
   const size_t read_bytes = got > 0 ? static_cast<size_t>(got) : 0;
   content.resize(read_bytes);
 
   if (content.size() > kMaxPromptFileBytes) {
-    vinput::debug::Log(
-        "prompt_template: file '%s' truncated to %zu bytes (cap)\n",
-        path.c_str(), kMaxPromptFileBytes);
+    vinput::debug::Log("prompt_template: file '%s' truncated to %zu bytes (cap)\n", path.c_str(),
+                       kMaxPromptFileBytes);
     content.resize(kMaxPromptFileBytes);
   }
   return content;
 }
 
-std::string Interpolate(std::string_view tpl, const Vars &vars) {
+std::string Interpolate(std::string_view tpl, const Vars& vars) {
   // Match `{{name}}` with optional inner whitespace; `\w+` keeps the name
   // restricted to a sane identifier set so stray braces in prose don't
   // accidentally swallow content.
@@ -94,7 +91,7 @@ std::string Interpolate(std::string_view tpl, const Vars &vars) {
   const auto end = std::sregex_iterator();
   size_t last = 0;
   for (; it != end; ++it) {
-    const auto &match = *it;
+    const auto& match = *it;
     const size_t pos = static_cast<size_t>(match.position());
     out.append(input, last, pos - last);
 
@@ -116,4 +113,4 @@ std::string Interpolate(std::string_view tpl, const Vars &vars) {
   return out;
 }
 
-}  // namespace vinput::prompt_template
+} // namespace vinput::prompt_template

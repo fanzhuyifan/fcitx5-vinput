@@ -1,6 +1,7 @@
 #include "daemon/asr/runtime/backend_factory.h"
 
 #include "common/asr/model_manager.h"
+
 #include "daemon/asr/backends/command_batch_backend.h"
 #include "daemon/asr/backends/command_streaming_backend.h"
 #include "daemon/asr/backends/sherpa_offline_backend.h"
@@ -10,16 +11,14 @@ namespace vinput::daemon::asr {
 
 namespace {
 
-bool IsStreamingCommandProvider(const CommandAsrProvider &provider) {
+bool IsStreamingCommandProvider(const CommandAsrProvider& provider) {
   static constexpr std::string_view kSuffix = ".streaming";
   const std::string_view id = provider.id;
-  return id.size() >= kSuffix.size() &&
-         id.substr(id.size() - kSuffix.size()) == kSuffix;
+  return id.size() >= kSuffix.size() && id.substr(id.size() - kSuffix.size()) == kSuffix;
 }
 
-std::unique_ptr<AsrBackend> CreateLocalBackend(const CoreConfig &config,
-                                               const LocalAsrProvider &provider,
-                                               std::string *error) {
+std::unique_ptr<AsrBackend>
+CreateLocalBackend(const CoreConfig& config, const LocalAsrProvider& provider, std::string* error) {
   if (provider.model.empty()) {
     if (error) {
       *error = "Local ASR provider model is not configured.";
@@ -44,14 +43,13 @@ std::unique_ptr<AsrBackend> CreateLocalBackend(const CoreConfig &config,
   ModelInfo model_info = model_mgr.GetModelInfo(&model_error);
   if (!model_error.empty()) {
     if (error) {
-      *error = "Failed to read local ASR model metadata for provider '" +
-               provider.id + "': " + model_error;
+      *error = "Failed to read local ASR model metadata for provider '" + provider.id +
+               "': " + model_error;
     }
     return nullptr;
   }
 
-  const std::string backend_id =
-      model_info.backend.empty() ? "sherpa-offline" : model_info.backend;
+  const std::string backend_id = model_info.backend.empty() ? "sherpa-offline" : model_info.backend;
   if (backend_id == "sherpa-offline") {
     return CreateSherpaOfflineBackend(config, provider, error);
   }
@@ -61,17 +59,16 @@ std::unique_ptr<AsrBackend> CreateLocalBackend(const CoreConfig &config,
   }
 
   if (error) {
-    *error = "Unsupported local ASR backend '" + backend_id +
-             "' for provider '" + provider.id + "'.";
+    *error =
+        "Unsupported local ASR backend '" + backend_id + "' for provider '" + provider.id + "'.";
   }
   return nullptr;
 }
 
-}  // namespace
+} // namespace
 
-std::unique_ptr<AsrBackend> CreateBackend(const CoreConfig &config,
-                                          std::string *error) {
-  const AsrProvider *provider = ResolveActiveAsrProvider(config);
+std::unique_ptr<AsrBackend> CreateBackend(const CoreConfig& config, std::string* error) {
+  const AsrProvider* provider = ResolveActiveAsrProvider(config);
   if (!provider) {
     if (error) {
       *error = "Active ASR provider not found.";
@@ -79,10 +76,10 @@ std::unique_ptr<AsrBackend> CreateBackend(const CoreConfig &config,
     return nullptr;
   }
 
-  if (const auto *local = std::get_if<LocalAsrProvider>(provider)) {
+  if (const auto* local = std::get_if<LocalAsrProvider>(provider)) {
     return CreateLocalBackend(config, *local, error);
   }
-  if (const auto *command = std::get_if<CommandAsrProvider>(provider)) {
+  if (const auto* command = std::get_if<CommandAsrProvider>(provider)) {
     if (IsStreamingCommandProvider(*command)) {
       return CreateCommandStreamingBackend(*command, error);
     }
@@ -90,14 +87,13 @@ std::unique_ptr<AsrBackend> CreateBackend(const CoreConfig &config,
   }
 
   if (error) {
-    *error = "Unsupported ASR provider type: " +
-             std::string(AsrProviderType(*provider));
+    *error = "Unsupported ASR provider type: " + std::string(AsrProviderType(*provider));
   }
   return nullptr;
 }
 
-bool DescribeActiveBackend(const CoreConfig &config, BackendDescriptor *descriptor,
-                           std::string *error) {
+bool DescribeActiveBackend(const CoreConfig& config, BackendDescriptor* descriptor,
+                           std::string* error) {
   auto backend = CreateBackend(config, error);
   if (!backend) {
     return false;
@@ -111,4 +107,4 @@ bool DescribeActiveBackend(const CoreConfig &config, BackendDescriptor *descript
   return true;
 }
 
-}  // namespace vinput::daemon::asr
+} // namespace vinput::daemon::asr

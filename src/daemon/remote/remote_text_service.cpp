@@ -1,16 +1,7 @@
 #include "daemon/remote/remote_text_service.h"
 
-#include "common/config/core_config.h"
-
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <openssl/evp.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
 #include <algorithm>
+#include <arpa/inet.h>
 #include <cerrno>
 #include <charconv>
 #include <chrono>
@@ -18,13 +9,20 @@
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <ifaddrs.h>
 #include <map>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <nlohmann/json.hpp>
+#include <openssl/evp.h>
 #include <optional>
 #include <sstream>
 #include <string_view>
+#include <sys/socket.h>
 #include <system_error>
+#include <unistd.h>
 
-#include <nlohmann/json.hpp>
+#include "common/config/core_config.h"
 
 namespace vinput::daemon::remote {
 
@@ -32,10 +30,8 @@ namespace {
 
 using json = nlohmann::json;
 
-constexpr std::string_view kRemoteProviderId =
-    "provider.vinput.remote.streaming";
-constexpr std::string_view kWebSocketGuid =
-    "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+constexpr std::string_view kRemoteProviderId = "provider.vinput.remote.streaming";
+constexpr std::string_view kWebSocketGuid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 constexpr std::size_t kMaxHttpHeaderBytes = 65536;
 constexpr std::size_t kMaxWebSocketPayloadBytes = 2 * 1024 * 1024;
 
@@ -273,26 +269,25 @@ const char kIndexHtml[] = R"HTML(<!doctype html>
 </html>
 )HTML";
 
-const char kFaviconSvg[] = R"SVG(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1f9d87"/><path d="M32 12c-5 0-9 4-9 9v16c0 5 4 9 9 9s9-4 9-9V21c0-5-4-9-9-9z" fill="#fff"/><path d="M17 33c0 8 7 15 15 15s15-7 15-15" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M32 48v8" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>)SVG";
+const char kFaviconSvg[] =
+    R"SVG(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1f9d87"/><path d="M32 12c-5 0-9 4-9 9v16c0 5 4 9 9 9s9-4 9-9V21c0-5-4-9-9-9z" fill="#fff"/><path d="M17 33c0 8 7 15 15 15s15-7 15-15" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M32 48v8" stroke="#fff" stroke-width="5" stroke-linecap="round"/></svg>)SVG";
 
 std::string Trim(std::string_view text) {
   std::size_t begin = 0;
-  while (begin < text.size() &&
-         (text[begin] == ' ' || text[begin] == '\t' || text[begin] == '\r' ||
-          text[begin] == '\n')) {
+  while (begin < text.size() && (text[begin] == ' ' || text[begin] == '\t' || text[begin] == '\r' ||
+                                 text[begin] == '\n')) {
     ++begin;
   }
   std::size_t end = text.size();
-  while (end > begin &&
-         (text[end - 1] == ' ' || text[end - 1] == '\t' ||
-          text[end - 1] == '\r' || text[end - 1] == '\n')) {
+  while (end > begin && (text[end - 1] == ' ' || text[end - 1] == '\t' || text[end - 1] == '\r' ||
+                         text[end - 1] == '\n')) {
     --end;
   }
   return std::string(text.substr(begin, end - begin));
 }
 
 std::string ToLower(std::string text) {
-  for (char &ch : text) {
+  for (char& ch : text) {
     if (ch >= 'A' && ch <= 'Z') {
       ch = static_cast<char>(ch - 'A' + 'a');
     }
@@ -306,8 +301,8 @@ std::optional<int> ParsePositiveInt(std::string_view value) {
     return std::nullopt;
   }
   int parsed = 0;
-  const char *begin = trimmed.data();
-  const char *end = begin + trimmed.size();
+  const char* begin = trimmed.data();
+  const char* end = begin + trimmed.size();
   const auto result = std::from_chars(begin, end, parsed);
   if (result.ec != std::errc{} || result.ptr != end || parsed <= 0) {
     return std::nullopt;
@@ -315,8 +310,7 @@ std::optional<int> ParsePositiveInt(std::string_view value) {
   return parsed;
 }
 
-std::string EnvValue(const std::map<std::string, std::string> &env,
-                     std::string_view key) {
+std::string EnvValue(const std::map<std::string, std::string>& env, std::string_view key) {
   const auto it = env.find(std::string(key));
   if (it == env.end()) {
     return {};
@@ -335,8 +329,7 @@ std::optional<int> ParsePortFromWsUrl(std::string_view url) {
   if (authority_end == std::string::npos) {
     authority_end = text.size();
   }
-  std::string_view authority(text.data() + authority_begin,
-                             authority_end - authority_begin);
+  std::string_view authority(text.data() + authority_begin, authority_end - authority_begin);
   if (authority.empty()) {
     return std::nullopt;
   }
@@ -355,7 +348,7 @@ std::optional<int> ParsePortFromWsUrl(std::string_view url) {
   return ParsePositiveInt(authority.substr(colon + 1));
 }
 
-std::string Base64Encode(const unsigned char *data, std::size_t size) {
+std::string Base64Encode(const unsigned char* data, std::size_t size) {
   static constexpr char kTable[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   std::string out;
@@ -374,7 +367,7 @@ std::string Base64Encode(const unsigned char *data, std::size_t size) {
 }
 
 std::optional<std::string> Sha1Base64(std::string_view text) {
-  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+  EVP_MD_CTX* ctx = EVP_MD_CTX_new();
   if (!ctx) {
     return std::nullopt;
   }
@@ -393,8 +386,7 @@ std::optional<std::string> Sha1Base64(std::string_view text) {
 bool WriteAll(int fd, std::string_view data) {
   std::size_t offset = 0;
   while (offset < data.size()) {
-    const ssize_t n =
-        send(fd, data.data() + offset, data.size() - offset, MSG_NOSIGNAL);
+    const ssize_t n = send(fd, data.data() + offset, data.size() - offset, MSG_NOSIGNAL);
     if (n > 0) {
       offset += static_cast<std::size_t>(n);
       continue;
@@ -407,8 +399,8 @@ bool WriteAll(int fd, std::string_view data) {
   return true;
 }
 
-bool SendHttpResponse(int fd, std::string_view status,
-                      std::string_view content_type, std::string_view body) {
+bool SendHttpResponse(int fd, std::string_view status, std::string_view content_type,
+                      std::string_view body) {
   std::ostringstream out;
   out << "HTTP/1.1 " << status << "\r\n"
       << "Content-Type: " << content_type << "\r\n"
@@ -418,7 +410,7 @@ bool SendHttpResponse(int fd, std::string_view status,
   return WriteAll(fd, out.str());
 }
 
-bool ReadHttpRequest(int fd, std::string *request) {
+bool ReadHttpRequest(int fd, std::string* request) {
   request->clear();
   char buffer[4096];
   while (request->find("\r\n\r\n") == std::string::npos) {
@@ -445,7 +437,7 @@ struct HttpRequestInfo {
   std::map<std::string, std::string> headers;
 };
 
-std::optional<HttpRequestInfo> ParseHttpRequest(const std::string &request) {
+std::optional<HttpRequestInfo> ParseHttpRequest(const std::string& request) {
   std::istringstream stream(request.substr(0, request.find("\r\n\r\n")));
   std::string line;
   if (!std::getline(stream, line)) {
@@ -478,21 +470,20 @@ std::optional<HttpRequestInfo> ParseHttpRequest(const std::string &request) {
   return info;
 }
 
-std::string BearerToken(const std::map<std::string, std::string> &headers) {
+std::string BearerToken(const std::map<std::string, std::string>& headers) {
   const auto it = headers.find("authorization");
   if (it == headers.end()) {
     return {};
   }
   constexpr std::string_view prefix = "Bearer ";
   const std::string value = Trim(it->second);
-  if (value.size() < prefix.size() ||
-      value.compare(0, prefix.size(), prefix) != 0) {
+  if (!std::string_view(value).starts_with(prefix)) {
     return {};
   }
   return Trim(std::string_view(value).substr(prefix.size()));
 }
 
-bool SendWebSocketHandshake(int fd, const HttpRequestInfo &request) {
+bool SendWebSocketHandshake(int fd, const HttpRequestInfo& request) {
   const auto key_it = request.headers.find("sec-websocket-key");
   if (key_it == request.headers.end() || key_it->second.empty()) {
     SendHttpResponse(fd, "400 Bad Request", "text/plain; charset=utf-8",
@@ -515,7 +506,7 @@ bool SendWebSocketHandshake(int fd, const HttpRequestInfo &request) {
   return WriteAll(fd, out.str());
 }
 
-bool ReadExact(int fd, std::string *out, std::size_t size) {
+bool ReadExact(int fd, std::string* out, std::size_t size) {
   out->clear();
   out->resize(size);
   std::size_t offset = 0;
@@ -533,19 +524,17 @@ bool ReadExact(int fd, std::string *out, std::size_t size) {
   return true;
 }
 
-bool ReadUint16(int fd, std::uint16_t *value) {
+bool ReadUint16(int fd, std::uint16_t* value) {
   std::string bytes;
   if (!ReadExact(fd, &bytes, 2)) {
     return false;
   }
-  *value = (static_cast<std::uint16_t>(
-                static_cast<unsigned char>(bytes[0]))
-            << 8) |
+  *value = (static_cast<std::uint16_t>(static_cast<unsigned char>(bytes[0])) << 8) |
            static_cast<unsigned char>(bytes[1]);
   return true;
 }
 
-bool ReadUint64(int fd, std::uint64_t *value) {
+bool ReadUint64(int fd, std::uint64_t* value) {
   std::string bytes;
   if (!ReadExact(fd, &bytes, 8)) {
     return false;
@@ -583,11 +572,11 @@ bool SendWebSocketFrame(int fd, std::uint8_t opcode, std::string_view payload) {
   return WriteAll(fd, frame);
 }
 
-bool SendWebSocketJson(int fd, const json &payload) {
+bool SendWebSocketJson(int fd, const json& payload) {
   return SendWebSocketFrame(fd, 0x1, payload.dump());
 }
 
-bool ReadWebSocketFrame(int fd, WebSocketFrame *frame) {
+bool ReadWebSocketFrame(int fd, WebSocketFrame* frame) {
   std::string header;
   if (!ReadExact(fd, &header, 2)) {
     return false;
@@ -629,8 +618,7 @@ bool ReadWebSocketFrame(int fd, WebSocketFrame *frame) {
   return true;
 }
 
-bool ReadWebSocketTextMessage(int fd, std::mutex *write_mutex,
-                              std::string *message) {
+bool ReadWebSocketTextMessage(int fd, std::mutex* write_mutex, std::string* message) {
   message->clear();
   std::uint8_t current_opcode = 0;
   while (true) {
@@ -665,19 +653,18 @@ bool ReadWebSocketTextMessage(int fd, std::mutex *write_mutex,
 
 std::string NewEventId(std::string_view prefix) {
   const auto now = std::chrono::system_clock::now().time_since_epoch();
-  const auto ns =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+  const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
   return std::string(prefix) + "_" + std::to_string(ns);
 }
 
-bool IsLoopbackAddress(const sockaddr_storage &addr) {
+bool IsLoopbackAddress(const sockaddr_storage& addr) {
   if (addr.ss_family == AF_INET) {
-    const auto *in = reinterpret_cast<const sockaddr_in *>(&addr);
+    const auto* in = reinterpret_cast<const sockaddr_in*>(&addr);
     const std::uint32_t host = ntohl(in->sin_addr.s_addr);
     return (host & 0xff000000u) == 0x7f000000u;
   }
   if (addr.ss_family == AF_INET6) {
-    const auto *in6 = reinterpret_cast<const sockaddr_in6 *>(&addr);
+    const auto* in6 = reinterpret_cast<const sockaddr_in6*>(&addr);
     return IN6_IS_ADDR_LOOPBACK(&in6->sin6_addr);
   }
   return false;
@@ -686,7 +673,7 @@ bool IsLoopbackAddress(const sockaddr_storage &addr) {
 bool PeerIsLoopback(int fd) {
   sockaddr_storage addr{};
   socklen_t len = sizeof(addr);
-  if (getpeername(fd, reinterpret_cast<sockaddr *>(&addr), &len) != 0) {
+  if (getpeername(fd, reinterpret_cast<sockaddr*>(&addr), &len) != 0) {
     return false;
   }
   return IsLoopbackAddress(addr);
@@ -705,13 +692,14 @@ void CloseSocket(int fd) {
   }
 }
 
-}  // namespace
+} // namespace
 
-RemoteTextService::~RemoteTextService() { Shutdown(); }
+RemoteTextService::~RemoteTextService() {
+  Shutdown();
+}
 
-bool RemoteTextService::ExtractSettings(const CoreConfig &config,
-                                        Settings *settings, bool *should_run,
-                                        std::string *error) const {
+bool RemoteTextService::ExtractSettings(const CoreConfig& config, Settings* settings,
+                                        bool* should_run, std::string* error) const {
   if (!settings) {
     if (error) {
       *error = "settings output is null";
@@ -722,9 +710,8 @@ bool RemoteTextService::ExtractSettings(const CoreConfig &config,
     *should_run = false;
   }
 
-  const AsrProvider *provider = ResolveActiveAsrProvider(config);
-  const auto *command = provider ? std::get_if<CommandAsrProvider>(provider)
-                                 : nullptr;
+  const AsrProvider* provider = ResolveActiveAsrProvider(config);
+  const auto* command = provider ? std::get_if<CommandAsrProvider>(provider) : nullptr;
   if (!command) {
     if (error) {
       error->clear();
@@ -751,15 +738,13 @@ bool RemoteTextService::ExtractSettings(const CoreConfig &config,
       return false;
     }
     out.port = *port;
-  } else if (const auto port =
-                 ParsePortFromWsUrl(EnvValue(command->env, "VINPUT_ASR_URL"))) {
+  } else if (const auto port = ParsePortFromWsUrl(EnvValue(command->env, "VINPUT_ASR_URL"))) {
     if (*port <= 65535) {
       out.port = *port;
     }
   }
 
-  const std::string debounce_text =
-      EnvValue(command->env, "VINPUT_ASR_DEBOUNCE_MS");
+  const std::string debounce_text = EnvValue(command->env, "VINPUT_ASR_DEBOUNCE_MS");
   if (!debounce_text.empty()) {
     const auto debounce = ParsePositiveInt(debounce_text);
     if (!debounce) {
@@ -789,13 +774,11 @@ bool RemoteTextService::ExtractSettings(const CoreConfig &config,
   return true;
 }
 
-bool RemoteTextService::OpenListenSocket(const Settings &settings,
-                                         std::string *error) {
+bool RemoteTextService::OpenListenSocket(const Settings& settings, std::string* error) {
   const int fd = socket(AF_INET, SOCK_STREAM, 0);
   if (fd < 0) {
     if (error) {
-      *error = std::string("failed to create remote ASR listen socket: ") +
-               std::strerror(errno);
+      *error = std::string("failed to create remote ASR listen socket: ") + std::strerror(errno);
     }
     return false;
   }
@@ -808,14 +791,12 @@ bool RemoteTextService::OpenListenSocket(const Settings &settings,
   addr.sin_addr.s_addr = htonl(INADDR_ANY);
   addr.sin_port = htons(static_cast<std::uint16_t>(settings.port));
 
-  if (bind(fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0 ||
-      listen(fd, 16) != 0) {
+  if (bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 || listen(fd, 16) != 0) {
     const int saved_errno = errno;
     close(fd);
     if (error) {
-      *error = "failed to bind remote ASR service on 0.0.0.0:" +
-               std::to_string(settings.port) + ": " +
-               std::strerror(saved_errno);
+      *error = "failed to bind remote ASR service on 0.0.0.0:" + std::to_string(settings.port) +
+               ": " + std::strerror(saved_errno);
     }
     return false;
   }
@@ -827,7 +808,7 @@ bool RemoteTextService::OpenListenSocket(const Settings &settings,
   return true;
 }
 
-bool RemoteTextService::Synchronize(const CoreConfig &config, std::string *error) {
+bool RemoteTextService::Synchronize(const CoreConfig& config, std::string* error) {
   Settings next_settings;
   bool should_run = false;
   if (!ExtractSettings(config, &next_settings, &should_run, error)) {
@@ -846,10 +827,9 @@ bool RemoteTextService::Synchronize(const CoreConfig &config, std::string *error
     return true;
   }
 
-  const bool same_settings =
-      service_started_ && settings_.port == next_settings.port &&
-      settings_.debounce_ms == next_settings.debounce_ms &&
-      settings_.api_key == next_settings.api_key;
+  const bool same_settings = service_started_ && settings_.port == next_settings.port &&
+                             settings_.debounce_ms == next_settings.debounce_ms &&
+                             settings_.api_key == next_settings.api_key;
   if (same_settings) {
     if (error) {
       error->clear();
@@ -869,37 +849,34 @@ std::vector<std::string> RemoteTextService::ListEndpoints() const {
     return {};
   }
 
-  ifaddrs *ifaddr = nullptr;
+  ifaddrs* ifaddr = nullptr;
   if (getifaddrs(&ifaddr) != 0) {
     return {};
   }
 
   std::vector<std::string> endpoints;
-  for (ifaddrs *ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+  for (ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
     if (ifa->ifa_addr == nullptr || ifa->ifa_addr->sa_family != AF_INET) {
       continue;
     }
-    if ((ifa->ifa_flags & IFF_UP) == 0 ||
-        (ifa->ifa_flags & IFF_LOOPBACK) != 0) {
+    if ((ifa->ifa_flags & IFF_UP) == 0 || (ifa->ifa_flags & IFF_LOOPBACK) != 0) {
       continue;
     }
-    const auto *sa = reinterpret_cast<const sockaddr_in *>(ifa->ifa_addr);
+    const auto* sa = reinterpret_cast<const sockaddr_in*>(ifa->ifa_addr);
     char buf[INET_ADDRSTRLEN] = {};
     if (inet_ntop(AF_INET, &sa->sin_addr, buf, sizeof(buf)) == nullptr) {
       continue;
     }
-    endpoints.emplace_back(std::string("http://") + buf + ":" +
-                           std::to_string(settings_.port));
+    endpoints.emplace_back(std::string("http://") + buf + ":" + std::to_string(settings_.port));
   }
   freeifaddrs(ifaddr);
 
   std::sort(endpoints.begin(), endpoints.end());
-  endpoints.erase(std::unique(endpoints.begin(), endpoints.end()),
-                  endpoints.end());
+  endpoints.erase(std::unique(endpoints.begin(), endpoints.end()), endpoints.end());
   return endpoints;
 }
 
-bool RemoteTextService::Start(const Settings &settings, std::string *error) {
+bool RemoteTextService::Start(const Settings& settings, std::string* error) {
   settings_ = settings;
   if (!OpenListenSocket(settings_, error)) {
     return false;
@@ -911,7 +888,7 @@ bool RemoteTextService::Start(const Settings &settings, std::string *error) {
   try {
     debounce_thread_ = std::thread([this]() { DebounceLoop(); });
     accept_thread_ = std::thread([this]() { AcceptLoop(); });
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     running_.store(false, std::memory_order_release);
     {
       std::lock_guard<std::mutex> lock(debounce_mutex_);
@@ -927,15 +904,13 @@ bool RemoteTextService::Start(const Settings &settings, std::string *error) {
       debounce_thread_.join();
     }
     if (error) {
-      *error =
-          std::string("failed to start remote ASR service thread: ") + e.what();
+      *error = std::string("failed to start remote ASR service thread: ") + e.what();
     }
     return false;
   }
 
   service_started_ = true;
-  std::fprintf(stderr,
-               "vinput-daemon: remote ASR service listening on 0.0.0.0:%d\n",
+  std::fprintf(stderr, "vinput-daemon: remote ASR service listening on 0.0.0.0:%d\n",
                settings_.port);
   if (error) {
     error->clear();
@@ -979,7 +954,7 @@ void RemoteTextService::Shutdown() {
     std::lock_guard<std::mutex> lock(client_threads_mutex_);
     threads.swap(client_threads_);
   }
-  for (auto &thread : threads) {
+  for (auto& thread : threads) {
     if (thread.joinable()) {
       thread.join();
     }
@@ -999,15 +974,13 @@ void RemoteTextService::AcceptLoop() {
   while (running_.load(std::memory_order_acquire)) {
     sockaddr_storage addr{};
     socklen_t addr_len = sizeof(addr);
-    const int fd = accept(listen_fd_, reinterpret_cast<sockaddr *>(&addr),
-                          &addr_len);
+    const int fd = accept(listen_fd_, reinterpret_cast<sockaddr*>(&addr), &addr_len);
     if (fd < 0) {
       if (errno == EINTR) {
         continue;
       }
       if (running_.load(std::memory_order_acquire)) {
-        std::fprintf(stderr, "vinput-daemon: remote ASR accept failed: %s\n",
-                     std::strerror(errno));
+        std::fprintf(stderr, "vinput-daemon: remote ASR accept failed: %s\n", std::strerror(errno));
       }
       break;
     }
@@ -1036,15 +1009,14 @@ void RemoteTextService::HandleClient(int fd) {
   CloseSocket(fd);
 }
 
-void RemoteTextService::HandleHttpRequest(int fd, const std::string &request) {
+void RemoteTextService::HandleHttpRequest(int fd, const std::string& request) {
   const auto parsed = ParseHttpRequest(request);
   if (!parsed) {
-    SendHttpResponse(fd, "400 Bad Request", "text/plain; charset=utf-8",
-                     "Invalid request.\n");
+    SendHttpResponse(fd, "400 Bad Request", "text/plain; charset=utf-8", "Invalid request.\n");
     return;
   }
 
-  const auto &info = *parsed;
+  const auto& info = *parsed;
   if (info.path == "/ws" || info.path == "/v1/realtime") {
     const bool peer_is_loopback = PeerIsLoopback(fd);
     if (info.path == "/v1/realtime" && !peer_is_loopback) {
@@ -1052,10 +1024,8 @@ void RemoteTextService::HandleHttpRequest(int fd, const std::string &request) {
                        "Realtime endpoint is local-only.\n");
       return;
     }
-    if (info.path == "/v1/realtime" &&
-        !ValidateApiKey(BearerToken(info.headers))) {
-      SendHttpResponse(fd, "401 Unauthorized", "text/plain; charset=utf-8",
-                       "Unauthorized.\n");
+    if (info.path == "/v1/realtime" && !ValidateApiKey(BearerToken(info.headers))) {
+      SendHttpResponse(fd, "401 Unauthorized", "text/plain; charset=utf-8", "Unauthorized.\n");
       return;
     }
     if (!SendWebSocketHandshake(fd, info)) {
@@ -1075,8 +1045,7 @@ void RemoteTextService::HandleHttpRequest(int fd, const std::string &request) {
     return;
   }
   if (info.path == "/health") {
-    SendHttpResponse(fd, "200 OK", "application/json; charset=utf-8",
-                     "{\"ok\":true}\n");
+    SendHttpResponse(fd, "200 OK", "application/json; charset=utf-8", "{\"ok\":true}\n");
     return;
   }
   if (info.path == "/favicon.svg") {
@@ -1145,11 +1114,9 @@ void RemoteTextService::HandleRealtime(int fd, bool peer_is_loopback) {
   }
   if (!TrySetOutput(fd)) {
     std::lock_guard<std::mutex> write_lock(output_write_mutex_);
-    SendWebSocketJson(
-        fd, json{{"event_id", NewEventId("event")},
-                 {"type", "error"},
-                 {"error",
-                  json{{"message", "Output client already connected."}}}});
+    SendWebSocketJson(fd, json{{"event_id", NewEventId("event")},
+                               {"type", "error"},
+                               {"error", json{{"message", "Output client already connected."}}}});
     return;
   }
 
@@ -1163,7 +1130,7 @@ void RemoteTextService::HandleRealtime(int fd, bool peer_is_loopback) {
     json event;
     try {
       event = json::parse(message);
-    } catch (const std::exception &) {
+    } catch (const std::exception&) {
       continue;
     }
 
@@ -1199,8 +1166,7 @@ bool RemoteTextService::ValidateApiKey(std::string_view api_key) const {
   }
   unsigned char diff = 0;
   for (std::size_t i = 0; i < expected.size(); ++i) {
-    diff |= static_cast<unsigned char>(expected[i]) ^
-            static_cast<unsigned char>(api_key[i]);
+    diff |= static_cast<unsigned char>(expected[i]) ^ static_cast<unsigned char>(api_key[i]);
   }
   return diff == 0;
 }
@@ -1214,10 +1180,9 @@ bool RemoteTextService::AuthenticateInput(int fd) {
   json event;
   try {
     event = json::parse(message);
-  } catch (const std::exception &) {
+  } catch (const std::exception&) {
     std::lock_guard<std::mutex> write_lock(input_write_mutex_);
-    SendWebSocketJson(fd,
-                      json{{"type", "error"}, {"message", "Invalid JSON."}});
+    SendWebSocketJson(fd, json{{"type", "error"}, {"message", "Invalid JSON."}});
     return false;
   }
 
@@ -1225,8 +1190,7 @@ bool RemoteTextService::AuthenticateInput(int fd) {
   const std::string api_key = event.value("api_key", std::string{});
   if (type != "auth" || !ValidateApiKey(api_key)) {
     std::lock_guard<std::mutex> write_lock(input_write_mutex_);
-    SendWebSocketJson(fd,
-                      json{{"type", "error"}, {"message", "Unauthorized."}});
+    SendWebSocketJson(fd, json{{"type", "error"}, {"message", "Unauthorized."}});
     return false;
   }
 
@@ -1242,8 +1206,7 @@ void RemoteTextService::HandleInput(int fd) {
 
   if (!TrySetInput(fd)) {
     std::lock_guard<std::mutex> write_lock(input_write_mutex_);
-    SendWebSocketJson(fd, json{{"type", "error"},
-                               {"message", "Input client already connected."}});
+    SendWebSocketJson(fd, json{{"type", "error"}, {"message", "Input client already connected."}});
     return;
   }
 
@@ -1256,8 +1219,7 @@ void RemoteTextService::HandleInput(int fd) {
       }
     }
     std::lock_guard<std::mutex> write_lock(input_write_mutex_);
-    SendWebSocketJson(fd, json{{"type", "init"},
-                               {"output_status", output_status}});
+    SendWebSocketJson(fd, json{{"type", "init"}, {"output_status", output_status}});
   }
 
   while (running_.load(std::memory_order_acquire)) {
@@ -1269,7 +1231,7 @@ void RemoteTextService::HandleInput(int fd) {
     json event;
     try {
       event = json::parse(message);
-    } catch (const std::exception &) {
+    } catch (const std::exception&) {
       continue;
     }
 
@@ -1305,8 +1267,7 @@ void RemoteTextService::ScheduleDebounce() {
     std::lock_guard<std::mutex> lock(debounce_mutex_);
     debounce_pending_ = true;
     debounce_deadline_ =
-        std::chrono::steady_clock::now() +
-        std::chrono::milliseconds(settings_.debounce_ms);
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(settings_.debounce_ms);
   }
   debounce_cv_.notify_all();
 }
@@ -1327,13 +1288,11 @@ void RemoteTextService::ForceDebounce() {
 void RemoteTextService::DebounceLoop() {
   std::unique_lock<std::mutex> lock(debounce_mutex_);
   while (!debounce_stop_) {
-    debounce_cv_.wait(lock,
-                      [this]() { return debounce_stop_ || debounce_pending_; });
+    debounce_cv_.wait(lock, [this]() { return debounce_stop_ || debounce_pending_; });
     while (!debounce_stop_ && debounce_pending_) {
       const auto deadline = debounce_deadline_;
       if (debounce_cv_.wait_until(lock, deadline, [this, deadline]() {
-            return debounce_stop_ || !debounce_pending_ ||
-                   debounce_deadline_ != deadline;
+            return debounce_stop_ || !debounce_pending_ || debounce_deadline_ != deadline;
           })) {
         continue;
       }
@@ -1373,19 +1332,16 @@ void RemoteTextService::SendFinalResult() {
     SendWebSocketJson(fd, json{{"event_id", NewEventId("event")},
                                {"type", "input_audio_buffer.committed"},
                                {"item_id", item_id}});
-    SendWebSocketJson(
-        fd, json{{"event_id", NewEventId("event")},
-                 {"type", "conversation.item.input_audio_transcription.delta"},
-                 {"item_id", item_id},
-                 {"delta", text}});
-    SendWebSocketJson(
-        fd, json{{"event_id", NewEventId("event")},
-                 {"type",
-                  "conversation.item.input_audio_transcription.completed"},
-                 {"item_id", item_id},
-                 {"transcript", text}});
+    SendWebSocketJson(fd, json{{"event_id", NewEventId("event")},
+                               {"type", "conversation.item.input_audio_transcription.delta"},
+                               {"item_id", item_id},
+                               {"delta", text}});
+    SendWebSocketJson(fd, json{{"event_id", NewEventId("event")},
+                               {"type", "conversation.item.input_audio_transcription.completed"},
+                               {"item_id", item_id},
+                               {"transcript", text}});
   }
   ClearText();
 }
 
-}  // namespace vinput::daemon::remote
+} // namespace vinput::daemon::remote

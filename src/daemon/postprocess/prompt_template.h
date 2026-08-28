@@ -8,9 +8,9 @@ namespace vinput::prompt_template {
 
 // Variables exposed to {{...}} interpolation in scene prompts.
 struct Vars {
-  std::string_view asr;       // ASR recognition result (raw text or voice command)
-  std::string_view selected;  // Command-mode selected source text; empty otherwise
-  std::string_view context;   // pre-built recent input history block
+  std::string_view asr;      // ASR recognition result (raw text or voice command)
+  std::string_view selected; // Command-mode selected source text; empty otherwise
+  std::string_view context;  // pre-built recent input history block
 };
 
 // True when `s` begins with the standard `file:///` URI prefix.
@@ -24,12 +24,11 @@ bool HasInterpolation(std::string_view s);
 // returns nullopt and writes a short diagnostic into `error` when non-null.
 // The on-disk read is capped by an internal size limit; oversize files are
 // truncated and a warning is logged so a runaway file cannot OOM the daemon.
-std::optional<std::string> LoadFromFileUri(std::string_view uri,
-                                           std::string *error);
+std::optional<std::string> LoadFromFileUri(std::string_view uri, std::string* error);
 
 // Substitute the supported variables (`{{asr}}`, `{{selected}}`, `{{context}}`)
 // in `tpl`. Unknown placeholders are left intact, so the author can include
 // literal `{{foo}}` without escaping.
-std::string Interpolate(std::string_view tpl, const Vars &vars);
+std::string Interpolate(std::string_view tpl, const Vars& vars);
 
-}  // namespace vinput::prompt_template
+} // namespace vinput::prompt_template

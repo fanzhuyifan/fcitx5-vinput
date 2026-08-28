@@ -1,22 +1,22 @@
 #include "daemon/asr/backends/sherpa_offline_backend.h"
 
-#include "common/i18n.h"
-#include "common/utils/string_utils.h"
-#include "daemon/asr/hotword_utils.h"
-#include "daemon/asr/sherpa_json_helpers.h"
-#include "daemon/asr/vad_trimmer.h"
-
-#include <sherpa-onnx/c-api/c-api.h>
-
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <functional>
 #include <mutex>
+#include <sherpa-onnx/c-api/c-api.h>
+#include <unistd.h>
 #include <unordered_map>
 #include <utility>
-#include <unistd.h>
+
+#include "common/i18n.h"
+#include "common/utils/string_utils.h"
+
+#include "daemon/asr/hotword_utils.h"
+#include "daemon/asr/sherpa_json_helpers.h"
+#include "daemon/asr/vad_trimmer.h"
 
 namespace vinput::daemon::asr {
 
@@ -24,14 +24,12 @@ namespace {
 
 constexpr std::size_t kMinSamplesForInference = 8000; // 0.5 s @ 16 kHz
 
-bool WriteTemporaryHotwordFile(std::string_view content, std::string *path,
-                               std::string *error) {
+bool WriteTemporaryHotwordFile(std::string_view content, std::string* path, std::string* error) {
   std::error_code temp_error;
   const auto temp_dir = std::filesystem::temp_directory_path(temp_error);
   if (temp_error) {
     if (error) {
-      *error = "failed to locate temporary directory: " +
-               temp_error.message();
+      *error = "failed to locate temporary directory: " + temp_error.message();
     }
     return false;
   }
@@ -39,12 +37,11 @@ bool WriteTemporaryHotwordFile(std::string_view content, std::string *path,
   const int fd = mkstemp(pattern.data());
   if (fd < 0) {
     if (error) {
-      *error = "failed to create temporary hotwords file: " +
-               std::string(std::strerror(errno));
+      *error = "failed to create temporary hotwords file: " + std::string(std::strerror(errno));
     }
     return false;
   }
-  const char *data = content.data();
+  const char* data = content.data();
   std::size_t remaining = content.size();
   while (remaining > 0) {
     const ssize_t written = write(fd, data, remaining);
@@ -52,8 +49,7 @@ bool WriteTemporaryHotwordFile(std::string_view content, std::string *path,
       if (written < 0 && errno == EINTR) {
         continue;
       }
-      const std::string write_error =
-          written < 0 ? std::strerror(errno) : "zero-byte write";
+      const std::string write_error = written < 0 ? std::strerror(errno) : "zero-byte write";
       close(fd);
       std::filesystem::remove(pattern);
       if (error) {
@@ -80,20 +76,17 @@ bool WriteTemporaryHotwordFile(std::string_view content, std::string *path,
 // Build a SherpaOnnxOfflineRecognizerConfig from ModelInfo + AsrConfig.
 // Returns nullptr on failure (sets *error).
 // ---------------------------------------------------------------------------
-const SherpaOnnxOfflineRecognizer *
-CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
-                        std::string *error) {
+const SherpaOnnxOfflineRecognizer*
+CreateOfflineRecognizer(const ModelInfo& info, const AsrConfig& asr_config, std::string* error) {
   SherpaOnnxOfflineRecognizerConfig config = {};
-  const auto &recognizer_cfg = info.recognizer_config;
-  const auto &model_cfg = info.model_config;
+  const auto& recognizer_cfg = info.recognizer_config;
+  const auto& model_cfg = info.model_config;
   const auto feat_cfg =
-      recognizer_cfg.contains("feat_config") &&
-              recognizer_cfg["feat_config"].is_object()
+      recognizer_cfg.contains("feat_config") && recognizer_cfg["feat_config"].is_object()
           ? recognizer_cfg["feat_config"]
           : nlohmann::json::object();
   const auto lm_cfg =
-      recognizer_cfg.contains("lm_config") &&
-              recognizer_cfg["lm_config"].is_object()
+      recognizer_cfg.contains("lm_config") && recognizer_cfg["lm_config"].is_object()
           ? recognizer_cfg["lm_config"]
           : nlohmann::json::object();
   config.feat_config.sample_rate = JsonInt(feat_cfg, "sample_rate", 16000);
@@ -103,8 +96,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
       JsonString(recognizer_cfg, "decoding_method", "greedy_search");
   config.decoding_method = p_decoding_method.c_str();
   config.max_active_paths = JsonInt(recognizer_cfg, "max_active_paths", 4);
-  config.hotwords_score =
-      JsonFloat(recognizer_cfg, "hotwords_score", 1.5f);
+  config.hotwords_score = JsonFloat(recognizer_cfg, "hotwords_score", 1.5f);
   config.blank_penalty = JsonFloat(recognizer_cfg, "blank_penalty", 0.0f);
 
   const std::string tokens_path = info.File("tokens");
@@ -127,8 +119,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   const std::string f_rule_fsts = info.File("rule_fsts");
   const std::string f_rule_fars = info.File("rule_fars");
   const std::string p_language = asr_config.language;
-  const std::string p_modeling_unit =
-      JsonString(model_cfg, "modeling_unit", "cjkchar");
+  const std::string p_modeling_unit = JsonString(model_cfg, "modeling_unit", "cjkchar");
   std::string cfg_language;
   std::string cfg_task;
   std::string cfg_src_lang;
@@ -144,26 +135,22 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   const bool provider_hotwords_configured =
       info.supports_hotwords && !asr_config.hotwords_file.empty();
   if (provider_hotwords_configured && IsPromptHotwordFamily(info.family)) {
-    if (!LoadPromptHotwordsCsv(asr_config.hotwords_file,
-                               &provider_prompt_hotwords, error)) {
+    if (!LoadPromptHotwordsCsv(asr_config.hotwords_file, &provider_prompt_hotwords, error)) {
       return nullptr;
     }
-  } else if (provider_hotwords_configured &&
-             !IsTransducerHotwordFamily(info.family)) {
+  } else if (provider_hotwords_configured && !IsTransducerHotwordFamily(info.family)) {
     if (error) {
-      *error = "model family '" + info.family +
-               "' does not expose an ASR hotword input in sherpa-onnx";
+      *error =
+          "model family '" + info.family + "' does not expose an ASR hotword input in sherpa-onnx";
     }
     return nullptr;
   }
 
   if (info.supports_hotwords && IsTransducerHotwordFamily(info.family)) {
-    selected_hotwords_file = !asr_config.hotwords_file.empty()
-                                 ? asr_config.hotwords_file
-                                 : f_hotwords_file;
+    selected_hotwords_file =
+        !asr_config.hotwords_file.empty() ? asr_config.hotwords_file : f_hotwords_file;
     if (!selected_hotwords_file.empty()) {
-      if (!LoadTransducerHotwords(selected_hotwords_file,
-                                  &normalized_transducer_hotwords, error)) {
+      if (!LoadTransducerHotwords(selected_hotwords_file, &normalized_transducer_hotwords, error)) {
         return nullptr;
       }
       if (!normalized_transducer_hotwords.empty()) {
@@ -178,8 +165,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   if (!tokens_path.empty()) {
     config.model_config.tokens = tokens_path.c_str();
   }
-  config.model_config.num_threads =
-      JsonInt(model_cfg, "num_threads", asr_config.thread_num);
+  config.model_config.num_threads = JsonInt(model_cfg, "num_threads", asr_config.thread_num);
   const std::string provider = JsonString(model_cfg, "provider", "cpu");
   config.model_config.provider = provider.c_str();
   const std::string explicit_model_type = JsonString(model_cfg, "model_type");
@@ -199,7 +185,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
     config.lm_config.scale = JsonFloat(lm_cfg, "scale", 0.5f);
   }
 
-  const auto &family = info.family;
+  const auto& family = info.family;
 
   if (!f_rule_fsts.empty()) {
     config.rule_fsts = f_rule_fsts.c_str();
@@ -208,10 +194,9 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
     config.rule_fars = f_rule_fars.c_str();
   }
 
-  const auto &family_cfg =
-      model_cfg.contains(family) && model_cfg[family].is_object()
-          ? model_cfg[family]
-          : nlohmann::json::object();
+  const auto& family_cfg = model_cfg.contains(family) && model_cfg[family].is_object()
+                               ? model_cfg[family]
+                               : nlohmann::json::object();
 
   const auto handlers = std::unordered_map<std::string, std::function<void()>>{
       {"paraformer",
@@ -225,8 +210,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
          config.model_config.sense_voice.model = f_model.c_str();
          cfg_language = JsonString(family_cfg, "language", p_language);
          config.model_config.sense_voice.language = cfg_language.c_str();
-         config.model_config.sense_voice.use_itn =
-             JsonBool(family_cfg, "use_itn") ? 1 : 0;
+         config.model_config.sense_voice.use_itn = JsonBool(family_cfg, "use_itn") ? 1 : 0;
          if (!config.model_config.model_type)
            config.model_config.model_type = "sense_voice";
        }},
@@ -238,8 +222,7 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
          cfg_task = JsonString(family_cfg, "task", "transcribe");
          config.model_config.whisper.language = cfg_language.c_str();
          config.model_config.whisper.task = cfg_task.c_str();
-         config.model_config.whisper.tail_paddings =
-             JsonInt(family_cfg, "tail_paddings", -1);
+         config.model_config.whisper.tail_paddings = JsonInt(family_cfg, "tail_paddings", -1);
          config.model_config.whisper.enable_token_timestamps =
              JsonBool(family_cfg, "enable_token_timestamps") ? 1 : 0;
          config.model_config.whisper.enable_segment_timestamps =
@@ -251,13 +234,10 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
        [&] {
          config.model_config.moonshine.preprocessor = f_preprocessor.c_str();
          config.model_config.moonshine.encoder = f_encoder.c_str();
-         config.model_config.moonshine.uncached_decoder =
-             f_uncached_decoder.c_str();
-         config.model_config.moonshine.cached_decoder =
-             f_cached_decoder.c_str();
+         config.model_config.moonshine.uncached_decoder = f_uncached_decoder.c_str();
+         config.model_config.moonshine.cached_decoder = f_cached_decoder.c_str();
          if (!f_merged_decoder.empty())
-           config.model_config.moonshine.merged_decoder =
-               f_merged_decoder.c_str();
+           config.model_config.moonshine.merged_decoder = f_merged_decoder.c_str();
          if (!config.model_config.model_type)
            config.model_config.model_type = "moonshine";
        }},
@@ -337,69 +317,52 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
          config.model_config.canary.encoder = f_encoder.c_str();
          config.model_config.canary.decoder = f_decoder.c_str();
          cfg_src_lang = JsonString(family_cfg, "src_lang", p_language);
-         cfg_tgt_lang =
-             JsonString(family_cfg, "tgt_lang", asr_config.language);
+         cfg_tgt_lang = JsonString(family_cfg, "tgt_lang", asr_config.language);
          config.model_config.canary.src_lang = cfg_src_lang.c_str();
          config.model_config.canary.tgt_lang = cfg_tgt_lang.c_str();
-         config.model_config.canary.use_pnc =
-             JsonBool(family_cfg, "use_pnc") ? 1 : 0;
+         config.model_config.canary.use_pnc = JsonBool(family_cfg, "use_pnc") ? 1 : 0;
          if (!config.model_config.model_type)
            config.model_config.model_type = "canary";
        }},
       {"funasr_nano",
        [&] {
-         config.model_config.funasr_nano.encoder_adaptor =
-             f_encoder_adapter.c_str();
+         config.model_config.funasr_nano.encoder_adaptor = f_encoder_adapter.c_str();
          config.model_config.funasr_nano.llm = f_llm.c_str();
          config.model_config.funasr_nano.embedding = f_embedding.c_str();
          config.model_config.funasr_nano.tokenizer = f_tokenizer.c_str();
          cfg_language = JsonString(family_cfg, "language", p_language);
          cfg_system_prompt = JsonString(family_cfg, "system_prompt");
          cfg_user_prompt = JsonString(family_cfg, "user_prompt");
-         cfg_hotwords = provider_hotwords_configured
-                            ? provider_prompt_hotwords
-                            : JsonString(family_cfg, "hotwords");
+         cfg_hotwords = provider_hotwords_configured ? provider_prompt_hotwords
+                                                     : JsonString(family_cfg, "hotwords");
          config.model_config.funasr_nano.language = cfg_language.c_str();
-         config.model_config.funasr_nano.itn =
-             JsonBool(family_cfg, "itn") ? 1 : 0;
+         config.model_config.funasr_nano.itn = JsonBool(family_cfg, "itn") ? 1 : 0;
          if (!cfg_system_prompt.empty())
-           config.model_config.funasr_nano.system_prompt =
-               cfg_system_prompt.c_str();
+           config.model_config.funasr_nano.system_prompt = cfg_system_prompt.c_str();
          if (!cfg_user_prompt.empty())
-           config.model_config.funasr_nano.user_prompt =
-               cfg_user_prompt.c_str();
+           config.model_config.funasr_nano.user_prompt = cfg_user_prompt.c_str();
          if (!cfg_hotwords.empty())
            config.model_config.funasr_nano.hotwords = cfg_hotwords.c_str();
          config.model_config.funasr_nano.max_new_tokens =
              JsonInt(family_cfg, "max_new_tokens", 1024);
-         config.model_config.funasr_nano.temperature =
-             JsonFloat(family_cfg, "temperature", 1.0f);
-         config.model_config.funasr_nano.top_p =
-             JsonFloat(family_cfg, "top_p", 0.9f);
-         config.model_config.funasr_nano.seed =
-             JsonInt(family_cfg, "seed", 0);
+         config.model_config.funasr_nano.temperature = JsonFloat(family_cfg, "temperature", 1.0f);
+         config.model_config.funasr_nano.top_p = JsonFloat(family_cfg, "top_p", 0.9f);
+         config.model_config.funasr_nano.seed = JsonInt(family_cfg, "seed", 0);
          if (!config.model_config.model_type)
            config.model_config.model_type = "funasr_nano";
        }},
-      {"qwen3_asr",
-       [&] {
-         config.model_config.qwen3_asr.conv_frontend =
-             f_conv_frontend.c_str();
+      {"qwen3_asr", [&] {
+         config.model_config.qwen3_asr.conv_frontend = f_conv_frontend.c_str();
          config.model_config.qwen3_asr.encoder = f_encoder.c_str();
          config.model_config.qwen3_asr.decoder = f_decoder.c_str();
          config.model_config.qwen3_asr.tokenizer = f_tokenizer.c_str();
-         config.model_config.qwen3_asr.max_total_len =
-             JsonInt(family_cfg, "max_total_len", 4096);
-         config.model_config.qwen3_asr.max_new_tokens =
-             JsonInt(family_cfg, "max_new_tokens", 1024);
-         config.model_config.qwen3_asr.temperature =
-             JsonFloat(family_cfg, "temperature", 1.0f);
-         config.model_config.qwen3_asr.top_p =
-             JsonFloat(family_cfg, "top_p", 0.9f);
+         config.model_config.qwen3_asr.max_total_len = JsonInt(family_cfg, "max_total_len", 4096);
+         config.model_config.qwen3_asr.max_new_tokens = JsonInt(family_cfg, "max_new_tokens", 1024);
+         config.model_config.qwen3_asr.temperature = JsonFloat(family_cfg, "temperature", 1.0f);
+         config.model_config.qwen3_asr.top_p = JsonFloat(family_cfg, "top_p", 0.9f);
          config.model_config.qwen3_asr.seed = JsonInt(family_cfg, "seed", 0);
-         cfg_hotwords = provider_hotwords_configured
-                            ? provider_prompt_hotwords
-                            : JsonString(family_cfg, "hotwords");
+         cfg_hotwords = provider_hotwords_configured ? provider_prompt_hotwords
+                                                     : JsonString(family_cfg, "hotwords");
          if (!cfg_hotwords.empty())
            config.model_config.qwen3_asr.hotwords = cfg_hotwords.c_str();
          if (!config.model_config.model_type)
@@ -423,14 +386,14 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
 
   std::string temporary_hotwords_file;
   if (!normalized_transducer_hotwords.empty()) {
-    if (!WriteTemporaryHotwordFile(normalized_transducer_hotwords,
-                                   &temporary_hotwords_file, error)) {
+    if (!WriteTemporaryHotwordFile(normalized_transducer_hotwords, &temporary_hotwords_file,
+                                   error)) {
       return nullptr;
     }
     config.hotwords_file = temporary_hotwords_file.c_str();
   }
 
-  auto *recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
+  auto* recognizer = SherpaOnnxCreateOfflineRecognizer(&config);
   if (!temporary_hotwords_file.empty()) {
     std::error_code remove_error;
     std::filesystem::remove(temporary_hotwords_file, remove_error);
@@ -441,13 +404,11 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
   }
   if (!recognizer) {
     if (error)
-      *error =
-          "failed to create sherpa-onnx recognizer for family '" + family + "'";
+      *error = "failed to create sherpa-onnx recognizer for family '" + family + "'";
     return nullptr;
   }
 
-  fprintf(stderr,
-          "vinput: sherpa-onnx offline ASR initialized (family: %s, lang: %s)\n",
+  fprintf(stderr, "vinput: sherpa-onnx offline ASR initialized (family: %s, lang: %s)\n",
           family.c_str(), asr_config.language.c_str());
   return recognizer;
 }
@@ -455,10 +416,9 @@ CreateOfflineRecognizer(const ModelInfo &info, const AsrConfig &asr_config,
 // ---------------------------------------------------------------------------
 // Run inference on a recognizer with pre-processed float samples.
 // ---------------------------------------------------------------------------
-std::string InferOffline(const SherpaOnnxOfflineRecognizer *recognizer,
-                         const std::vector<float> &samples) {
-  const SherpaOnnxOfflineStream *stream =
-      SherpaOnnxCreateOfflineStream(recognizer);
+std::string InferOffline(const SherpaOnnxOfflineRecognizer* recognizer,
+                         const std::vector<float>& samples) {
+  const SherpaOnnxOfflineStream* stream = SherpaOnnxCreateOfflineStream(recognizer);
   if (!stream)
     return {};
 
@@ -466,8 +426,7 @@ std::string InferOffline(const SherpaOnnxOfflineRecognizer *recognizer,
                                   static_cast<int32_t>(samples.size()));
   SherpaOnnxDecodeOfflineStream(recognizer, stream);
 
-  const SherpaOnnxOfflineRecognizerResult *result =
-      SherpaOnnxGetOfflineStreamResult(stream);
+  const SherpaOnnxOfflineRecognizerResult* result = SherpaOnnxGetOfflineStreamResult(stream);
   std::string text;
   if (result && result->text)
     text = result->text;
@@ -482,13 +441,11 @@ std::string InferOffline(const SherpaOnnxOfflineRecognizer *recognizer,
 // ---------------------------------------------------------------------------
 class SherpaOfflineSession : public RecognitionSession {
 public:
-  SherpaOfflineSession(const SherpaOnnxOfflineRecognizer *recognizer,
-                       bool vad_available, VadTrimmer *vad)
-      : recognizer_(recognizer),
-        vad_available_(vad_available),
-        vad_(vad) {}
+  SherpaOfflineSession(const SherpaOnnxOfflineRecognizer* recognizer, bool vad_available,
+                       VadTrimmer* vad)
+      : recognizer_(recognizer), vad_available_(vad_available), vad_(vad) {}
 
-  bool PushAudio(std::span<const int16_t> pcm, std::string *error) override {
+  bool PushAudio(std::span<const int16_t> pcm, std::string* error) override {
     if (finished_) {
       if (error)
         *error = "Recognition session already finished.";
@@ -500,7 +457,7 @@ public:
     return true;
   }
 
-  bool Finish(std::string *error) override {
+  bool Finish(std::string* error) override {
     if (finished_) {
       if (error)
         error->clear();
@@ -509,9 +466,7 @@ public:
     finished_ = true;
 
     if (pcm_.size() < kMinSamplesForInference) {
-      fprintf(stderr,
-              "vinput: skipping ASR for short audio: %zu samples (%.1f ms)\n",
-              pcm_.size(),
+      fprintf(stderr, "vinput: skipping ASR for short audio: %zu samples (%.1f ms)\n", pcm_.size(),
               static_cast<double>(pcm_.size()) * 1000.0 / 16000.0);
       events_.push_back({RecognitionEventKind::Completed, {}, {}});
       if (error)
@@ -558,9 +513,9 @@ public:
   }
 
 private:
-  const SherpaOnnxOfflineRecognizer *recognizer_;
+  const SherpaOnnxOfflineRecognizer* recognizer_;
   bool vad_available_;
-  VadTrimmer *vad_;
+  VadTrimmer* vad_;
   bool finished_ = false;
   std::vector<int16_t> pcm_;
   std::vector<RecognitionEvent> events_;
@@ -571,10 +526,8 @@ private:
 // ---------------------------------------------------------------------------
 class SherpaOfflineBackend : public AsrBackend {
 public:
-  SherpaOfflineBackend(ModelInfo model_info, AsrConfig asr_config,
-                       std::string provider_id)
-      : model_info_(std::move(model_info)),
-        asr_config_(std::move(asr_config)),
+  SherpaOfflineBackend(ModelInfo model_info, AsrConfig asr_config, std::string provider_id)
+      : model_info_(std::move(model_info)), asr_config_(std::move(asr_config)),
         provider_id_(std::move(provider_id)) {}
 
   ~SherpaOfflineBackend() override {
@@ -595,19 +548,17 @@ public:
     return descriptor;
   }
 
-  std::unique_ptr<RecognitionSession>
-  CreateSession(std::string *error) override {
+  std::unique_ptr<RecognitionSession> CreateSession(std::string* error) override {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!InitializeLocked(error))
       return nullptr;
     if (error)
       error->clear();
-    return std::make_unique<SherpaOfflineSession>(
-        recognizer_, vad_.Available(), &vad_);
+    return std::make_unique<SherpaOfflineSession>(recognizer_, vad_.Available(), &vad_);
   }
 
 private:
-  bool InitializeLocked(std::string *error) {
+  bool InitializeLocked(std::string* error) {
     if (recognizer_) {
       if (error)
         error->clear();
@@ -619,19 +570,16 @@ private:
       return false;
 
     if (asr_config_.vad_enabled && !asr_config_.vad_model_path.empty()) {
-      const std::string vad_provider =
-          JsonString(model_info_.model_config, "provider", "cpu");
+      const std::string vad_provider = JsonString(model_info_.model_config, "provider", "cpu");
       VadTrimParams vad_params;
       vad_params.threshold = asr_config_.vad_threshold;
       vad_params.min_speech_duration = asr_config_.vad_min_speech_duration;
       vad_params.min_silence_duration = asr_config_.vad_min_silence_duration;
       vad_params.speech_pad_ms = asr_config_.vad_speech_pad_ms;
       std::string vad_error;
-      if (!vad_.Init(asr_config_.vad_model_path, 16000, vad_provider, vad_params,
-                     &vad_error)) {
+      if (!vad_.Init(asr_config_.vad_model_path, 16000, vad_provider, vad_params, &vad_error)) {
         fprintf(stderr, "vinput: %s, continuing without VAD\n",
-                vad_error.empty() ? "VAD model not available"
-                                  : vad_error.c_str());
+                vad_error.empty() ? "VAD model not available" : vad_error.c_str());
       }
     }
 
@@ -644,7 +592,7 @@ private:
   AsrConfig asr_config_;
   std::string provider_id_;
   std::mutex mutex_;
-  const SherpaOnnxOfflineRecognizer *recognizer_ = nullptr;
+  const SherpaOnnxOfflineRecognizer* recognizer_ = nullptr;
   VadTrimmer vad_;
 };
 
@@ -653,15 +601,13 @@ private:
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
-std::unique_ptr<AsrBackend>
-CreateSherpaOfflineBackend(const CoreConfig &config,
-                           const LocalAsrProvider &provider,
-                           std::string *error) {
+std::unique_ptr<AsrBackend> CreateSherpaOfflineBackend(const CoreConfig& config,
+                                                       const LocalAsrProvider& provider,
+                                                       std::string* error) {
   if (provider.model.empty()) {
     if (error) {
-      *error = vinput::str::FmtStr(
-          _("Local ASR model configuration is missing for provider '%s'."),
-          provider.id);
+      *error = vinput::str::FmtStr(_("Local ASR model configuration is missing for provider '%s'."),
+                                   provider.id);
     }
     return nullptr;
   }
@@ -670,8 +616,7 @@ CreateSherpaOfflineBackend(const CoreConfig &config,
   std::string model_error;
   if (!model_mgr.EnsureModels(&model_error)) {
     if (error) {
-      *error =
-          "Local ASR model check failed for provider '" + provider.id + "'";
+      *error = "Local ASR model check failed for provider '" + provider.id + "'";
       if (!model_error.empty())
         *error += ": " + model_error;
       else
@@ -687,17 +632,13 @@ CreateSherpaOfflineBackend(const CoreConfig &config,
   asr_config.vad_enabled = config.asr.vad.enabled;
   asr_config.vad_model_path = VINPUT_VAD_MODEL_PATH;
   asr_config.vad_threshold = static_cast<float>(config.asr.vad.threshold);
-  asr_config.vad_min_speech_duration =
-      static_cast<float>(config.asr.vad.minSpeechDuration);
-  asr_config.vad_min_silence_duration =
-      static_cast<float>(config.asr.vad.minSilenceDuration);
+  asr_config.vad_min_speech_duration = static_cast<float>(config.asr.vad.minSpeechDuration);
+  asr_config.vad_min_silence_duration = static_cast<float>(config.asr.vad.minSilenceDuration);
   asr_config.vad_speech_pad_ms = config.asr.vad.speechPadMs;
 
   if (error)
     error->clear();
-  return std::make_unique<SherpaOfflineBackend>(model_info,
-                                                std::move(asr_config),
-                                                provider.id);
+  return std::make_unique<SherpaOfflineBackend>(model_info, std::move(asr_config), provider.id);
 }
 
 } // namespace vinput::daemon::asr

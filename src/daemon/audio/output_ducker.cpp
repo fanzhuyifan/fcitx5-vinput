@@ -1,14 +1,14 @@
 #include "daemon/audio/output_ducker.h"
 
-#include "common/utils/debug_log.h"
-#include "common/utils/process_utils.h"
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
 #include <string>
 #include <vector>
+
+#include "common/utils/debug_log.h"
+#include "common/utils/process_utils.h"
 
 namespace vinput::daemon::audio {
 
@@ -28,13 +28,13 @@ vinput::process::CommandResult RunWpctl(std::vector<std::string> args) {
 
 // Parse the numeric volume out of `wpctl get-volume` output, e.g.
 // "Volume: 1.00" or "Volume: 0.15 [MUTED]".
-std::optional<double> ParseVolume(const std::string &text) {
+std::optional<double> ParseVolume(const std::string& text) {
   const auto pos = text.find("Volume:");
   if (pos == std::string::npos) {
     return std::nullopt;
   }
-  const char *cursor = text.c_str() + pos + 7;  // skip "Volume:"
-  char *end = nullptr;
+  const char* cursor = text.c_str() + pos + 7; // skip "Volume:"
+  char* end = nullptr;
   const double value = std::strtod(cursor, &end);
   if (end == cursor) {
     return std::nullopt;
@@ -59,10 +59,10 @@ bool SetDefaultSinkVolume(double volume) {
   return !result.launch_failed && !result.timed_out && result.exit_code == 0;
 }
 
-}  // namespace
+} // namespace
 
 void OutputDucker::Duck(double scale) {
-  std::lock_guard<std::mutex> lock(mutex_);
+  const std::scoped_lock lock(mutex_);
   if (ducked_) {
     return;
   }
@@ -70,9 +70,8 @@ void OutputDucker::Duck(double scale) {
 
   const auto current = ReadDefaultSinkVolume();
   if (!current) {
-    fprintf(stderr,
-            "vinput-daemon: output ducking skipped (wpctl unavailable or no "
-            "default sink)\n");
+    fprintf(stderr, "vinput-daemon: output ducking skipped (wpctl unavailable or no "
+                    "default sink)\n");
     return;
   }
 
@@ -85,12 +84,12 @@ void OutputDucker::Duck(double scale) {
 
   saved_volume_ = *current;
   ducked_ = true;
-  vinput::debug::Log("ducked output volume %.2f -> %.2f (%.0f%%)\n", *current,
-                     target, scale * 100.0);
+  vinput::debug::Log("ducked output volume %.2f -> %.2f (%.0f%%)\n", *current, target,
+                     scale * 100.0);
 }
 
 void OutputDucker::Restore() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  const std::scoped_lock lock(mutex_);
   if (!ducked_) {
     return;
   }
@@ -100,10 +99,8 @@ void OutputDucker::Restore() {
   if (SetDefaultSinkVolume(restore_to)) {
     vinput::debug::Log("restored output volume -> %.2f\n", restore_to);
   } else {
-    fprintf(stderr,
-            "vinput-daemon: failed to restore output volume to %.2f\n",
-            restore_to);
+    fprintf(stderr, "vinput-daemon: failed to restore output volume to %.2f\n", restore_to);
   }
 }
 
-}  // namespace vinput::daemon::audio
+} // namespace vinput::daemon::audio

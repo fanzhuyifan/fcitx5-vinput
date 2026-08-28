@@ -1,16 +1,17 @@
 #pragma once
 
-#include "common/config/core_config.h"
-#include "daemon/asr/runtime/recognition_contract.h"
-
-#include <cstdint>
 #include <condition_variable>
+#include <cstdint>
 #include <functional>
-#include <mutex>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
+
+#include "common/config/core_config.h"
+
+#include "daemon/asr/runtime/recognition_contract.h"
 
 namespace vinput::daemon::asr {
 
@@ -38,19 +39,15 @@ public:
   explicit RecognitionSessionManager(bool disable_asr_by_flag);
   ~RecognitionSessionManager();
 
-  bool Initialize(const CoreConfig &settings, std::string *disabled_reason);
-  bool SynchronizeBackend(const CoreConfig &settings, std::string *error);
+  bool Initialize(const CoreConfig& settings, std::string* disabled_reason);
+  bool SynchronizeBackend(const CoreConfig& settings, std::string* error);
   std::unique_ptr<RecognitionSession>
-  CreateSession(const CoreConfig &settings, BackendDescriptor *descriptor,
-                std::string *error);
-  static RecognitionRunResult
-  ConsumeEvents(std::unique_ptr<RecognitionSession> *session, bool cancel,
-                std::string *error);
-  RecognitionRunResult Recognize(const CoreConfig &settings,
-                                 const std::vector<int16_t> &pcm_data);
+  CreateSession(const CoreConfig& settings, BackendDescriptor* descriptor, std::string* error);
+  static RecognitionRunResult ConsumeEvents(std::unique_ptr<RecognitionSession>* session,
+                                            bool cancel, std::string* error);
   ReloadSnapshot GetReloadSnapshot() const;
-  void SetReloadResultCallback(
-      std::function<void(bool success, const std::string &message)> callback);
+  void
+  SetReloadResultCallback(std::function<void(bool success, const std::string& message)> callback);
   void Shutdown();
 
 private:
@@ -62,23 +59,19 @@ private:
     std::string signature;
   };
 
-  bool CreatePreparedBackend(const CoreConfig &settings,
-                             PreparedBackend *prepared,
-                             std::string *error);
-  bool ActivatePreparedBackend(PreparedBackend prepared,
-                               std::string *error);
-  bool CreatePreparedBackendForReload(const CoreConfig &settings,
-                                      const std::string &signature,
-                                      PreparedBackend *prepared,
-                                      std::string *error);
-  bool CreateSessionFromEffectiveBackend(BackendDescriptor *descriptor,
-                                         std::unique_ptr<RecognitionSession> *session,
-                                         std::string *error);
+  bool CreatePreparedBackend(const CoreConfig& settings, PreparedBackend* prepared,
+                             std::string* error);
+  bool ActivatePreparedBackend(PreparedBackend prepared, std::string* error);
+  bool CreatePreparedBackendForReload(const CoreConfig& settings, const std::string& signature,
+                                      PreparedBackend* prepared, std::string* error);
+  bool CreateSessionFromEffectiveBackend(BackendDescriptor* descriptor,
+                                         std::unique_ptr<RecognitionSession>* session,
+                                         std::string* error);
   void EnsureReloadWorkerStarted();
   void ReloadWorkerMain();
   void ResetEffectiveBackendLocked();
   void ApplyDisabledStateLocked();
-  void NotifyReloadResult(bool success, const std::string &message);
+  void NotifyReloadResult(bool success, const std::string& message);
 
   bool disable_asr_by_flag_ = false;
   mutable std::mutex state_mutex_;
@@ -98,8 +91,7 @@ private:
   std::string effective_backend_signature_;
   std::string last_reload_error_;
   std::thread reload_worker_;
-  std::function<void(bool success, const std::string &message)>
-      reload_result_callback_;
+  std::function<void(bool success, const std::string& message)> reload_result_callback_;
 };
 
-}  // namespace vinput::daemon::asr
+} // namespace vinput::daemon::asr
