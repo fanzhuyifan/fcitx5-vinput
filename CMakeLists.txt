@@ -36,8 +36,34 @@ include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cma
 # Override to C++20 after Fcitx5CompilerSettings (which may set an older standard)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wunused
+        -Wunneeded-internal-declaration
+        -Wunneeded-member-function
+        -Wunreachable-code
+        -Wredundant-decls
+    )
+endif()
 find_package(PkgConfig REQUIRED)
-find_package(nlohmann_json 3.2.0 REQUIRED)
+option(VINPUT_FETCH_NLOHMANN_JSON "Fetch nlohmann_json with FetchContent when not found" ON)
+find_package(nlohmann_json 3.2.0 QUIET)
+if(NOT nlohmann_json_FOUND)
+    if(VINPUT_FETCH_NLOHMANN_JSON)
+        include(FetchContent)
+        FetchContent_Declare(
+            nlohmann_json
+            URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+        )
+        FetchContent_MakeAvailable(nlohmann_json)
+    else()
+        message(FATAL_ERROR
+            "nlohmann_json was not found. Install nlohmann_json or enable VINPUT_FETCH_NLOHMANN_JSON.")
+    endif()
+endif()
 find_package(Gettext REQUIRED)
 
 pkg_check_modules(SDBUS REQUIRED libsystemd)
