@@ -1,7 +1,3 @@
-#include "common/asr/bpe_vocab_exporter.h"
-#include "common/asr/model_manager.h"
-#include "daemon/asr/hotword_utils.h"
-
 #include <bit>
 #include <cmath>
 #include <cstdint>
@@ -11,8 +7,13 @@
 #include <iostream>
 #include <string>
 #include <string_view>
-#include <vector>
 #include <unistd.h>
+#include <vector>
+
+#include "common/asr/bpe_vocab_exporter.h"
+#include "common/asr/model_manager.h"
+
+#include "daemon/asr/hotword_utils.h"
 
 namespace fs = std::filesystem;
 using vinput::daemon::asr::IsPromptHotwordFamily;
@@ -30,13 +31,13 @@ void Require(bool condition, std::string_view message) {
   }
 }
 
-void WriteBytes(const fs::path &path, std::string_view bytes) {
+void WriteBytes(const fs::path& path, std::string_view bytes) {
   std::ofstream output(path, std::ios::binary | std::ios::trunc);
   output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
   Require(static_cast<bool>(output), "write test hotwords file");
 }
 
-void AppendVarint(std::string *data, std::uint64_t value) {
+void AppendVarint(std::string* data, std::uint64_t value) {
   while (value >= 0x80) {
     data->push_back(static_cast<char>((value & 0x7f) | 0x80));
     value >>= 7;
@@ -44,7 +45,7 @@ void AppendVarint(std::string *data, std::uint64_t value) {
   data->push_back(static_cast<char>(value));
 }
 
-void AppendPiece(std::string *model, std::string_view piece, float score) {
+void AppendPiece(std::string* model, std::string_view piece, float score) {
   std::string message;
   message.push_back(static_cast<char>(0x0a));
   AppendVarint(&message, piece.size());
@@ -63,8 +64,8 @@ void AppendPiece(std::string *model, std::string_view piece, float score) {
 } // namespace
 
 int main() {
-  const fs::path root = fs::temp_directory_path() /
-                        ("vinput-hotword-tests-" + std::to_string(getpid()));
+  const fs::path root =
+      fs::temp_directory_path() / ("vinput-hotword-tests-" + std::to_string(getpid()));
   fs::create_directories(root);
 
   const fs::path sentencepiece_model = root / "bpe.model";
@@ -74,13 +75,11 @@ int main() {
   AppendPiece(&model_data, "▁hello", -1.25f);
   {
     std::ofstream output(sentencepiece_model, std::ios::binary);
-    output.write(model_data.data(),
-                 static_cast<std::streamsize>(model_data.size()));
+    output.write(model_data.data(), static_cast<std::streamsize>(model_data.size()));
   }
 
   std::string error;
-  Require(ExportSentencePieceVocabulary(sentencepiece_model, bpe_vocab, &error),
-          error);
+  Require(ExportSentencePieceVocabulary(sentencepiece_model, bpe_vocab, &error), error);
   Require(ValidateBpeVocabulary(bpe_vocab, &error), error);
 
   const fs::path hotword_file = root / "hotwords.txt";
@@ -92,14 +91,11 @@ int main() {
   }
   std::string prompt_hotwords;
   Require(LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error), error);
-  Require(prompt_hotwords == "语音识别,OpenAI,deep learning",
-          "prompt hotword conversion");
+  Require(prompt_hotwords == "语音识别,OpenAI,deep learning", "prompt hotword conversion");
 
   std::string transducer_hotwords;
-  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
-          error);
-  Require(transducer_hotwords ==
-              "语音识别 :3.5\nOpenAI\ndeep learning :2\n",
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error), error);
+  Require(transducer_hotwords == "语音识别 :3.5\nOpenAI\ndeep learning :2\n",
           "transducer hotword conversion");
 
   {
@@ -140,35 +136,28 @@ int main() {
 
   for (const std::string_view suffix :
        {"nan", "inf", "infinity", "-inf", "1e9999", "1.2junk", ""}) {
-    WriteBytes(hotword_file, std::string("invalid:") + std::string(suffix) +
-                                 "\n");
+    WriteBytes(hotword_file, std::string("invalid:") + std::string(suffix) + "\n");
     Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
             "invalid attached scores must be rejected");
   }
 
-  for (const std::string_view line :
-       {"hello :nan:tail\n", "hello :1e9999:tail\n"}) {
+  for (const std::string_view line : {"hello :nan:tail\n", "hello :1e9999:tail\n"}) {
     WriteBytes(hotword_file, line);
     Require(!LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
             "spaced score tokens must not bypass validation");
   }
 
   WriteBytes(hotword_file, "é😀:2.0\n");
-  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
-          error);
-  Require(transducer_hotwords == "é😀 :2.0\n",
-          "valid multibyte UTF-8 hotwords");
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error), error);
+  Require(transducer_hotwords == "é😀 :2.0\n", "valid multibyte UTF-8 hotwords");
 
   const std::vector<std::string> invalid_utf8 = {
-      std::string("bad\0text\n", 9),
-      std::string("bad\x01text\n", 9),
-      std::string("bad\xc0\xaf\n", 6),
-      std::string("bad\xe2\x28\xa1\n", 7),
-      std::string("bad\xed\xa0\x80\n", 7),
-      std::string("bad\xf4\x90\x80\x80\n", 8),
+      std::string("bad\0text\n", 9),       std::string("bad\x01text\n", 9),
+      std::string("bad\xc0\xaf\n", 6),     std::string("bad\xe2\x28\xa1\n", 7),
+      std::string("bad\xed\xa0\x80\n", 7), std::string("bad\xf4\x90\x80\x80\n", 8),
       std::string("bad\xf0", 4),
   };
-  for (const auto &bytes : invalid_utf8) {
+  for (const auto& bytes : invalid_utf8) {
     WriteBytes(hotword_file, bytes);
     Require(!LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error),
             "invalid UTF-8 and control bytes must be rejected");
@@ -178,17 +167,14 @@ int main() {
     std::ofstream output(hotword_file);
     output << " \n\t\n";
   }
-  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error),
-          error);
+  Require(LoadTransducerHotwords(hotword_file, &transducer_hotwords, &error), error);
   Require(transducer_hotwords.empty(), "empty transducer hotwords stay off");
   Require(LoadPromptHotwordsCsv(hotword_file, &prompt_hotwords, &error), error);
   Require(prompt_hotwords.empty(), "empty prompt hotwords stay off");
 
   Require(IsTransducerHotwordFamily("transducer"), "transducer family");
-  Require(IsTransducerHotwordFamily("nemo_transducer"),
-          "nemo transducer family");
-  Require(!IsTransducerHotwordFamily("qwen3_asr"),
-          "prompt family is not a transducer");
+  Require(IsTransducerHotwordFamily("nemo_transducer"), "nemo transducer family");
+  Require(!IsTransducerHotwordFamily("qwen3_asr"), "prompt family is not a transducer");
   Require(IsPromptHotwordFamily("funasr_nano"), "FunASR prompt family");
   Require(IsPromptHotwordFamily("qwen3_asr"), "Qwen3 prompt family");
 
@@ -201,15 +187,14 @@ int main() {
   Require(ValidateTransducerHotwordAssets(info, &error), error);
 
   info.files["bpe_vocab"] = bpe_vocab.string();
-  for (const char *unit : {"bpe", "bbpe", "cjkchar+bpe"}) {
+  for (const char* unit : {"bpe", "bbpe", "cjkchar+bpe"}) {
     info.model_config = {{"modeling_unit", unit}};
     Require(ValidateTransducerHotwordAssets(info, &error), error);
   }
 
   info.files.clear();
   info.model_config = {{"modeling_unit", "bpe"}};
-  Require(!ValidateTransducerHotwordAssets(info, &error),
-          "BPE units require a vocabulary");
+  Require(!ValidateTransducerHotwordAssets(info, &error), "BPE units require a vocabulary");
   info.model_config = {{"modeling_unit", "unknown"}};
   Require(!ValidateTransducerHotwordAssets(info, &error),
           "unknown modeling units must be rejected");

@@ -10,7 +10,7 @@ class LlmPage : public QWidget {
   Q_OBJECT
 
 public:
-  explicit LlmPage(QWidget *parent = nullptr);
+  explicit LlmPage(QWidget* parent = nullptr);
 
   void reload();
 
@@ -34,23 +34,23 @@ private slots:
   void onSceneSetActive();
 
 private:
-  QListWidget *listProviders_;
-  QPushButton *btnLlmAdd_;
-  QPushButton *btnLlmEdit_;
-  QPushButton *btnLlmRemove_;
-  QPushButton *btnLlmTest_;
+  QListWidget* listProviders_;
+  QPushButton* btnLlmAdd_;
+  QPushButton* btnLlmEdit_;
+  QPushButton* btnLlmRemove_;
+  QPushButton* btnLlmTest_;
 
-  QListWidget *listAdapters_;
-  QPushButton *btnAdapterEdit_;
-  QPushButton *btnAdapterStart_;
-  QPushButton *btnAdapterStop_;
-  QPushButton *btnAdapterRefresh_;
+  QListWidget* listAdapters_;
+  QPushButton* btnAdapterEdit_;
+  QPushButton* btnAdapterStart_;
+  QPushButton* btnAdapterStop_;
+  QPushButton* btnAdapterRefresh_;
 
-  QListWidget *listScenes_;
-  QPushButton *btnSceneAdd_;
-  QPushButton *btnSceneEdit_;
-  QPushButton *btnSceneRemove_;
-  QPushButton *btnSceneSetActive_;
+  QListWidget* listScenes_;
+  QPushButton* btnSceneAdd_;
+  QPushButton* btnSceneEdit_;
+  QPushButton* btnSceneRemove_;
+  QPushButton* btnSceneSetActive_;
 };
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

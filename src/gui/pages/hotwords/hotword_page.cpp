@@ -14,10 +14,10 @@
 
 namespace vinput::gui {
 
-HotwordPage::HotwordPage(QWidget *parent) : QWidget(parent) {
-  auto *layout = new QVBoxLayout(this);
+HotwordPage::HotwordPage(QWidget* parent) : QWidget(parent) {
+  auto* layout = new QVBoxLayout(this);
 
-  auto *fileLayout = new QHBoxLayout();
+  auto* fileLayout = new QHBoxLayout();
   editFile_ = new QLineEdit();
   editFile_->setPlaceholderText(tr("Path to hotwords file..."));
   btnBrowse_ = new QPushButton(tr("Browse..."));
@@ -25,15 +25,14 @@ HotwordPage::HotwordPage(QWidget *parent) : QWidget(parent) {
   fileLayout->addWidget(btnBrowse_);
   layout->addLayout(fileLayout);
 
-  auto *lblWords = new QLabel(
-      tr("Hotwords (one per line, optional transducer score: \"word:2.0\"):"));
+  auto* lblWords =
+      new QLabel(tr("Hotwords (one per line, optional transducer score: \"word:2.0\"):"));
   layout->addWidget(lblWords);
 
   textContent_ = new QTextEdit();
   layout->addWidget(textContent_);
 
-  connect(btnBrowse_, &QPushButton::clicked, this,
-          &HotwordPage::onBrowseClicked);
+  connect(btnBrowse_, &QPushButton::clicked, this, &HotwordPage::onBrowseClicked);
   connect(editFile_, &QLineEdit::editingFinished, this, [this]() {
     const QString path = editFile_->text().trimmed();
     if (path.isEmpty()) {
@@ -78,9 +77,8 @@ QString HotwordPage::hotwordsContent() const {
 }
 
 void HotwordPage::onBrowseClicked() {
-  QString fileName = QFileDialog::getOpenFileName(
-      this, tr("Select Hotwords File"), "",
-      tr("Text Files (*.txt);;All Files (*)"));
+  QString fileName = QFileDialog::getOpenFileName(this, tr("Select Hotwords File"), "",
+                                                  tr("Text Files (*.txt);;All Files (*)"));
   if (fileName.isEmpty())
     return;
   editFile_->setText(fileName);
@@ -89,4 +87,4 @@ void HotwordPage::onBrowseClicked() {
     textContent_->setPlainText(QTextStream(&f).readAll());
 }
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

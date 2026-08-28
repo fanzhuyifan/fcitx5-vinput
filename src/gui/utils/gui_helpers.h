@@ -8,27 +8,25 @@
 namespace vinput::gui {
 
 // Translate helper for non-QObject contexts.
-QString GuiTranslate(const char *sourceText);
+QString GuiTranslate(const char* sourceText);
 
 // Split text into non-empty trimmed lines.
-QStringList NonEmptyLines(const QString &text);
+QStringList NonEmptyLines(const QString& text);
 
 // Create a read-only table cell, optionally with UserRole data.
-QTableWidgetItem *MakeCell(const QString &text, const QString &data = {});
+QTableWidgetItem* MakeCell(const QString& text, const QString& data = {});
 
 // Validate LLM provider input (name + base_url).
-bool ValidateProviderInput(const QString &name, const QString &base_url,
-                           QString *error_out);
+bool ValidateProviderInput(const QString& name, const QString& base_url, QString* error_out);
 
 // Parse KEY=VALUE lines into a map. Returns false on error.
-bool ParseCommandEnv(const QString &text,
-                     std::map<std::string, std::string> *env,
-                     QString *error_out);
+bool ParseCommandEnv(const QString& text, std::map<std::string, std::string>* env,
+                     QString* error_out);
 
 // Populate provider combo from `vinput -j llm list`, wire it to refresh
 // model combo via OpenAI /models endpoint.
-void SetupProviderModelCombos(QComboBox *comboProvider, QComboBox *comboModel,
-                              const QString &currentProvider = {},
-                              const QString &currentModel = {});
+void SetupProviderModelCombos(QComboBox* comboProvider, QComboBox* comboModel,
+                              const QString& currentProvider = {},
+                              const QString& currentModel = {});
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

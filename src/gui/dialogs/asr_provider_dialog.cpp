@@ -15,7 +15,9 @@
 #include <QVBoxLayout>
 
 #include "common/asr/model_manager.h"
+
 #include "gui/utils/config_manager.h"
+
 #include "utils/gui_helpers.h"
 
 namespace vinput::gui {
@@ -25,7 +27,7 @@ namespace {
 constexpr char kLocalType[] = "local";
 constexpr char kCommandType[] = "command";
 
-QString JoinArgLines(const std::vector<std::string> &args) {
+QString JoinArgLines(const std::vector<std::string>& args) {
   std::string joined;
   for (std::size_t i = 0; i < args.size(); ++i) {
     if (i != 0)
@@ -35,10 +37,10 @@ QString JoinArgLines(const std::vector<std::string> &args) {
   return QString::fromStdString(joined);
 }
 
-QString JoinEnvLines(const std::map<std::string, std::string> &env) {
+QString JoinEnvLines(const std::map<std::string, std::string>& env) {
   std::string joined;
   std::size_t index = 0;
-  for (const auto &[key, value] : env) {
+  for (const auto& [key, value] : env) {
     if (index++ != 0)
       joined += "\n";
     joined += key + "=" + value;
@@ -46,9 +48,8 @@ QString JoinEnvLines(const std::map<std::string, std::string> &env) {
   return QString::fromStdString(joined);
 }
 
-void UpdateFieldState(QComboBox *comboType, QComboBox *comboModel,
-                      QLineEdit *editCommand, QTextEdit *textArgs,
-                      QTextEdit *textEnv, QSpinBox *spinTimeout) {
+void UpdateFieldState(QComboBox* comboType, QComboBox* comboModel, QLineEdit* editCommand,
+                      QTextEdit* textArgs, QTextEdit* textEnv, QSpinBox* spinTimeout) {
   const bool is_local = comboType->currentData().toString() == kLocalType;
   comboModel->setEnabled(is_local);
   editCommand->setEnabled(!is_local);
@@ -62,7 +63,7 @@ QStringList LoadLocalModelIds() {
   ModelManager manager(ResolveModelBaseDir(config).string());
   auto models = manager.ListDetailed("");
   QStringList ids;
-  for (const auto &m : models) {
+  for (const auto& m : models) {
     if (!m.id.empty()) {
       ids.push_back(QString::fromStdString(m.id));
     }
@@ -70,11 +71,10 @@ QStringList LoadLocalModelIds() {
   return ids;
 }
 
-}  // namespace
+} // namespace
 
-bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
-                           const AsrProviderData *existing,
-                           AsrProviderData *out_data) {
+bool ShowAsrProviderDialog(QWidget* parent, const QString& title, const AsrProviderData* existing,
+                           AsrProviderData* out_data) {
   if (!out_data) {
     return false;
   }
@@ -83,29 +83,28 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
     QDialog dialog(parent);
     dialog.setWindowTitle(title);
 
-    auto *form = new QFormLayout();
-    auto *editName = new QLineEdit();
-    auto *comboType = new QComboBox();
-    auto *comboModel = new QComboBox();
-    auto *editCommand = new QLineEdit();
-    auto *textArgs = new QTextEdit();
-    auto *textEnv = new QTextEdit();
-    auto *spinTimeout = new QSpinBox();
+    auto* form = new QFormLayout();
+    auto* editName = new QLineEdit();
+    auto* comboType = new QComboBox();
+    auto* comboModel = new QComboBox();
+    auto* editCommand = new QLineEdit();
+    auto* textArgs = new QTextEdit();
+    auto* textEnv = new QTextEdit();
+    auto* spinTimeout = new QSpinBox();
 
     comboType->addItem(GuiTranslate("local"), QString(kLocalType));
     comboType->addItem(GuiTranslate("command"), QString(kCommandType));
     textArgs->setMaximumHeight(90);
     textEnv->setMaximumHeight(90);
     textArgs->setPlaceholderText(GuiTranslate("One argument per line"));
-    textEnv->setPlaceholderText(
-        GuiTranslate("One KEY=VALUE entry per line"));
+    textEnv->setPlaceholderText(GuiTranslate("One KEY=VALUE entry per line"));
     spinTimeout->setRange(1000, 300000);
     spinTimeout->setSingleStep(1000);
     spinTimeout->setSuffix(" ms");
     comboModel->setEditable(true);
 
     const QStringList local_models = LoadLocalModelIds();
-    for (const auto &m : local_models) {
+    for (const auto& m : local_models) {
       comboModel->addItem(m);
     }
 
@@ -119,8 +118,7 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
 
     editName->setText(QString::fromStdString(initial.id));
     editName->setReadOnly(existing != nullptr);
-    comboType->setCurrentIndex(
-        comboType->findData(QString::fromStdString(initial.type)));
+    comboType->setCurrentIndex(comboType->findData(QString::fromStdString(initial.type)));
 
     if (initial.type == kLocalType) {
       if (!initial.model.empty() &&
@@ -137,17 +135,14 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
       textArgs->setPlainText(JoinArgLines(initial.args));
       textEnv->setPlainText(JoinEnvLines(initial.env));
     }
-    spinTimeout->setValue(
-        initial.timeout_ms > 0 ? initial.timeout_ms : spinTimeout->minimum());
+    spinTimeout->setValue(initial.timeout_ms > 0 ? initial.timeout_ms : spinTimeout->minimum());
 
-    UpdateFieldState(comboType, comboModel, editCommand, textArgs, textEnv,
-                     spinTimeout);
-    QObject::connect(
-        comboType, QOverload<int>::of(&QComboBox::currentIndexChanged), &dialog,
-        [comboType, comboModel, editCommand, textArgs, textEnv, spinTimeout]() {
-          UpdateFieldState(comboType, comboModel, editCommand, textArgs,
-                           textEnv, spinTimeout);
-        });
+    UpdateFieldState(comboType, comboModel, editCommand, textArgs, textEnv, spinTimeout);
+    QObject::connect(comboType, QOverload<int>::of(&QComboBox::currentIndexChanged), &dialog,
+                     [comboType, comboModel, editCommand, textArgs, textEnv, spinTimeout]() {
+                       UpdateFieldState(comboType, comboModel, editCommand, textArgs, textEnv,
+                                        spinTimeout);
+                     });
 
     form->addRow(GuiTranslate("Name:"), editName);
     form->addRow(GuiTranslate("Type:"), comboType);
@@ -157,14 +152,11 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
     form->addRow(GuiTranslate("Env:"), textEnv);
     form->addRow(GuiTranslate("Timeout (ms):"), spinTimeout);
 
-    auto *buttons =
-        new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog,
-                     &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog,
-                     &QDialog::reject);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-    auto *layout = new QVBoxLayout(&dialog);
+    auto* layout = new QVBoxLayout(&dialog);
     layout->addLayout(form);
     layout->addWidget(buttons);
 
@@ -192,20 +184,18 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
     } else {
       const QString command = editCommand->text().trimmed();
       if (command.isEmpty()) {
-        QMessageBox::warning(
-            parent, GuiTranslate("Error"),
-            GuiTranslate("Command providers require a command."));
+        QMessageBox::warning(parent, GuiTranslate("Error"),
+                             GuiTranslate("Command providers require a command."));
         continue;
       }
       out_data->command = command.toStdString();
       out_data->model.clear();
       out_data->args.clear();
-      for (const QString &arg : NonEmptyLines(textArgs->toPlainText())) {
+      for (const QString& arg : NonEmptyLines(textArgs->toPlainText())) {
         out_data->args.push_back(arg.toStdString());
       }
       QString env_error;
-      if (!ParseCommandEnv(textEnv->toPlainText(), &out_data->env,
-                           &env_error)) {
+      if (!ParseCommandEnv(textEnv->toPlainText(), &out_data->env, &env_error)) {
         QMessageBox::warning(parent, GuiTranslate("Error"), env_error);
         continue;
       }
@@ -214,4 +204,4 @@ bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
   }
 }
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

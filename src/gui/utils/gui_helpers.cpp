@@ -14,17 +14,18 @@
 
 #include "common/llm/defaults.h"
 #include "common/utils/url_utils.h"
+
 #include "gui/utils/config_manager.h"
 
 namespace vinput::gui {
 
-QString GuiTranslate(const char *sourceText) {
+QString GuiTranslate(const char* sourceText) {
   return QCoreApplication::translate("MainWindow", sourceText);
 }
 
-QStringList NonEmptyLines(const QString &text) {
+QStringList NonEmptyLines(const QString& text) {
   QStringList lines;
-  for (const QString &line : text.split('\n')) {
+  for (const QString& line : text.split('\n')) {
     const QString trimmed = line.trimmed();
     if (!trimmed.isEmpty()) {
       lines.push_back(trimmed);
@@ -33,16 +34,15 @@ QStringList NonEmptyLines(const QString &text) {
   return lines;
 }
 
-QTableWidgetItem *MakeCell(const QString &text, const QString &data) {
-  auto *cell = new QTableWidgetItem(text);
+QTableWidgetItem* MakeCell(const QString& text, const QString& data) {
+  auto* cell = new QTableWidgetItem(text);
   cell->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
   if (!data.isEmpty())
     cell->setData(Qt::UserRole, data);
   return cell;
 }
 
-bool ValidateProviderInput(const QString &name, const QString &base_url,
-                           QString *error_out) {
+bool ValidateProviderInput(const QString& name, const QString& base_url, QString* error_out) {
   if (name.trimmed().isEmpty()) {
     if (error_out) {
       *error_out = GuiTranslate("Provider name must not be empty.");
@@ -54,8 +54,7 @@ bool ValidateProviderInput(const QString &name, const QString &base_url,
   if (!url.isValid() || url.scheme().isEmpty() || url.host().isEmpty() ||
       (url.scheme() != "http" && url.scheme() != "https")) {
     if (error_out) {
-      *error_out =
-          GuiTranslate("Base URL must be a valid http:// or https:// URL.");
+      *error_out = GuiTranslate("Base URL must be a valid http:// or https:// URL.");
     }
     return false;
   }
@@ -63,20 +62,18 @@ bool ValidateProviderInput(const QString &name, const QString &base_url,
   return true;
 }
 
-bool ParseCommandEnv(const QString &text,
-                     std::map<std::string, std::string> *env,
-                     QString *error_out) {
+bool ParseCommandEnv(const QString& text, std::map<std::string, std::string>* env,
+                     QString* error_out) {
   if (!env) {
     return false;
   }
 
   env->clear();
-  for (const QString &line : NonEmptyLines(text)) {
+  for (const QString& line : NonEmptyLines(text)) {
     const int pos = line.indexOf('=');
     if (pos <= 0) {
       if (error_out) {
-        *error_out =
-            GuiTranslate("Invalid env entry '%1'. Use KEY=VALUE.").arg(line);
+        *error_out = GuiTranslate("Invalid env entry '%1'. Use KEY=VALUE.").arg(line);
       }
       return false;
     }
@@ -97,68 +94,60 @@ struct ProviderInfo {
   QString api_key;
 };
 
-QString ProviderModelCacheKey(const ProviderInfo &p) {
+QString ProviderModelCacheKey(const ProviderInfo& p) {
   return p.base_url + '\n' + p.api_key;
 }
 
-void ApplyFetchedProviderModels(QComboBox *comboModel,
-                                const QStringList &models) {
+void ApplyFetchedProviderModels(QComboBox* comboModel, const QStringList& models) {
   comboModel->setEnabled(true);
   comboModel->clear();
   comboModel->setToolTip(QString());
-  if (auto *lineEdit = comboModel->lineEdit()) {
+  if (auto* lineEdit = comboModel->lineEdit()) {
     lineEdit->setPlaceholderText(
-        models.isEmpty()
-            ? GuiTranslate(
-                  "No models returned. You can type one manually.")
-            : QString());
+        models.isEmpty() ? GuiTranslate("No models returned. You can type one manually.")
+                         : QString());
   }
   comboModel->addItems(models);
 
-  const QString desiredModel =
-      comboModel->property("vinput_desired_model").toString();
+  const QString desiredModel = comboModel->property("vinput_desired_model").toString();
   if (!desiredModel.isEmpty()) {
     comboModel->setCurrentText(desiredModel);
   }
   comboModel->setProperty("vinput_desired_model", QString());
 }
 
-void ApplyProviderModelFetchError(QComboBox *comboModel,
-                                  const QString &error) {
+void ApplyProviderModelFetchError(QComboBox* comboModel, const QString& error) {
   comboModel->setEnabled(true);
   comboModel->clear();
   comboModel->setToolTip(error);
-  if (auto *lineEdit = comboModel->lineEdit()) {
+  if (auto* lineEdit = comboModel->lineEdit()) {
     lineEdit->setPlaceholderText(
         GuiTranslate("Failed to load models. Type one manually or reselect "
                      "the provider to retry."));
   }
 
-  const QString desiredModel =
-      comboModel->property("vinput_desired_model").toString();
+  const QString desiredModel = comboModel->property("vinput_desired_model").toString();
   if (!desiredModel.isEmpty()) {
     comboModel->setCurrentText(desiredModel);
   }
   comboModel->setProperty("vinput_desired_model", QString());
 }
 
-void FetchModelsFromProviderAsync(const ProviderInfo &provider,
-                                  QComboBox *comboModel) {
+void FetchModelsFromProviderAsync(const ProviderInfo& provider, QComboBox* comboModel) {
   static QHash<QString, QStringList> cache;
 
   if (provider.base_url.isEmpty()) {
     comboModel->setEnabled(true);
     comboModel->clear();
     comboModel->setToolTip(QString());
-    if (auto *lineEdit = comboModel->lineEdit()) {
+    if (auto* lineEdit = comboModel->lineEdit()) {
       lineEdit->setPlaceholderText(QString());
     }
     return;
   }
 
   const QString cacheKey = ProviderModelCacheKey(provider);
-  const int generation =
-      comboModel->property("vinput_provider_fetch_generation").toInt() + 1;
+  const int generation = comboModel->property("vinput_provider_fetch_generation").toInt() + 1;
   comboModel->setProperty("vinput_provider_fetch_generation", generation);
   comboModel->setProperty("vinput_provider_fetch_key", cacheKey);
 
@@ -170,15 +159,15 @@ void FetchModelsFromProviderAsync(const ProviderInfo &provider,
   comboModel->setEnabled(false);
   comboModel->clear();
   comboModel->setToolTip(QString());
-  if (auto *lineEdit = comboModel->lineEdit()) {
+  if (auto* lineEdit = comboModel->lineEdit()) {
     lineEdit->setPlaceholderText(GuiTranslate("Loading models..."));
   }
 
-  const std::string url_str = vinput::url::JoinPath(
-      provider.base_url.toStdString(), vinput::llm::kOpenAiModelsPath);
+  const std::string url_str =
+      vinput::url::JoinPath(provider.base_url.toStdString(), vinput::llm::kOpenAiModelsPath);
   QString url = QString::fromStdString(url_str);
 
-  auto *nam = new QNetworkAccessManager(comboModel);
+  auto* nam = new QNetworkAccessManager(comboModel);
   QNetworkRequest req{QUrl(url)};
   req.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
   if (!provider.api_key.trimmed().isEmpty()) {
@@ -187,8 +176,8 @@ void FetchModelsFromProviderAsync(const ProviderInfo &provider,
     req.setRawHeader(vinput::llm::kAuthorizationHeader, bearer);
   }
 
-  QNetworkReply *reply = nam->get(req);
-  auto *timeout = new QTimer(reply);
+  QNetworkReply* reply = nam->get(req);
+  auto* timeout = new QTimer(reply);
   timeout->setSingleShot(true);
   QObject::connect(timeout, &QTimer::timeout, reply, [reply]() {
     if (!reply->isFinished()) {
@@ -203,25 +192,21 @@ void FetchModelsFromProviderAsync(const ProviderInfo &provider,
         timeout->stop();
 
         const bool stale =
-            comboModel->property("vinput_provider_fetch_generation").toInt() !=
-                generation ||
-            comboModel->property("vinput_provider_fetch_key").toString() !=
-                cacheKey;
+            comboModel->property("vinput_provider_fetch_generation").toInt() != generation ||
+            comboModel->property("vinput_provider_fetch_key").toString() != cacheKey;
 
         QStringList models;
         QString error;
         bool success = false;
         if (reply->error() == QNetworkReply::NoError) {
           QJsonParseError parseError;
-          const QJsonDocument doc =
-              QJsonDocument::fromJson(reply->readAll(), &parseError);
+          const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll(), &parseError);
           if (parseError.error != QJsonParseError::NoError || !doc.isObject() ||
               !doc.object().value("data").isArray()) {
-            error = GuiTranslate(
-                "Provider returned invalid JSON for /v1/models.");
+            error = GuiTranslate("Provider returned invalid JSON for /v1/models.");
           } else {
             const QJsonArray data = doc.object().value("data").toArray();
-            for (const auto &v : data) {
+            for (const auto& v : data) {
               const QString id = v.toObject().value("id").toString();
               if (!id.isEmpty()) {
                 models.append(id);
@@ -253,7 +238,7 @@ void FetchModelsFromProviderAsync(const ProviderInfo &provider,
 QList<ProviderInfo> LoadLlmProviders() {
   CoreConfig config = ConfigManager::Get().Load();
   QList<ProviderInfo> providers;
-  for (const auto &prov : config.llm.providers) {
+  for (const auto& prov : config.llm.providers) {
     ProviderInfo info;
     info.id = QString::fromStdString(prov.id);
     info.base_url = QString::fromStdString(prov.base_url);
@@ -265,16 +250,15 @@ QList<ProviderInfo> LoadLlmProviders() {
   return providers;
 }
 
-}  // namespace
+} // namespace
 
-void SetupProviderModelCombos(QComboBox *comboProvider, QComboBox *comboModel,
-                              const QString &currentProvider,
-                              const QString &currentModel) {
+void SetupProviderModelCombos(QComboBox* comboProvider, QComboBox* comboModel,
+                              const QString& currentProvider, const QString& currentModel) {
   comboProvider->clear();
-  comboProvider->addItem(QString());  // empty = inherit / none
+  comboProvider->addItem(QString()); // empty = inherit / none
 
   const auto providers = LoadLlmProviders();
-  for (const auto &p : providers) {
+  for (const auto& p : providers) {
     comboProvider->addItem(p.id);
   }
 
@@ -287,12 +271,12 @@ void SetupProviderModelCombos(QComboBox *comboProvider, QComboBox *comboModel,
       comboModel->setEnabled(true);
       comboModel->clear();
       comboModel->setToolTip(QString());
-      if (auto *lineEdit = comboModel->lineEdit()) {
+      if (auto* lineEdit = comboModel->lineEdit()) {
         lineEdit->setPlaceholderText(QString());
       }
       return;
     }
-    for (const auto &p : providers) {
+    for (const auto& p : providers) {
       if (p.id == selected) {
         FetchModelsFromProviderAsync(p, comboModel);
         break;
@@ -300,8 +284,8 @@ void SetupProviderModelCombos(QComboBox *comboProvider, QComboBox *comboModel,
     }
   };
 
-  QObject::connect(comboProvider, QOverload<int>::of(&QComboBox::activated),
-                   comboProvider, refreshModels);
+  QObject::connect(comboProvider, QOverload<int>::of(&QComboBox::activated), comboProvider,
+                   refreshModels);
 
   if (!currentProvider.isEmpty()) {
     comboProvider->setCurrentText(currentProvider);
@@ -309,4 +293,4 @@ void SetupProviderModelCombos(QComboBox *comboProvider, QComboBox *comboModel,
   }
 }
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

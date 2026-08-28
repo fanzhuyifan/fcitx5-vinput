@@ -9,28 +9,29 @@
 #include <QTextStream>
 #include <QUrl>
 #include <QVBoxLayout>
-
 #include <fstream>
-
 #include <nlohmann/json.hpp>
+
+#include "common/utils/downloader.h"
+#include "common/utils/path_utils.h"
+
+#include "cli/runtime/systemd_client.h"
+
+#include "gui/utils/config_manager.h"
+#include "gui/utils/download_worker.h"
+#include "gui/utils/i18n_cache.h"
 
 #include "pages/control/control_page.h"
 #include "pages/hotwords/hotword_page.h"
 #include "pages/llm/llm_page.h"
 #include "pages/resources/resource_page.h"
-#include "common/utils/downloader.h"
-#include "common/utils/path_utils.h"
-#include "gui/utils/config_manager.h"
-#include "gui/utils/download_worker.h"
-#include "gui/utils/i18n_cache.h"
-#include "cli/runtime/systemd_client.h"
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
   setWindowTitle(tr("Vinput Configuration"));
 
-  auto *centralWidget = new QWidget(this);
+  auto* centralWidget = new QWidget(this);
   setCentralWidget(centralWidget);
-  auto *mainLayout = new QVBoxLayout(centralWidget);
+  auto* mainLayout = new QVBoxLayout(centralWidget);
 
   tabWidget_ = new QTabWidget(this);
   mainLayout->addWidget(tabWidget_);
@@ -49,20 +50,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
   tabWidget_->addTab(hotwordPage_, tr("Hotwords"));
 
   // Cross-page refresh: any config change reloads affected pages.
-  connect(controlPage_, &vinput::gui::ControlPage::configChanged, this,
-          &MainWindow::reloadAll);
-  connect(resourcePage_, &vinput::gui::ResourcePage::configChanged, this,
-          &MainWindow::reloadAll);
-  connect(llmPage_, &vinput::gui::LlmPage::configChanged, this,
-          &MainWindow::reloadAll);
+  connect(controlPage_, &vinput::gui::ControlPage::configChanged, this, &MainWindow::reloadAll);
+  connect(resourcePage_, &vinput::gui::ResourcePage::configChanged, this, &MainWindow::reloadAll);
+  connect(llmPage_, &vinput::gui::LlmPage::configChanged, this, &MainWindow::reloadAll);
 
   // Bottom bar
-  auto *bottomLayout = new QHBoxLayout();
-  auto *btnOpenConfig = new QPushButton(tr("Open Config"), this);
-  connect(btnOpenConfig, &QPushButton::clicked, this,
-          &MainWindow::onOpenConfigClicked);
+  auto* bottomLayout = new QHBoxLayout();
+  auto* btnOpenConfig = new QPushButton(tr("Open Config"), this);
+  connect(btnOpenConfig, &QPushButton::clicked, this, &MainWindow::onOpenConfigClicked);
 
-  auto *btnSave = new QPushButton(tr("Save Settings"), this);
+  auto* btnSave = new QPushButton(tr("Save Settings"), this);
   connect(btnSave, &QPushButton::clicked, this, &MainWindow::onSaveClicked);
 
   bottomLayout->addWidget(btnOpenConfig);
@@ -128,19 +125,16 @@ void MainWindow::onSaveClicked() {
   const auto result = vinput::cli::SystemctlRestartWithDiagnostics();
   if (!result.ok()) {
     vinput::cli::NotifyDaemonNotification(result.notification);
-    QMessageBox::critical(this, tr("Error"),
-                          QString::fromStdString(result.failure_message));
+    QMessageBox::critical(this, tr("Error"), QString::fromStdString(result.failure_message));
     return;
   }
-  QMessageBox::information(this, tr("Success"),
-                           tr("Settings saved successfully!"));
+  QMessageBox::information(this, tr("Success"), tr("Settings saved successfully!"));
   close();
 }
 
 void MainWindow::onOpenConfigClicked() {
   const auto configPath = vinput::path::CoreConfigPath();
-  QDesktopServices::openUrl(
-      QUrl::fromLocalFile(QString::fromStdString(configPath.string())));
+  QDesktopServices::openUrl(QUrl::fromLocalFile(QString::fromStdString(configPath.string())));
 }
 
 namespace {
@@ -157,7 +151,7 @@ std::string NormalizeNotificationLocale(std::string locale) {
   if (at != std::string::npos) {
     locale = locale.substr(0, at);
   }
-  for (char &ch : locale) {
+  for (char& ch : locale) {
     if (ch == '-') {
       ch = '_';
     }
@@ -168,15 +162,14 @@ std::string NormalizeNotificationLocale(std::string locale) {
   return locale;
 }
 
-QString localizedString(const nlohmann::json &obj) {
+QString localizedString(const nlohmann::json& obj) {
   if (obj.is_string()) {
     return QString::fromStdString(obj.get<std::string>());
   }
   if (!obj.is_object()) {
     return {};
   }
-  const std::string locale =
-      NormalizeNotificationLocale(QLocale::system().name().toStdString());
+  const std::string locale = NormalizeNotificationLocale(QLocale::system().name().toStdString());
   if (obj.contains(locale)) {
     return QString::fromStdString(obj[locale].get<std::string>());
   }
@@ -198,8 +191,8 @@ QString localizedString(const nlohmann::json &obj) {
 } // namespace
 
 void MainWindow::checkNotification() {
-  auto *worker = new vinput::gui::DownloadWorker(this);
-  worker->SetTask([this](std::string * /*error*/) -> bool {
+  auto* worker = new vinput::gui::DownloadWorker(this);
+  worker->SetTask([this](std::string* /*error*/) -> bool {
     const std::vector<std::string> urls = {
         "https://raw.githubusercontent.com/xifan2333/fcitx5-vinput/main/"
         "notification.json"};
@@ -242,9 +235,7 @@ void MainWindow::checkNotification() {
     const QString id = QString::number(remote_id);
 
     QMetaObject::invokeMethod(
-        this, [this, id, title, text, url]() {
-          onNotificationReady(id, title, text, url);
-        },
+        this, [this, id, title, text, url]() { onNotificationReady(id, title, text, url); },
         Qt::QueuedConnection);
 
     return true;
@@ -253,13 +244,12 @@ void MainWindow::checkNotification() {
   worker->start();
 }
 
-void MainWindow::onNotificationReady(QString id, QString title, QString text,
-                                     QString url) {
+void MainWindow::onNotificationReady(QString id, QString title, QString text, QString url) {
   QMessageBox msgBox(this);
   msgBox.setWindowTitle(title);
   msgBox.setText(text);
   msgBox.setIcon(QMessageBox::Information);
-  auto *detailBtn =
+  auto* detailBtn =
       url.isEmpty() ? nullptr : msgBox.addButton(tr("Details"), QMessageBox::ActionRole);
   msgBox.addButton(QMessageBox::Ok);
   msgBox.exec();

@@ -8,21 +8,21 @@
 namespace vinput::gui {
 
 class ConfigManager : public QObject {
-    Q_OBJECT
+  Q_OBJECT
 public:
-    static ConfigManager& Get();
+  static ConfigManager& Get();
 
-    CoreConfig Load();
-    bool Save(const CoreConfig& config);
+  CoreConfig Load();
+  bool Save(const CoreConfig& config);
 
 signals:
-    void configChanged();
+  void configChanged();
 
 private:
-    ConfigManager() = default;
-    ~ConfigManager() override = default;
+  ConfigManager() = default;
+  ~ConfigManager() override = default;
 
-    QMutex mutex_;
+  QMutex mutex_;
 };
 
 } // namespace vinput::gui

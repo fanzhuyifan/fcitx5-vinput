@@ -10,7 +10,7 @@ namespace vinput::gui {
 // ASR provider data for the dialog.
 struct AsrProviderData {
   std::string id;
-  std::string type;  // "local" or "command"
+  std::string type; // "local" or "command"
   std::string model;
   std::string command;
   std::vector<std::string> args;
@@ -21,8 +21,7 @@ struct AsrProviderData {
 // Show a dialog to add or edit an ASR provider.
 // Returns true if accepted, fills out_data.
 // If existing is non-null, the dialog is in edit mode.
-bool ShowAsrProviderDialog(QWidget *parent, const QString &title,
-                           const AsrProviderData *existing,
-                           AsrProviderData *out_data);
+bool ShowAsrProviderDialog(QWidget* parent, const QString& title, const AsrProviderData* existing,
+                           AsrProviderData* out_data);
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

@@ -11,7 +11,7 @@ class HotwordPage : public QWidget {
   Q_OBJECT
 
 public:
-  explicit HotwordPage(QWidget *parent = nullptr);
+  explicit HotwordPage(QWidget* parent = nullptr);
 
   void reload();
 
@@ -23,9 +23,9 @@ private slots:
   void onBrowseClicked();
 
 private:
-  QLineEdit *editFile_;
-  QTextEdit *textContent_;
-  QPushButton *btnBrowse_;
+  QLineEdit* editFile_;
+  QTextEdit* textContent_;
+  QPushButton* btnBrowse_;
 };
 
-}  // namespace vinput::gui
+} // namespace vinput::gui

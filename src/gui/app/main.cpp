@@ -1,9 +1,10 @@
-#include "mainwindow.h"
 #include <QApplication>
 #include <QDir>
 #include <QLocale>
 #include <QStandardPaths>
 #include <QTranslator>
+
+#include "mainwindow.h"
 
 namespace {
 
@@ -13,14 +14,12 @@ QStringList TranslationSearchPaths() {
   QStringList paths;
   const QByteArray xdg = qgetenv("XDG_DATA_DIRS");
   if (!xdg.isEmpty()) {
-    for (const auto &p :
-         QString::fromUtf8(xdg).split(":", Qt::SkipEmptyParts)) {
+    for (const auto& p : QString::fromUtf8(xdg).split(":", Qt::SkipEmptyParts)) {
       paths.push_back(p);
     }
   }
-  const QStringList std =
-      QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
-  for (const auto &p : std) {
+  const QStringList std = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+  for (const auto& p : std) {
     if (!paths.contains(p)) {
       paths.push_back(p);
     }
@@ -30,14 +29,14 @@ QStringList TranslationSearchPaths() {
   return paths;
 }
 
-bool TryLoadTranslation(QTranslator &translator, const QString &base_name) {
+bool TryLoadTranslation(QTranslator& translator, const QString& base_name) {
   const QString locale = QLocale::system().name();
   const QStringList candidates = {
       base_name + "_" + locale,
       base_name + "_" + locale.left(2),
   };
-  for (const auto &root : TranslationSearchPaths()) {
-    for (const auto &name : candidates) {
+  for (const auto& root : TranslationSearchPaths()) {
+    for (const auto& name : candidates) {
       // System path pattern
       QString path = QDir(root).filePath("fcitx5-vinput/i18n/" + name + ".qm");
       if (translator.load(path)) {
@@ -55,7 +54,7 @@ bool TryLoadTranslation(QTranslator &translator, const QString &base_name) {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   // Set IM environment for this process only, so Chinese input works in the GUI
   setenv("QT_IM_MODULE", "fcitx", 0);
   setenv("XMODIFIERS", "@im=fcitx", 0);

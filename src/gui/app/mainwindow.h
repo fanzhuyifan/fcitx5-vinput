@@ -8,13 +8,13 @@ class ControlPage;
 class ResourcePage;
 class LlmPage;
 class HotwordPage;
-}  // namespace vinput::gui
+} // namespace vinput::gui
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  explicit MainWindow(QWidget *parent = nullptr);
+  explicit MainWindow(QWidget* parent = nullptr);
   ~MainWindow() override;
 
 private slots:
@@ -26,10 +26,10 @@ private slots:
 private:
   void checkNotification();
 
-  QTabWidget *tabWidget_;
+  QTabWidget* tabWidget_;
 
-  vinput::gui::ControlPage *controlPage_;
-  vinput::gui::ResourcePage *resourcePage_;
-  vinput::gui::LlmPage *llmPage_;
-  vinput::gui::HotwordPage *hotwordPage_;
+  vinput::gui::ControlPage* controlPage_;
+  vinput::gui::ResourcePage* resourcePage_;
+  vinput::gui::LlmPage* llmPage_;
+  vinput::gui::HotwordPage* hotwordPage_;
 };
