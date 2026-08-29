@@ -40,19 +40,52 @@ jobs:
           OVERRIDE: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          if [[ -n "${OVERRIDE}" ]]; then
-            target="${OVERRIDE}"
-          else
-            target="$(gh api repos/k2-fsa/sherpa-onnx/releases/latest --jq .tag_name | sed 's/^v//')"
-          fi
+
           # shellcheck source=scripts/sherpa-onnx-vars.sh
           source ./scripts/sherpa-onnx-vars.sh
           current="${SHERPA_ONNX_VERSION}"
+          version_re='^[0-9]+\.[0-9]+\.[0-9]+$'
+
+          if [[ -n "${OVERRIDE}" ]]; then
+            target="${OVERRIDE#v}"
+            if [[ ! "${target}" =~ ${version_re} ]]; then
+              echo "::error::Invalid sherpa-onnx version: ${OVERRIDE}" >&2
+              echo "Expected X.Y.Z, for example 1.13.6." >&2
+              exit 1
+            fi
+          else
+            # Upstream also publishes non-version releases such as tauri,
+            # flutter, xcframework, and model bundles. Select only stable
+            # semantic-version releases instead of trusting /releases/latest.
+            target="$(
+              gh api --paginate \
+                'repos/k2-fsa/sherpa-onnx/releases?per_page=100' \
+                --jq '
+                  .[]
+                  | select(.draft == false and .prerelease == false)
+                  | .tag_name
+                  | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))
+                ' \
+              | sed 's/^v//' \
+              | sort -V \
+              | tail -n 1
+            )"
+
+            if [[ -z "${target}" ]]; then
+              echo "current=${current}" >> "${GITHUB_OUTPUT}"
+              echo "skip=true" >> "${GITHUB_OUTPUT}"
+              echo "::warning::No valid sherpa-onnx version release was found." >&2
+              exit 0
+            fi
+          fi
+
           echo "current=${current}" >> "${GITHUB_OUTPUT}"
           echo "target=${target}"   >> "${GITHUB_OUTPUT}"
           if [[ "${current}" == "${target}" ]]; then
             echo "skip=true" >> "${GITHUB_OUTPUT}"
             echo "Already pinned at v${target}, nothing to do." >&2
+          else
+            echo "Resolved sherpa-onnx update: v${current} -> v${target}" >&2
           fi
 
       - name: Bump pinned version
