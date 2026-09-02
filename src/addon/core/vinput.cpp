@@ -219,6 +219,7 @@ void VinputEngine::reloadSceneConfig() {
   scene_config_.activeSceneId = core_config.scenes.activeScene;
   scene_config_.scenes = core_config.scenes.definitions;
   active_scene_id_ = scene_config_.activeSceneId;
+  active_command_scene_id_ = core_config.scenes.activeCommandScene;
 
   int max_cl = 0;
   for (const auto& s : scene_config_.scenes) {

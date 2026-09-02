@@ -300,11 +300,13 @@ void from_json(const json& j, CoreConfig::Registry& r) {
 void to_json(json& j, const CoreConfig::Scenes& s) {
   j = json::object();
   j["active_scene"] = s.activeScene;
+  j["active_command_scene"] = s.activeCommandScene;
   j["definitions"] = s.definitions;
 }
 
 void from_json(const json& j, CoreConfig::Scenes& s) {
   s.activeScene = j.value("active_scene", s.activeScene);
+  s.activeCommandScene = j.value("active_command_scene", s.activeCommandScene);
   if (j.contains("definitions")) {
     s.definitions = j.at("definitions").get<std::vector<vinput::scene::Definition>>();
   }

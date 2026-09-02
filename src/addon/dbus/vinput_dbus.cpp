@@ -5,6 +5,7 @@
 #include <fcitx/inputpanel.h>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include "common/asr/recognition_result.h"
 #include "common/dbus/dbus_interface.h"
@@ -450,7 +451,7 @@ void VinputEngine::stopStatusSyncIfIdle() {
 }
 
 void VinputEngine::enterPendingStartState(fcitx::InputContext* ic, const fcitx::Key& trigger,
-                                          bool command_mode) {
+                                          bool command_mode, std::string command_scene_id) {
   if (!ic) {
     return;
   }
@@ -464,6 +465,7 @@ void VinputEngine::enterPendingStartState(fcitx::InputContext* ic, const fcitx::
                              trigger,
                              std::chrono::steady_clock::now(),
                              command_mode,
+                             std::move(command_scene_id),
                              {},
                              {}});
   } else {
@@ -471,6 +473,7 @@ void VinputEngine::enterPendingStartState(fcitx::InputContext* ic, const fcitx::
     session_->ic = ic;
     session_->trigger = trigger;
     session_->command_mode = command_mode;
+    session_->command_scene_id = std::move(command_scene_id);
   }
   status_ic_ = ic;
   updatePreedit(ic, ComposeLivePreedit(command_mode, false, {}, StartingPreeditText()));
@@ -493,12 +496,16 @@ void VinputEngine::enterRecordingState(fcitx::InputContext* ic, const fcitx::Key
                              std::chrono::steady_clock::now(),
                              command_mode,
                              {},
+                             {},
                              {}});
   } else {
     session_->phase = Session::Phase::Recording;
     session_->ic = ic;
     session_->trigger = trigger;
     session_->command_mode = command_mode;
+    if (!command_mode) {
+      session_->command_scene_id.clear();
+    }
   }
   status_ic_ = ic;
   updatePreedit(
@@ -523,12 +530,16 @@ void VinputEngine::enterBusyState(fcitx::InputContext* ic, bool command_mode,
                              std::chrono::steady_clock::now(),
                              command_mode,
                              {},
+                             {},
                              {}});
   } else {
     session_->phase = Session::Phase::Busy;
     session_->ic = ic;
     session_->trigger = fcitx::Key();
     session_->command_mode = command_mode;
+    if (!command_mode) {
+      session_->command_scene_id.clear();
+    }
   }
   status_ic_ = ic;
   updatePreedit(ic, ComposeLivePreedit(command_mode, false,

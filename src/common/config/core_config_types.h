@@ -98,6 +98,7 @@ struct CoreConfig {
 
   struct Scenes {
     std::string activeScene;
+    std::string activeCommandScene{vinput::scene::kCommandSceneId};
     std::vector<vinput::scene::Definition> definitions;
   } scenes;
 };

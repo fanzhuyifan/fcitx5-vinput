@@ -91,8 +91,8 @@ private:
                                 bool prefer_command_mode = false);
   void ensureStatusSync();
   void stopStatusSyncIfIdle();
-  void enterPendingStartState(fcitx::InputContext* ic, const fcitx::Key& trigger,
-                              bool command_mode);
+  void enterPendingStartState(fcitx::InputContext* ic, const fcitx::Key& trigger, bool command_mode,
+                              std::string command_scene_id = {});
   void enterRecordingState(fcitx::InputContext* ic, const fcitx::Key& trigger, bool command_mode);
   void enterBusyState(fcitx::InputContext* ic, bool command_mode, const std::string& preedit_text);
   void finishFrontendSession(fcitx::InputContext* fallback_ic = nullptr);
@@ -127,6 +127,7 @@ private:
     fcitx::Key trigger;
     std::chrono::steady_clock::time_point press_time;
     bool command_mode = false;
+    std::string command_scene_id;
     bool trigger_released = false;
     std::string partial_text;
   };
@@ -152,6 +153,7 @@ private:
   bool asr_menu_visible_ = false;
   bool result_menu_visible_ = false;
   std::string active_scene_id_;
+  std::string active_command_scene_id_;
   vinput::scene::Config scene_config_;
   std::vector<std::size_t> scene_menu_filtered_indices_;
   std::string scene_menu_query_;

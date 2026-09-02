@@ -3,6 +3,7 @@
 #include <fcitx-utils/utf8.h>
 #include <fcitx/inputcontext.h>
 #include <string>
+#include <utility>
 
 #include "common/config/core_config.h"
 #include "common/dbus/dbus_interface.h"
@@ -138,9 +139,10 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
             hideResultMenu();
 
             if (is_command) {
+              std::string command_scene_id;
               {
                 auto core_config = LoadCoreConfig();
-                const auto* cmd_scene = FindCommandScene(core_config);
+                const auto* cmd_scene = ResolveActiveCommandScene(core_config);
                 if (!cmd_scene || cmd_scene->candidate_count <= 0) {
                   finishFrontendSession(ic);
                   updatePreedit(ic, CommandDisabledPreeditText());
@@ -154,6 +156,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
                   pending_start_event_.reset();
                   return false;
                 }
+                command_scene_id = cmd_scene->id;
               }
               std::string selected_text;
               auto& surrounding = ic->surroundingText();
@@ -188,7 +191,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
                 pending_start_event_.reset();
                 return false;
               }
-              enterPendingStartState(ic, trigger, true);
+              enterPendingStartState(ic, trigger, true, std::move(command_scene_id));
               FCITX_LOG(Debug) << "vinput: command key held, selected_text length="
                                << selected_text.size();
               if (!callStartCommandRecording(selected_text)) {
@@ -242,10 +245,11 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
     hideResultMenu();
 
     if (is_command) {
+      std::string command_scene_id;
       // Check command scene has candidate_count > 0 and a valid provider
       {
         auto core_config = LoadCoreConfig();
-        const auto* cmd_scene = FindCommandScene(core_config);
+        const auto* cmd_scene = ResolveActiveCommandScene(core_config);
         if (!cmd_scene || cmd_scene->candidate_count <= 0) {
           finishFrontendSession(ic);
           updatePreedit(ic, CommandDisabledPreeditText());
@@ -259,6 +263,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
           keyEvent.filterAndAccept();
           return;
         }
+        command_scene_id = cmd_scene->id;
       }
       std::string selected_text;
       auto& surrounding = ic->surroundingText();
@@ -292,7 +297,7 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
         keyEvent.filterAndAccept();
         return;
       }
-      enterPendingStartState(ic, trigger, true);
+      enterPendingStartState(ic, trigger, true, std::move(command_scene_id));
       FCITX_LOG(Debug) << "vinput: command key pressed, selected_text length="
                        << selected_text.size();
       if (!callStartCommandRecording(selected_text)) {
@@ -442,10 +447,22 @@ void VinputEngine::finishStopRecording() {
   if (!session_.has_value()) {
     return;
   }
-  const auto& scene = vinput::scene::Resolve(scene_config_, active_scene_id_);
-  active_scene_id_ = scene.id;
+  const bool command_mode = session_->command_mode;
+  std::string scene_id = command_mode ? session_->command_scene_id
+                                      : vinput::scene::Resolve(scene_config_, active_scene_id_).id;
+  if (command_mode && scene_id.empty()) {
+    scene_id = active_command_scene_id_.empty() ? std::string(vinput::scene::kCommandSceneId)
+                                                : active_command_scene_id_;
+  }
+  if (!command_mode) {
+    active_scene_id_ = scene_id;
+  }
   session_->phase = Session::Phase::Busy;
   session_->trigger = fcitx::Key();
-  enterBusyState(session_->ic, session_->command_mode, _("... Recognizing ..."));
-  callStopRecording(scene.id);
+  enterBusyState(session_->ic, command_mode, _("... Recognizing ..."));
+
+  if (command_mode) {
+    scene_id = std::string(vinput::dbus::kCommandSceneRoutePrefix) + scene_id;
+  }
+  callStopRecording(scene_id);
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "common/dbus/error_info.h"
@@ -23,6 +24,14 @@ constexpr const char* kMethodReloadAsrBackend = "ReloadAsrBackend";
 constexpr const char* kMethodStartAdapter = "StartAdapter";
 constexpr const char* kMethodStopAdapter = "StopAdapter";
 constexpr const char* kMethodNotify = "Notify";
+
+// Tag command scenes in StopRecording's existing argument to preserve its ABI.
+constexpr std::string_view kCommandSceneRoutePrefix = "command-scene:";
+
+inline std::string_view CommandSceneIdFromRoute(std::string_view route) {
+  return route.starts_with(kCommandSceneRoutePrefix) ? route.substr(kCommandSceneRoutePrefix.size())
+                                                     : std::string_view{};
+}
 
 constexpr const char* kSignalRecognitionResult = "RecognitionResult";
 constexpr const char* kSignalRecognitionPartial = "RecognitionPartial";

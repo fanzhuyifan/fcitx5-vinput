@@ -33,4 +33,5 @@ std::vector<std::string> ResolveRegistryI18nUrls(const CoreConfig& config,
                                                  const std::string& locale);
 bool SetPreferredLocalModel(CoreConfig* config, const std::string& model, std::string* error);
 const vinput::scene::Definition* FindCommandScene(const CoreConfig& config);
+const vinput::scene::Definition* ResolveActiveCommandScene(const CoreConfig& config);
 std::filesystem::path ResolveModelBaseDir(const CoreConfig& config);

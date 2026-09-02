@@ -51,6 +51,7 @@ Corresponding config:
 {
   "scenes": {
     "active_scene": "__raw__",
+    "active_command_scene": "__command__",
     "definitions": [
       {
         "id": "__raw__",

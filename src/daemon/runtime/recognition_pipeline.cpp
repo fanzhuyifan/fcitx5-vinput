@@ -1,5 +1,6 @@
 #include "daemon/runtime/recognition_pipeline.h"
 
+#include "common/dbus/dbus_interface.h"
 #include "common/dbus/error_info.h"
 #include "common/utils/debug_log.h"
 
@@ -51,7 +52,11 @@ RecognitionPipeline::Process(const RecognitionOrder& order, const CoreConfig& se
   scene_config.scenes = settings.scenes.definitions;
 
   if (order.is_command) {
-    const auto* cmd_scene = FindCommandScene(settings);
+    const auto* cmd_scene =
+        vinput::scene::Find(scene_config, vinput::dbus::CommandSceneIdFromRoute(order.scene_id));
+    if (!cmd_scene) {
+      cmd_scene = ResolveActiveCommandScene(settings);
+    }
     if (cmd_scene && cmd_scene->candidate_count > 0 && !cmd_scene->provider_id.empty() &&
         on_enter_postprocessing) {
       on_enter_postprocessing();

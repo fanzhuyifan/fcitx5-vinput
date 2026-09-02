@@ -155,6 +155,15 @@ const vinput::scene::Definition* FindCommandScene(const CoreConfig& config) {
   return nullptr;
 }
 
+const vinput::scene::Definition* ResolveActiveCommandScene(const CoreConfig& config) {
+  for (const auto& scene : config.scenes.definitions) {
+    if (scene.id == config.scenes.activeCommandScene) {
+      return &scene;
+    }
+  }
+  return FindCommandScene(config);
+}
+
 std::filesystem::path ResolveModelBaseDir(const CoreConfig&) {
   return vinput::path::DefaultModelBaseDir();
 }

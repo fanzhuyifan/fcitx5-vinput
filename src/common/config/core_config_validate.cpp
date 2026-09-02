@@ -96,6 +96,13 @@ bool ValidateCoreConfig(const CoreConfig& config, std::string* error) {
     return SetError(error, "Active scene '" + config.scenes.activeScene + "' does not exist.");
   }
 
+  if (config.scenes.activeCommandScene.empty() ||
+      vinput::scene::Find({config.scenes.activeCommandScene, config.scenes.definitions},
+                          config.scenes.activeCommandScene) == nullptr) {
+    return SetError(error, "Active command scene '" + config.scenes.activeCommandScene +
+                               "' does not exist.");
+  }
+
   if (error) {
     error->clear();
   }

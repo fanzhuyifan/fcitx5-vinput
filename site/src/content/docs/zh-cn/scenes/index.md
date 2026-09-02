@@ -51,6 +51,7 @@ ASR 原始文本 → [场景 prompt + LLM] → 改写后的文本
 {
   "scenes": {
     "active_scene": "__raw__",
+    "active_command_scene": "__command__",
     "definitions": [
       {
         "id": "__raw__",

@@ -211,4 +211,10 @@ void NormalizeCoreConfig(CoreConfig* config) {
                           config->scenes.activeScene) == nullptr) {
     config->scenes.activeScene.clear();
   }
+
+  if (config->scenes.activeCommandScene.empty() ||
+      vinput::scene::Find({config->scenes.activeCommandScene, config->scenes.definitions},
+                          config->scenes.activeCommandScene) == nullptr) {
+    config->scenes.activeCommandScene = std::string(vinput::scene::kCommandSceneId);
+  }
 }
