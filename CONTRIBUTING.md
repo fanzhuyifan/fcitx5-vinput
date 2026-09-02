@@ -17,13 +17,13 @@ cmake --build --preset release-clang-mold
 sudo cmake --install build
 ```
 
-Or use `just`:
+Or use `mise`:
 
 ```bash
-just sherpa
-just configure-release
-just build
-sudo just install
+mise run sherpa
+mise run configure-release
+mise run build
+sudo mise run install
 ```
 
 ## Project Structure

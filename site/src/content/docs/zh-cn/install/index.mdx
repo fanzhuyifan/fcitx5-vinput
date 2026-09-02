@@ -153,13 +153,13 @@ cmake --build --preset release-clang-mold
 sudo cmake --install build
 ```
 
-也可以用 `just`：
+也可以用 `mise`：
 
 ```bash
-just sherpa
-just configure-release
-just build
-sudo just install
+mise run sherpa
+mise run configure-release
+mise run build
+sudo mise run install
 ```
 
 第一步会下载本地构建和发布打包所需的预编译 sherpa-onnx 运行时。运行时库随安装产物一起捆绑，不需要单独安装系统包依赖。

@@ -107,6 +107,36 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/fcitx5-vinput
 )
 
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/en/vinput.1
+    ${CMAKE_SOURCE_DIR}/data/man/en/vinput-daemon.1
+    ${CMAKE_SOURCE_DIR}/data/man/en/vinput-gui.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/en/vinput-config.5
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man5
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/en/fcitx5-vinput.7
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man7
+)
+
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/zh_CN/vinput.1
+    ${CMAKE_SOURCE_DIR}/data/man/zh_CN/vinput-daemon.1
+    ${CMAKE_SOURCE_DIR}/data/man/zh_CN/vinput-gui.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/zh_CN/man1
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/zh_CN/vinput-config.5
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/zh_CN/man5
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/man/zh_CN/fcitx5-vinput.7
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/zh_CN/man7
+)
+
 include_directories(${CMAKE_BINARY_DIR})
 
 

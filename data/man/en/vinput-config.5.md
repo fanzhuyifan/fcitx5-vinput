@@ -1,0 +1,133 @@
+---
+title: VINPUT-CONFIG
+section: 5
+header: fcitx5-vinput File Formats
+footer: fcitx5-vinput
+date: August 2024
+...
+
+# NAME
+vinput-config - Configuration format and options for fcitx5-vinput
+
+# DESCRIPTION
+**fcitx5-vinput** uses two configuration files:
+
+1. *~/.config/vinput/config.json* — Core configuration for audio capture, ASR engines, LLM providers, and postprocessing scenes.
+2. *~/.config/fcitx5/conf/vinput.conf* — Fcitx5 addon configuration for keybindings and UI settings.
+
+# CONFIG.JSON STRUCTURE
+
+The core configuration file is JSON-formatted with four top-level sections: **global**, **asr**, **llm**, and **scenes**.
+
+## GLOBAL SECTION
+Controls runtime audio environment and capture settings.
+
+```json
+"global": {
+  "default_language": "en",
+  "capture_device": "default",
+  "duck_output_while_recording": false,
+  "duck_output_volume": 0.25
+}
+```
+
+**default_language** (*string*)
+:   Default UI/model language code (e.g. `"en"`, `"zh"`).
+
+**capture_device** (*string*)
+:   PipeWire capture node name, or `"default"`.
+
+**duck_output_while_recording** (*boolean*)
+:   Whether to lower system audio volume via WirePlumber while recording.
+
+**duck_output_volume** (*float*, `0.0` - `1.0`)
+:   Target volume fraction when ducking is active (`0.25` = 25% original volume).
+
+## ASR SECTION
+Configures offline and cloud speech recognition engines.
+
+```json
+"asr": {
+  "active_provider": "sherpa-onnx",
+  "normalize_audio": true,
+  "input_gain": 1.0,
+  "vad": {
+    "enabled": true,
+    "threshold": 0.5,
+    "min_speech_duration": 0.15,
+    "speech_pad_ms": 300
+  },
+  "providers": [ ... ]
+}
+```
+
+**active_provider** (*string*)
+:   ID of the active ASR provider. Use `"sherpa-onnx"` for the offline local engine.
+
+**normalize_audio** (*boolean*)
+:   Normalize input audio waveforms before recognition.
+
+**input_gain** (*float*)
+:   Software recording volume multiplier.
+
+**vad.enabled** (*boolean*)
+:   Enable Voice Activity Detection to drop leading and trailing silence.
+
+## LLM SECTION
+Defines OpenAI-compatible API endpoints.
+
+```json
+"llm": {
+  "providers": [
+    {
+      "id": "groq",
+      "base_url": "https://api.groq.com/openai/v1",
+      "api_key": "YOUR_API_KEY",
+      "extra_body": {}
+    }
+  ]
+}
+```
+
+## SCENES SECTION
+Defines prompt templates and candidate counts for text rewriting.
+
+```json
+"scenes": {
+  "active_scene": "__raw__",
+  "definitions": [
+    {
+      "id": "__raw__",
+      "candidate_count": 0
+    },
+    {
+      "id": "default",
+      "label": "Default Polish",
+      "prompt": "Fix spelling and punctuation while keeping original meaning.",
+      "provider_id": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "context_lines": 3,
+      "candidate_count": 5
+    }
+  ]
+}
+```
+
+**active_scene** (*string*)
+:   ID of the currently selected scene. `__raw__` skips LLM post-processing.
+
+**context_lines** (*integer*)
+:   Number of preceding input lines sent to the LLM as conversational context.
+
+# FILES
+*~/.config/vinput/config.json*
+:   User core configuration file.
+
+*~/.config/fcitx5/conf/vinput.conf*
+:   User Fcitx5 addon configuration file.
+
+*~/.var/app/org.fcitx.Fcitx5/config/vinput/config.json*
+:   Configuration path when running inside Flatpak.
+
+# SEE ALSO
+**vinput**(1), **vinput-daemon**(1), **fcitx5**(1)
