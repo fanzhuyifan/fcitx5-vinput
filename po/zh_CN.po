@@ -773,8 +773,11 @@ msgstr "请求超时时间（毫秒）"
 msgid "Number of previous lines sent as LLM context"
 msgstr "发送给 LLM 作为上下文的前文行数"
 
-msgid "Set active scene"
-msgstr "设置当前场景"
+msgid "Set active dictation scene"
+msgstr "设置当前听写场景"
+
+msgid "Set active command scene"
+msgstr "设置当前命令场景"
 
 msgid "Remove a scene"
 msgstr "移除场景"
@@ -791,13 +794,27 @@ msgstr "提供者"
 msgid "CANDIDATES"
 msgstr "候选数"
 
+msgid "DICTATION"
+msgstr "听写"
+
+msgid "COMMAND"
+msgstr "命令"
+
 #, c-format
 msgid "Scene '%s' added."
 msgstr "场景 '%s' 已添加。"
 
 #, c-format
-msgid "Default scene set to '%s'."
-msgstr "默认场景已设为 '%s'。"
+msgid "Dictation scene set to '%s'."
+msgstr "听写场景已设为 '%s'。"
+
+#, c-format
+msgid "Command scene set to '%s'."
+msgstr "命令场景已设为 '%s'。"
+
+#, c-format
+msgid "Cannot remove active command scene '%s'."
+msgstr "无法移除当前命令场景 '%s'。"
 
 #, c-format
 msgid "Scene '%s' removed."

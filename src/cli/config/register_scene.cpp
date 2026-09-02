@@ -51,12 +51,22 @@ void RegisterSceneCommands(CLI::App& app, CliAction* action) {
     };
   });
 
-  auto useId = std::make_shared<std::string>();
-  auto* use = scene->add_subcommand("use", _("Set active scene"));
-  use->add_option("id", *useId, _("Scene id"))->required();
-  use->callback([action, useId]() {
-    *action = [useId](Formatter& fmt, const CliContext& ctx) {
-      return RunSceneConfigUse(*useId, fmt, ctx);
+  auto useDictationId = std::make_shared<std::string>();
+  auto* useDictation = scene->add_subcommand("use-dictation", _("Set active dictation scene"));
+  useDictation->alias("use");
+  useDictation->add_option("id", *useDictationId, _("Scene id"))->required();
+  useDictation->callback([action, useDictationId]() {
+    *action = [useDictationId](Formatter& fmt, const CliContext& ctx) {
+      return RunSceneConfigUseDictation(*useDictationId, fmt, ctx);
+    };
+  });
+
+  auto useCommandId = std::make_shared<std::string>();
+  auto* useCommand = scene->add_subcommand("use-command", _("Set active command scene"));
+  useCommand->add_option("id", *useCommandId, _("Scene id"))->required();
+  useCommand->callback([action, useCommandId]() {
+    *action = [useCommandId](Formatter& fmt, const CliContext& ctx) {
+      return RunSceneConfigUseCommand(*useCommandId, fmt, ctx);
     };
   });
 

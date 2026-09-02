@@ -83,9 +83,15 @@ In Vinput GUI, manage scenes in the **LLM** tab: add, edit prompt, bind provider
 vinput scene list               # List all scenes
 vinput scene add --id <id>      # Add a scene
 vinput scene edit <id>          # Edit a scene
-vinput scene use <id>           # Switch active scene
-vinput scene remove <id>        # Remove a scene
+vinput scene use-dictation <id> # Set the scene used by dictation (`use` also works)
+vinput scene use-command <id>   # Set the scene used by command mode
+vinput scene remove <id>        # Remove an inactive scene
 ```
+
+`scene use-dictation` selects the scene used for ordinary voice input. The former `scene use`
+name remains as a compatibility alias. `scene use-command` independently selects the scene used
+after pressing the command key, and `scene list` marks both selections.
+Switch away from a scene before removing it from either active role.
 
 When adding a scene with LLM, `--provider`, `--model`, and `--prompt` must all be provided.
 
@@ -125,7 +131,7 @@ vinput scene add --id polish \
   --model qwen2.5:7b \
   --context-lines 3 \
   --prompt "Rewrite the recognized text into polished Chinese."
-vinput scene use polish
+vinput scene use-dictation polish
 ```
 
 ### CLI
@@ -175,7 +181,17 @@ Command mode is a special scene usage: select existing text, then use a voice in
 
 Flow: select text → hold `Control_R` → speak your instruction → release → done.
 
-Under the hood it uses the built-in `__command__` scene. The default prompt template receives the selected text and spoken instruction through `{{selected}}` and `{{asr}}`, wrapped in Vinput-scoped XML tags (`<vinput-selected>` and `<vinput-asr>`).
+By default, command mode uses the built-in `__command__` scene. Select another existing scene without changing the ordinary voice-input scene:
+
+```bash
+vinput scene use-command <id>
+```
+
+The selected scene supplies command mode's stored prompt, provider, model, candidate count, and
+timeout; the audio supplies the spoken instruction after ASR. A prompt can place the selected text
+and spoken instruction with `{{selected}}` and `{{asr}}`. The built-in prompt wraps those values in
+Vinput-scoped XML tags (`<vinput-selected>` and `<vinput-asr>`); prompts without interpolation
+placeholders receive equivalent XML blocks appended at runtime.
 
 **Examples:**
 - Select Chinese text → say *"translate to English"* → replaced with translation
@@ -183,4 +199,5 @@ Under the hood it uses the built-in `__command__` scene. The default prompt temp
 
 If there is no surrounding-text selection, it falls back to primary-selection clipboard content.
 
-> Command mode requires an LLM provider to be configured, with `provider_id` and `model` bound in the `__command__` scene.
+> Command mode requires an LLM-ready active command scene: its `provider_id`, `model`, and
+> `prompt` must be configured, and `candidate_count` must be greater than `0`.

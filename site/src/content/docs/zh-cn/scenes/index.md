@@ -83,9 +83,13 @@ ASR 原始文本 → [场景 prompt + LLM] → 改写后的文本
 vinput scene list               # 列出所有场景
 vinput scene add --id <id>      # 添加场景
 vinput scene edit <id>          # 编辑场景
-vinput scene use <id>           # 切换当前场景
-vinput scene remove <id>        # 删除场景
+vinput scene use-dictation <id> # 设置听写场景（也可继续使用 `use`）
+vinput scene use-command <id>   # 设置命令模式使用的场景
+vinput scene remove <id>        # 删除非当前场景
 ```
+
+`scene use-dictation` 设置普通语音输入使用的场景；原来的 `scene use` 保留为兼容别名。`scene use-command` 独立设置按下命令键后使用的场景，`scene list` 会同时标记这两种当前场景。
+删除场景前，需要先将听写和命令两种当前角色切换到其他场景。
 
 添加带 LLM 的场景时，`--provider`、`--model`、`--prompt` 需要同时提供。
 
@@ -125,7 +129,7 @@ vinput scene add --id polish \
   --model qwen2.5:7b \
   --context-lines 3 \
   --prompt "将识别结果润色为自然的中文。"
-vinput scene use polish
+vinput scene use-dictation polish
 ```
 
 ### CLI 操作
@@ -175,7 +179,13 @@ vinput adapter stop <id>        # 停止
 
 操作流程：选中文本 → 按住 `Control_R` → 说出指令 → 松开 → 完成。
 
-底层使用内置的 `__command__` 场景。默认 prompt 模板通过 `{{selected}}` 和 `{{asr}}` 接收选中文本与语音指令，并用 Vinput 专用 XML 标签（`<vinput-selected>` 和 `<vinput-asr>`）隔离数据。
+命令模式默认使用内置的 `__command__` 场景。可以选择另一个已有场景，而不影响普通语音输入使用的场景：
+
+```bash
+vinput scene use-command <id>
+```
+
+所选场景提供命令模式使用的固定 prompt、provider、model、候选数和超时时间；音频经 ASR 后提供口述指令。prompt 可以通过 `{{selected}}` 和 `{{asr}}` 放置选中文本与口述指令。内置 prompt 会用 Vinput 专用 XML 标签（`<vinput-selected>` 和 `<vinput-asr>`）隔离这两个值；如果 prompt 没有插值占位符，运行时会附加等价的 XML 数据块。
 
 **示例：**
 - 选中中文 → 说 *"翻译成英文"* → 替换为英文译文
@@ -183,4 +193,4 @@ vinput adapter stop <id>        # 停止
 
 如果当前没有 surrounding-text 选区，会回退到 primary selection 剪贴板内容。
 
-> 命令模式需要先配置 LLM 提供商，并在 `__command__` 场景中绑定 `provider_id` 和 `model`。
+> 当前命令场景必须可使用 LLM：需要配置 `provider_id`、`model` 和 `prompt`，且 `candidate_count` 必须大于 `0`。

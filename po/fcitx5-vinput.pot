@@ -760,7 +760,10 @@ msgstr ""
 msgid "Number of previous lines sent as LLM context"
 msgstr ""
 
-msgid "Set active scene"
+msgid "Set active dictation scene"
+msgstr ""
+
+msgid "Set active command scene"
 msgstr ""
 
 msgid "Remove a scene"
@@ -778,12 +781,26 @@ msgstr ""
 msgid "CANDIDATES"
 msgstr ""
 
+msgid "DICTATION"
+msgstr ""
+
+msgid "COMMAND"
+msgstr ""
+
 #, c-format
 msgid "Scene '%s' added."
 msgstr ""
 
 #, c-format
-msgid "Default scene set to '%s'."
+msgid "Dictation scene set to '%s'."
+msgstr ""
+
+#, c-format
+msgid "Command scene set to '%s'."
+msgstr ""
+
+#, c-format
+msgid "Cannot remove active command scene '%s'."
 msgstr ""
 
 #, c-format
