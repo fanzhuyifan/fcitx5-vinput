@@ -20,6 +20,11 @@ bool IsFileUri(std::string_view s);
 // interpolation. We deliberately do not parse the variable name here.
 bool HasInterpolation(std::string_view s);
 
+// True when a command prompt explicitly places at least one command input.
+// A prompt that only uses {{context}} or unknown variables still needs the
+// legacy selected-text and ASR XML blocks appended by command mode.
+bool HasCommandInputInterpolation(std::string_view s);
+
 // Load the absolute path embedded in a `file:///abs/path` URI. On failure
 // returns nullopt and writes a short diagnostic into `error` when non-null.
 // The on-disk read is capped by an internal size limit; oversize files are

@@ -589,7 +589,7 @@ PostProcessor::ProcessCommand(const std::string& asr_text, const std::string& se
   // Interpolation mode ({{asr}}/{{selected}}/{{context}}): author owns layout.
   // Legacy mode: wrap ASR command and selected text in Vinput-scoped XML tags
   // so data is clearly separated from prompt instructions.
-  const bool use_template = vinput::prompt_template::HasInterpolation(task_prompt);
+  const bool use_template = vinput::prompt_template::HasCommandInputInterpolation(task_prompt);
   std::string_view asr_var;
   std::string_view selected_var;
   if (use_template) {

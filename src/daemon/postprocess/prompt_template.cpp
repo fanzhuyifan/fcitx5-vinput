@@ -25,6 +25,11 @@ bool HasInterpolation(std::string_view s) {
   return s.find("{{") != std::string_view::npos;
 }
 
+bool HasCommandInputInterpolation(std::string_view s) {
+  static const std::regex kCommandInputRe(R"(\{\{\s*(asr|selected)\s*\}\})");
+  return std::regex_search(s.begin(), s.end(), kCommandInputRe);
+}
+
 std::optional<std::string> LoadFromFileUri(std::string_view uri, std::string* error) {
   auto fail = [&](const char* msg) -> std::optional<std::string> {
     if (error) {

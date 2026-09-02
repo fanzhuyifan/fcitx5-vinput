@@ -174,7 +174,15 @@ vinput adapter stop <id>        # 停止
 
 操作流程：选中文本 → 按住 `Control_R` → 说出指令 → 松开 → 完成。
 
-底层使用内置的 `__command__` 场景。默认 prompt 模板通过 `{{selected}}` 和 `{{asr}}` 接收选中文本与语音指令，并用 Vinput 专用 XML 标签（`<vinput-selected>` 和 `<vinput-asr>`）隔离数据。
+底层使用内置的 `__command__` 场景。命令场景 prompt 支持：
+
+| 占位符 | 内容 |
+|--------|------|
+| `{{selected}}` | 开始命令录音时选中的文本 |
+| `{{asr}}` | 语音识别后的口述指令 |
+| `{{context}}` | 由 `context_lines` 控制的可选近期输入上下文 |
+
+内置 prompt 会用 Vinput 专用 XML 标签（`<vinput-selected>` 和 `<vinput-asr>`）包裹 `{{selected}}` 和 `{{asr}}`。如果 prompt 既不含 `{{selected}}` 也不含 `{{asr}}`，Vinput 会保留兼容行为，在运行时附加等价的 XML 数据块；如果存在 `{{context}}`，仍会正常插值。
 
 **示例：**
 - 选中中文 → 说 *"翻译成英文"* → 替换为英文译文
