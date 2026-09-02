@@ -82,6 +82,9 @@ DESTDIR=%{buildroot} cmake --install build --prefix %{_prefix} --verbose
 %{_datadir}/icons/hicolor/
 %{_mandir}/man*/*
 %{_mandir}/*/man*/*
+%{_datadir}/bash-completion/completions/vinput
+%{_datadir}/zsh/site-functions/_vinput
+%{_datadir}/fish/vendor_completions.d/vinput.fish
 
 %changelog
 * Fri Apr 10 2026 xifan2333 <noreply@github.com> - @VINPUT_VERSION@-1

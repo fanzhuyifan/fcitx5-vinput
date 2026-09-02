@@ -144,6 +144,20 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_MANDIR}/zh_CN/man7
 )
 
+# Install shell completions
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/completions/bash/vinput
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/completions/zsh/_vinput
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/zsh/site-functions
+)
+install(FILES
+    ${CMAKE_SOURCE_DIR}/data/completions/fish/vinput.fish
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d
+)
+
 include_directories(${CMAKE_BINARY_DIR})
 
 
