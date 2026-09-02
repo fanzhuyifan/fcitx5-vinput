@@ -84,6 +84,8 @@ bash scripts/build-sherpa-onnx.sh %{sherpa_onnx_ver} %{_builddir}/sherpa-onnx-in
 %{_datadir}/fcitx5-vinput/
 %{_datadir}/applications/vinput-gui.desktop
 %{_datadir}/icons/hicolor/
+%{_mandir}/man*/*
+%{_mandir}/*/man*/*
 
 %changelog
 * Tue Mar 18 2026 xifan2333 <noreply@github.com> - 0.1.6-1

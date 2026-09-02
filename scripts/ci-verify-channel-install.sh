@@ -37,6 +37,7 @@ assert_common_install() {
     test -f /usr/share/systemd/user/vinput-daemon.service
     test -f /usr/share/dbus-1/services/org.fcitx.Vinput.service
     test -f /usr/share/fcitx5-vinput/default-config.json
+    test -f /usr/share/man/man1/vinput.1.gz -o -f /usr/share/man/man1/vinput.1
 
     addon_path=$(find /usr/lib /usr/lib64 -path '*/fcitx5/fcitx5-vinput.so' -print -quit 2>/dev/null || true)
     runtime_dir=$(find /usr/lib /usr/lib64 -path '*/fcitx5-vinput' -type d -print -quit 2>/dev/null || true)

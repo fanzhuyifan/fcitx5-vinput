@@ -80,6 +80,8 @@ DESTDIR=%{buildroot} cmake --install build --prefix %{_prefix} --verbose
 %{_datadir}/fcitx5-vinput/
 %{_datadir}/applications/vinput-gui.desktop
 %{_datadir}/icons/hicolor/
+%{_mandir}/man*/*
+%{_mandir}/*/man*/*
 
 %changelog
 * Fri Apr 10 2026 xifan2333 <noreply@github.com> - @VINPUT_VERSION@-1
