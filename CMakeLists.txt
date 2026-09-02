@@ -37,7 +37,7 @@ include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cma
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(
         -Wall
         -Wextra
@@ -45,6 +45,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         -Wunneeded-internal-declaration
         -Wunneeded-member-function
         -Wunreachable-code
+        -Wredundant-decls
+    )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wunused
         -Wredundant-decls
     )
 endif()
