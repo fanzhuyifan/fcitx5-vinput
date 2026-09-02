@@ -73,7 +73,7 @@ ASR 原始文本 → [场景 prompt + LLM] → 改写后的文本
 
 ### GUI 操作
 
-在 Vinput GUI 的 **LLM** tab 中管理场景：添加、编辑 prompt、绑定 provider 和 model，并设置 **Context Lines**。
+在 Vinput GUI 的 **LLM** tab 中管理场景：添加、编辑 prompt、绑定 provider 和 model，并设置 **Context Lines**。选中场景后点击 **设为听写场景** 或 **设为命令场景**，可以分别设置两种当前场景。列表会用 **[听写]** 和 **[命令]** 标记；同一个场景也可以同时用于两种模式。
 
 `context_lines` 用来控制 Vinput 在改写前额外发送给 LLM 的前文行数。它适合翻译、续写、段落级润色等依赖附近文本语境的场景。设为 `0` 表示不附带额外上下文。
 

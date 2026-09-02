@@ -205,11 +205,13 @@ LlmPage::LlmPage(QWidget* parent) : QWidget(parent) {
   btnSceneAdd_ = new QPushButton(tr("Add"));
   btnSceneEdit_ = new QPushButton(tr("Edit"));
   btnSceneRemove_ = new QPushButton(tr("Remove"));
-  btnSceneSetActive_ = new QPushButton(tr("Activate"));
+  btnSceneSetDictation_ = new QPushButton(tr("Use for Dictation"));
+  btnSceneSetCommand_ = new QPushButton(tr("Use for Command"));
   sceneBtnLayout->addWidget(btnSceneAdd_);
   sceneBtnLayout->addWidget(btnSceneEdit_);
   sceneBtnLayout->addWidget(btnSceneRemove_);
-  sceneBtnLayout->addWidget(btnSceneSetActive_);
+  sceneBtnLayout->addWidget(btnSceneSetDictation_);
+  sceneBtnLayout->addWidget(btnSceneSetCommand_);
   sceneBtnLayout->addStretch();
   sceneLayout->addLayout(sceneBtnLayout);
   layout->addLayout(sceneLayout);
@@ -225,7 +227,8 @@ LlmPage::LlmPage(QWidget* parent) : QWidget(parent) {
   connect(btnSceneAdd_, &QPushButton::clicked, this, &LlmPage::onSceneAdd);
   connect(btnSceneEdit_, &QPushButton::clicked, this, &LlmPage::onSceneEdit);
   connect(btnSceneRemove_, &QPushButton::clicked, this, &LlmPage::onSceneRemove);
-  connect(btnSceneSetActive_, &QPushButton::clicked, this, &LlmPage::onSceneSetActive);
+  connect(btnSceneSetDictation_, &QPushButton::clicked, this, &LlmPage::onSceneSetDictation);
+  connect(btnSceneSetCommand_, &QPushButton::clicked, this, &LlmPage::onSceneSetCommand);
   connect(&I18nCache::Get(), &I18nCache::mapUpdated, this, &LlmPage::refreshAdapterList);
 
   QTimer::singleShot(0, this, &LlmPage::refreshAdapterList);
@@ -646,9 +649,12 @@ void LlmPage::refreshSceneList() {
 
   for (const auto& scene : config.scenes.definitions) {
     QString label = SceneLabelForGui(scene);
-    bool active = (scene.id == config.scenes.activeScene);
-    if (active)
-      label += " *";
+    if (scene.id == config.scenes.activeScene) {
+      label += tr(" [Dictation]");
+    }
+    if (scene.id == config.scenes.activeCommandScene) {
+      label += tr(" [Command]");
+    }
     auto* item = new QListWidgetItem(label, listScenes_);
     item->setData(Qt::UserRole, QString::fromStdString(scene.id));
   }
@@ -815,10 +821,20 @@ void LlmPage::onSceneRemove() {
     return;
 
   QString scene_id = item->data(Qt::UserRole).toString();
+  const std::string scene_id_string = scene_id.toStdString();
   CoreConfig config = ConfigManager::Get().Load();
+  if (scene_id_string == config.scenes.activeScene ||
+      scene_id_string == config.scenes.activeCommandScene) {
+    QMessageBox::warning(
+        this, tr("Error"),
+        tr("This scene is currently used for dictation or command mode. Switch that role to "
+           "another scene before removing it."));
+    return;
+  }
+
   vinput::scene::Config sc = ToSceneConfig(config.scenes);
   QString scene_label = scene_id;
-  if (const auto* scene = vinput::scene::Find(sc, scene_id.toStdString())) {
+  if (const auto* scene = vinput::scene::Find(sc, scene_id_string)) {
     scene_label = SceneLabelForGui(*scene);
   }
   auto response = QMessageBox::question(
@@ -827,7 +843,7 @@ void LlmPage::onSceneRemove() {
     return;
 
   std::string err;
-  if (!vinput::scene::RemoveScene(&sc, scene_id.toStdString(), true, &err)) {
+  if (!vinput::scene::RemoveScene(&sc, scene_id_string, false, &err)) {
     QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
     return;
   }
@@ -840,7 +856,7 @@ void LlmPage::onSceneRemove() {
   emit configChanged();
 }
 
-void LlmPage::onSceneSetActive() {
+void LlmPage::onSceneSetDictation() {
   auto* item = listScenes_->currentItem();
   if (!item)
     return;
@@ -856,6 +872,32 @@ void LlmPage::onSceneSetActive() {
     return;
   }
   FromSceneConfig(config.scenes, sc);
+
+  if (!vinput::gui::ConfigManager::Get().Save(config)) {
+    QMessageBox::warning(this, tr("Error"), tr("Failed to save config."));
+    return;
+  }
+
+  refreshSceneList();
+  emit configChanged();
+}
+
+void LlmPage::onSceneSetCommand() {
+  auto* item = listScenes_->currentItem();
+  if (!item)
+    return;
+
+  const QString scene_id = item->data(Qt::UserRole).toString();
+
+  CoreConfig config = vinput::gui::ConfigManager::Get().Load();
+  std::string err;
+
+  vinput::scene::Config sc = ToSceneConfig(config.scenes);
+  if (!vinput::scene::SetActiveScene(&sc, scene_id.toStdString(), &err)) {
+    QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
+    return;
+  }
+  config.scenes.activeCommandScene = sc.activeSceneId;
 
   if (!vinput::gui::ConfigManager::Get().Save(config)) {
     QMessageBox::warning(this, tr("Error"), tr("Failed to save config."));

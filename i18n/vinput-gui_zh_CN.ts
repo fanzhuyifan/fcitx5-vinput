@@ -289,10 +289,6 @@
         <translation>&lt;b&gt;场景&lt;/b&gt;</translation>
     </message>
     <message>
-        <source>Activate</source>
-        <translation>激活</translation>
-    </message>
-    <message>
         <source>Command: %1</source>
         <translation>命令：%1</translation>
     </message>
@@ -467,6 +463,26 @@ Found %2 model(s).</source>
     <message>
         <source>Invalid extra_body JSON: %1</source>
         <translation>extra_body JSON 无效：%1</translation>
+    </message>
+    <message>
+        <source>Use for Dictation</source>
+        <translation>设为听写场景</translation>
+    </message>
+    <message>
+        <source>Use for Command</source>
+        <translation>设为命令场景</translation>
+    </message>
+    <message>
+        <source> [Dictation]</source>
+        <translation> [听写]</translation>
+    </message>
+    <message>
+        <source> [Command]</source>
+        <translation> [命令]</translation>
+    </message>
+    <message>
+        <source>This scene is currently used for dictation or command mode. Switch that role to another scene before removing it.</source>
+        <translation>此场景正在用于听写或命令模式。请先为相应模式选择其他场景，再将其删除。</translation>
     </message>
 </context>
 <context>

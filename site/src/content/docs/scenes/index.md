@@ -73,7 +73,7 @@ Corresponding config:
 
 ### GUI
 
-In Vinput GUI, manage scenes in the **LLM** tab: add, edit prompt, bind provider and model, and configure **Context Lines**.
+In Vinput GUI, manage scenes in the **LLM** tab: add, edit prompt, bind provider and model, and configure **Context Lines**. Select a scene and click **Use for Dictation** or **Use for Command** to choose the two active scenes independently. The list marks them with **[Dictation]** and **[Command]**; one scene may serve both roles.
 
 `context_lines` controls how many previous text lines Vinput sends to the LLM as extra context before rewriting. This is useful for translation, continuation, and style-consistent polishing. Set it to `0` to disable extra context.
 

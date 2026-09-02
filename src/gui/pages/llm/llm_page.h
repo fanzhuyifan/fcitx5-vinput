@@ -31,7 +31,8 @@ private slots:
   void onSceneAdd();
   void onSceneEdit();
   void onSceneRemove();
-  void onSceneSetActive();
+  void onSceneSetDictation();
+  void onSceneSetCommand();
 
 private:
   QListWidget* listProviders_;
@@ -50,7 +51,8 @@ private:
   QPushButton* btnSceneAdd_;
   QPushButton* btnSceneEdit_;
   QPushButton* btnSceneRemove_;
-  QPushButton* btnSceneSetActive_;
+  QPushButton* btnSceneSetDictation_;
+  QPushButton* btnSceneSetCommand_;
 };
 
 } // namespace vinput::gui
