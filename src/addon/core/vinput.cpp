@@ -206,6 +206,7 @@ void VinputEngine::applySettings() {
   trigger_keys_ = config_.triggerKeys.value();
   command_keys_ = config_.commandKeys.value();
   scene_menu_key_ = config_.sceneMenuKeys.value();
+  command_scene_menu_key_ = config_.commandSceneMenuKeys.value();
   asr_menu_key_ = config_.asrMenuKeys.value();
   page_prev_keys_ = config_.pagePrevKeys.value();
   page_next_keys_ = config_.pageNextKeys.value();

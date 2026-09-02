@@ -31,8 +31,9 @@ struct SceneOption {
   std::string search_text;
 };
 
-std::string SceneMenuTitle() {
-  return _("Scenes /filter");
+std::string SceneMenuTitle(SceneMenuTarget target) {
+  return target == SceneMenuTarget::Command ? _("Command Scenes /filter")
+                                            : _("Dictation Scenes /filter");
 }
 
 std::string AsrMenuTitle() {
@@ -483,7 +484,7 @@ private:
 
 } // namespace
 
-void VinputEngine::showSceneMenu(fcitx::InputContext* ic) {
+void VinputEngine::showSceneMenu(fcitx::InputContext* ic, SceneMenuTarget target) {
   if (!ic) {
     return;
   }
@@ -491,6 +492,7 @@ void VinputEngine::showSceneMenu(fcitx::InputContext* ic) {
   reloadSceneConfig();
   scene_menu_ic_ = ic;
   scene_menu_visible_ = true;
+  scene_menu_target_ = target;
   scene_menu_query_.clear();
   scene_menu_filter_mode_ = false;
   rebuildSceneMenu(ic);
@@ -507,12 +509,15 @@ void VinputEngine::rebuildSceneMenu(fcitx::InputContext* ic) {
   candidate_list->setLayoutHint(fcitx::CandidateLayoutHint::Vertical);
   candidate_list->setCursorPositionAfterPaging(fcitx::CursorPositionAfterPaging::ResetToFirst);
 
+  const std::string& active_scene_id =
+      scene_menu_target_ == SceneMenuTarget::Command ? active_command_scene_id_ : active_scene_id_;
+
   scene_menu_filtered_indices_.clear();
   std::vector<SceneOption> scene_options;
   for (std::size_t i = 0; i < scene_config_.scenes.size(); ++i) {
     const auto& scene = scene_config_.scenes[i];
     const std::string label = vinput::scene::DisplayLabel(scene);
-    const bool active = scene.id == active_scene_id_;
+    const bool active = scene.id == active_scene_id;
     if (active) {
       active_label = label;
     }
@@ -534,7 +539,7 @@ void VinputEngine::rebuildSceneMenu(fcitx::InputContext* ic) {
   }
   SelectFirstCandidate(candidate_list.get());
 
-  SetMenuTitle(ic, SceneMenuTitle(), scene_menu_query_, scene_menu_filter_mode_,
+  SetMenuTitle(ic, SceneMenuTitle(scene_menu_target_), scene_menu_query_, scene_menu_filter_mode_,
                candidate_list.get());
   SetMenuAuxDown(ic, CurrentItemText(active_label));
   ic->inputPanel().setCandidateList(std::move(candidate_list));
@@ -544,6 +549,7 @@ void VinputEngine::rebuildSceneMenu(fcitx::InputContext* ic) {
 void VinputEngine::resetSceneMenuState() {
   scene_menu_ic_ = nullptr;
   scene_menu_visible_ = false;
+  scene_menu_target_ = SceneMenuTarget::Dictation;
   scene_menu_query_.clear();
   scene_menu_filter_mode_ = false;
   scene_menu_filtered_indices_.clear();
@@ -574,13 +580,15 @@ bool VinputEngine::handleSceneMenuKeyEvent(fcitx::KeyEvent& keyEvent) {
   auto* cursor_list = candidate_list ? candidate_list->toCursorMovable() : nullptr;
   const auto normalized_key = keyEvent.key().normalize();
   const bool printable_filter_input = IsPrintableMenuInput(keyEvent.key(), scene_menu_filter_mode_);
+  const auto shortcut_target = MatchSceneMenuShortcut(keyEvent.key(), scene_menu_key_,
+                                                      command_scene_menu_key_, scene_menu_target_);
   const bool handled_key =
-      keyEvent.key().checkKeyList(scene_menu_key_) || IsPagePrevKey(keyEvent.key()) ||
-      IsPageNextKey(keyEvent.key()) || keyEvent.key().digitSelection() >= 0 ||
-      IsSlashKey(keyEvent.key()) || IsBackspaceKey(keyEvent.key()) ||
-      IsCtrlShortcut(keyEvent.key(), FcitxKey_w) || IsCtrlShortcut(keyEvent.key(), FcitxKey_u) ||
-      IsUpKey(keyEvent.key()) || IsDownKey(keyEvent.key()) || IsEnterKey(keyEvent.key()) ||
-      IsEscapeKey(keyEvent.key()) || IsPureModifierKey(keyEvent.key()) || printable_filter_input;
+      shortcut_target || IsPagePrevKey(keyEvent.key()) || IsPageNextKey(keyEvent.key()) ||
+      keyEvent.key().digitSelection() >= 0 || IsSlashKey(keyEvent.key()) ||
+      IsBackspaceKey(keyEvent.key()) || IsCtrlShortcut(keyEvent.key(), FcitxKey_w) ||
+      IsCtrlShortcut(keyEvent.key(), FcitxKey_u) || IsUpKey(keyEvent.key()) ||
+      IsDownKey(keyEvent.key()) || IsEnterKey(keyEvent.key()) || IsEscapeKey(keyEvent.key()) ||
+      IsPureModifierKey(keyEvent.key()) || printable_filter_input;
 
   if (keyEvent.isRelease()) {
     if (!handled_key) {
@@ -595,7 +603,15 @@ bool VinputEngine::handleSceneMenuKeyEvent(fcitx::KeyEvent& keyEvent) {
     return false;
   }
 
-  if (keyEvent.key().checkKeyList(scene_menu_key_) || IsPureModifierKey(keyEvent.key())) {
+  if (shortcut_target) {
+    if (*shortcut_target != scene_menu_target_) {
+      showSceneMenu(scene_menu_ic_, *shortcut_target);
+    }
+    keyEvent.filterAndAccept();
+    return true;
+  }
+
+  if (IsPureModifierKey(keyEvent.key())) {
     keyEvent.filterAndAccept();
     return true;
   }
@@ -657,17 +673,19 @@ bool VinputEngine::handleSceneMenuKeyEvent(fcitx::KeyEvent& keyEvent) {
   }
 
   if (IsPagePrevKey(keyEvent.key())) {
-    ChangeCandidatePage(
-        scene_menu_ic_,
-        DecorateFilterTitle(SceneMenuTitle(), scene_menu_query_, scene_menu_filter_mode_), false);
+    ChangeCandidatePage(scene_menu_ic_,
+                        DecorateFilterTitle(SceneMenuTitle(scene_menu_target_), scene_menu_query_,
+                                            scene_menu_filter_mode_),
+                        false);
     keyEvent.filterAndAccept();
     return true;
   }
 
   if (IsPageNextKey(keyEvent.key())) {
-    ChangeCandidatePage(
-        scene_menu_ic_,
-        DecorateFilterTitle(SceneMenuTitle(), scene_menu_query_, scene_menu_filter_mode_), true);
+    ChangeCandidatePage(scene_menu_ic_,
+                        DecorateFilterTitle(SceneMenuTitle(scene_menu_target_), scene_menu_query_,
+                                            scene_menu_filter_mode_),
+                        true);
     keyEvent.filterAndAccept();
     return true;
   }
@@ -718,18 +736,29 @@ void VinputEngine::selectScene(std::size_t index, fcitx::InputContext* ic) {
     return;
   }
 
+  const auto target = scene_menu_target_;
   const std::string selected_scene_id = scene_config_.scenes[index].id;
-  // Persist the active scene to config
   auto core_config = LoadCoreConfig();
-  core_config.scenes.activeScene = selected_scene_id;
+  if (target == SceneMenuTarget::Command) {
+    core_config.scenes.activeCommandScene = selected_scene_id;
+  } else {
+    core_config.scenes.activeScene = selected_scene_id;
+  }
   if (!SaveCoreConfig(core_config)) {
-    notifyError(_("Failed to save active scene."));
+    notifyError(target == SceneMenuTarget::Command ? _("Failed to save active command scene.")
+                                                   : _("Failed to save active dictation scene."));
     return;
   }
-  active_scene_id_ = selected_scene_id;
-  scene_config_.activeSceneId = selected_scene_id;
+  if (target == SceneMenuTarget::Command) {
+    active_command_scene_id_ = selected_scene_id;
+  } else {
+    active_scene_id_ = selected_scene_id;
+    scene_config_.activeSceneId = selected_scene_id;
+  }
   hideSceneMenu();
-  notifyInfo(vinput::str::FmtStr(_("Switched scene to '%s'."),
+  const char* message = target == SceneMenuTarget::Command ? _("Switched command scene to '%s'.")
+                                                           : _("Switched dictation scene to '%s'.");
+  notifyInfo(vinput::str::FmtStr(message,
                                  vinput::scene::DisplayLabel(scene_config_.scenes[index]).c_str()));
   (void)ic;
 }

@@ -6,6 +6,9 @@
 #include <utility>
 
 #include "common/config/core_config.h"
+#include "common/config/vinput_config.h"
+
+#include "addon/input/scene_menu_shortcut.h"
 
 namespace {
 
@@ -116,6 +119,65 @@ void TestResolverSelectionAndFallback() {
           "resolver falls back to the builtin command scene");
 }
 
+void TestSceneMenuShortcutConfig() {
+  VinputConfig defaults;
+  Require(defaults.sceneMenuKeys.value() == fcitx::KeyList{fcitx::Key(FcitxKey_Shift_R)},
+          "dictation scene menu defaults to Right Shift");
+  Require(defaults.commandSceneMenuKeys.value() == fcitx::KeyList{fcitx::Key(FcitxKey_F9)},
+          "command scene menu defaults to F9");
+
+  fcitx::RawConfig legacy;
+  legacy["SceneMenuKey/0"] = "F9";
+  VinputConfig migrated;
+  migrated.load(legacy, true);
+  Require(migrated.sceneMenuKeys.value() == fcitx::KeyList{fcitx::Key(FcitxKey_F9)},
+          "a legacy F9 dictation binding is preserved");
+  Require(migrated.commandSceneMenuKeys.value() == fcitx::KeyList{fcitx::Key(FcitxKey_F9)},
+          "a missing command scene binding receives its default");
+
+  fcitx::RawConfig custom;
+  custom["CommandSceneMenuKey/0"] = "F10";
+  custom["CommandSceneMenuKey/1"] = "Control+F9";
+  VinputConfig configured;
+  configured.load(custom, true);
+  const fcitx::KeyList expected{
+      fcitx::Key(FcitxKey_F10),
+      fcitx::Key(FcitxKey_F9, fcitx::KeyState::Ctrl),
+  };
+  Require(configured.commandSceneMenuKeys.value() == expected,
+          "custom command scene menu keys load from RawConfig");
+
+  fcitx::RawConfig saved;
+  configured.save(saved);
+  const auto* first = saved.valueByPath("CommandSceneMenuKey/0");
+  const auto* second = saved.valueByPath("CommandSceneMenuKey/1");
+  Require(first && *first == "F10", "the first command scene menu key is serialized");
+  Require(second && *second == "Control+F9", "the second command scene menu key is serialized");
+}
+
+void TestSceneMenuShortcutPrecedence() {
+  const fcitx::Key key(FcitxKey_F9);
+  const fcitx::KeyList dictation{key};
+  const fcitx::KeyList command{key};
+  const auto overlap = MatchSceneMenuShortcut(key, dictation, command);
+  Require(overlap && *overlap == SceneMenuTarget::Dictation,
+          "an overlapping shortcut preserves dictation menu precedence");
+  const auto from_dictation =
+      MatchSceneMenuShortcut(key, dictation, command, SceneMenuTarget::Dictation);
+  Require(from_dictation && *from_dictation == SceneMenuTarget::Command,
+          "an overlapping shortcut switches from the dictation menu to the command menu");
+  const auto from_command =
+      MatchSceneMenuShortcut(key, dictation, command, SceneMenuTarget::Command);
+  Require(from_command && *from_command == SceneMenuTarget::Dictation,
+          "an overlapping shortcut switches from the command menu to the dictation menu");
+
+  const auto command_only = MatchSceneMenuShortcut(key, {fcitx::Key(FcitxKey_Shift_R)}, command);
+  Require(command_only && *command_only == SceneMenuTarget::Command,
+          "the command shortcut selects the command menu");
+  Require(!MatchSceneMenuShortcut(fcitx::Key(FcitxKey_F10), dictation, command),
+          "an unrelated key does not select a scene menu");
+}
+
 } // namespace
 
 int main() {
@@ -124,5 +186,7 @@ int main() {
   TestInvalidSelectionNormalization();
   TestValidation();
   TestResolverSelectionAndFallback();
+  TestSceneMenuShortcutConfig();
+  TestSceneMenuShortcutPrecedence();
   return 0;
 }

@@ -242,8 +242,11 @@ msgstr "命令模式已禁用（候选数为 0）。"
 msgid "No LLM provider configured for command mode."
 msgstr "未配置命令模式的 LLM 提供者。"
 
-msgid "Scenes /filter"
-msgstr "场景 /过滤"
+msgid "Command Scenes /filter"
+msgstr "命令场景 /过滤"
+
+msgid "Dictation Scenes /filter"
+msgstr "听写场景 /过滤"
 
 msgid "Models /filter"
 msgstr "模型 /过滤"
@@ -255,8 +258,12 @@ msgid "Recording is not active."
 msgstr "当前未在录音。"
 
 #, c-format
-msgid "Switched scene to '%s'."
-msgstr "已切换场景到 '%s'。"
+msgid "Switched command scene to '%s'."
+msgstr "命令场景已切换为 '%s'。"
+
+#, c-format
+msgid "Switched dictation scene to '%s'."
+msgstr "听写场景已切换为 '%s'。"
 
 #, c-format
 msgid "Switched ASR to '%s'."
@@ -322,8 +329,11 @@ msgstr "（%d/%d页）"
 msgid " (Current)"
 msgstr "（当前）"
 
-msgid "Failed to save active scene."
-msgstr "保存当前活跃场景失败。"
+msgid "Failed to save active command scene."
+msgstr "保存当前命令场景失败。"
+
+msgid "Failed to save active dictation scene."
+msgstr "保存当前听写场景失败。"
 
 msgid "Failed to save ASR config."
 msgstr "保存语音识别配置失败。"
@@ -977,13 +987,20 @@ msgstr ""
 "按住该键录制语音指令，将对当前选中的文本进行处理。如果没有选中文本，"
 "vinput 将使用当前主选区剪贴板内容。默认是右 Ctrl。"
 
-msgid "Postprocess Menu Keys"
-msgstr "后处理选单键"
+msgid "Dictation Scene Menu Keys"
+msgstr "听写场景菜单键"
 
 msgid ""
-"Configure one or more keys to open the postprocess menu. The default is "
-"Right Alt + Control."
-msgstr "可配置多个按键，用于打开后处理选单。默认是右 Alt + Ctrl。"
+"Configure one or more keys to open the dictation scene menu. The default is "
+"Right Shift."
+msgstr "配置一个或多个按键来打开听写场景菜单。默认为右 Shift。"
+
+msgid "Command Scene Menu Keys"
+msgstr "命令场景菜单键"
+
+msgid ""
+"Configure one or more keys to open the command scene menu. The default is F9."
+msgstr "配置一个或多个按键来打开命令场景菜单。默认为 F9。"
 
 msgid "ASR Menu Keys"
 msgstr "语音识别菜单键"

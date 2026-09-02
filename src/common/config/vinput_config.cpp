@@ -56,12 +56,21 @@ std::string CommandKeysTooltip() {
 }
 
 std::string SceneMenuKeyLabel() {
-  return _("Postprocess Menu Keys");
+  return _("Dictation Scene Menu Keys");
 }
 
 std::string SceneMenuKeyTooltip() {
-  return _("Configure one or more keys to open the postprocess menu. The "
-           "default is Right Alt + Control.");
+  return _("Configure one or more keys to open the dictation scene menu. The "
+           "default is Right Shift.");
+}
+
+std::string CommandSceneMenuKeyLabel() {
+  return _("Command Scene Menu Keys");
+}
+
+std::string CommandSceneMenuKeyTooltip() {
+  return _("Configure one or more keys to open the command scene menu. The "
+           "default is F9.");
 }
 
 std::string AsrMenuKeyLabel() {
@@ -109,6 +118,9 @@ VinputConfig::VinputConfig()
       sceneMenuKeys(this, "SceneMenuKey", SceneMenuKeyLabel(), {fcitx::Key(FcitxKey_Shift_R)},
                     SceneMenuKeyListConstrain(), {},
                     fcitx::ToolTipAnnotation(SceneMenuKeyTooltip())),
+      commandSceneMenuKeys(this, "CommandSceneMenuKey", CommandSceneMenuKeyLabel(),
+                           {fcitx::Key(FcitxKey_F9)}, SceneMenuKeyListConstrain(), {},
+                           fcitx::ToolTipAnnotation(CommandSceneMenuKeyTooltip())),
       asrMenuKeys(this, "AsrMenuKey", AsrMenuKeyLabel(), {fcitx::Key(FcitxKey_F8)},
                   SceneMenuKeyListConstrain(), {}, fcitx::ToolTipAnnotation(AsrMenuKeyTooltip())),
       pagePrevKeys(this, "PagePrevKeys", PagePrevKeysLabel(),

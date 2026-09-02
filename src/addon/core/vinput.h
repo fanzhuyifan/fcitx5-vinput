@@ -21,6 +21,8 @@
 #include "common/dbus/error_info.h"
 #include "common/scene/postprocess_scene.h"
 
+#include "input/scene_menu_shortcut.h"
+
 class VinputNotifierDBusObject;
 
 struct AsrMenuItem {
@@ -48,7 +50,7 @@ private:
   void applySettings();
   void reloadSceneConfig();
   void handleKeyEvent(fcitx::Event& event);
-  void showSceneMenu(fcitx::InputContext* ic);
+  void showSceneMenu(fcitx::InputContext* ic, SceneMenuTarget target);
   void hideSceneMenu();
   void resetSceneMenuState();
   bool handleSceneMenuKeyEvent(fcitx::KeyEvent& keyEvent);
@@ -139,7 +141,8 @@ private:
   fcitx::InputContext* result_menu_ic_ = nullptr;
   fcitx::KeyList trigger_keys_{fcitx::Key(FcitxKey_Control_R)};
   fcitx::KeyList command_keys_{fcitx::Key(FcitxKey_F10)};
-  fcitx::KeyList scene_menu_key_{fcitx::Key(FcitxKey_F9)};
+  fcitx::KeyList scene_menu_key_{fcitx::Key(FcitxKey_Shift_R)};
+  fcitx::KeyList command_scene_menu_key_{fcitx::Key(FcitxKey_F9)};
   fcitx::KeyList asr_menu_key_{fcitx::Key(FcitxKey_F8)};
   fcitx::KeyList page_prev_keys_{
       fcitx::Key(FcitxKey_Page_Up),
@@ -150,6 +153,7 @@ private:
       fcitx::Key(FcitxKey_KP_Page_Down),
   };
   bool scene_menu_visible_ = false;
+  SceneMenuTarget scene_menu_target_ = SceneMenuTarget::Dictation;
   bool asr_menu_visible_ = false;
   bool result_menu_visible_ = false;
   std::string active_scene_id_;

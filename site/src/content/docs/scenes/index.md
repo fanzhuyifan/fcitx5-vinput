@@ -43,7 +43,7 @@ Built-in scenes:
 - **`__raw__`** — Bypasses LLM, outputs raw recognition text
 - **`__command__`** — Used by command mode (see below)
 
-Switch scenes at runtime with `Shift_R`.
+Switch the dictation scene at runtime with `Shift_R`, or the command scene with `F9`.
 
 Corresponding config:
 
@@ -180,6 +180,11 @@ vinput adapter stop <id>        # Stop
 Command mode is a special scene usage: select existing text, then use a voice instruction to have LLM rewrite it.
 
 Flow: select text → hold `Control_R` → speak your instruction → release → done.
+
+Press `F9` to open the command scene switcher. This changes only command mode's scene; `Shift_R`
+opens the separate dictation scene switcher. Both shortcuts are configurable in Fcitx5. If both
+menus use the same key, press it again while the menu is open to toggle between Dictation and
+Command.
 
 By default, command mode uses the built-in `__command__` scene. Select another existing scene without changing the ordinary voice-input scene:
 

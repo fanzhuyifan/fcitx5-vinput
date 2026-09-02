@@ -240,7 +240,10 @@ msgstr ""
 msgid "No LLM provider configured for command mode."
 msgstr ""
 
-msgid "Scenes /filter"
+msgid "Command Scenes /filter"
+msgstr ""
+
+msgid "Dictation Scenes /filter"
 msgstr ""
 
 msgid "Models /filter"
@@ -253,7 +256,11 @@ msgid "Recording is not active."
 msgstr ""
 
 #, c-format
-msgid "Switched scene to '%s'."
+msgid "Switched command scene to '%s'."
+msgstr ""
+
+#, c-format
+msgid "Switched dictation scene to '%s'."
 msgstr ""
 
 #, c-format
@@ -295,7 +302,10 @@ msgstr ""
 msgid " (Current)"
 msgstr ""
 
-msgid "Failed to save active scene."
+msgid "Failed to save active command scene."
+msgstr ""
+
+msgid "Failed to save active dictation scene."
 msgstr ""
 
 msgid "Failed to save ASR config."
@@ -960,12 +970,19 @@ msgid ""
 "primary-selection clipboard text. Default is Right Control."
 msgstr ""
 
-msgid "Postprocess Menu Keys"
+msgid "Dictation Scene Menu Keys"
 msgstr ""
 
 msgid ""
-"Configure one or more keys to open the postprocess menu. The default is "
-"Right Alt + Control."
+"Configure one or more keys to open the dictation scene menu. The default is "
+"Right Shift."
+msgstr ""
+
+msgid "Command Scene Menu Keys"
+msgstr ""
+
+msgid ""
+"Configure one or more keys to open the command scene menu. The default is F9."
 msgstr ""
 
 msgid "ASR Menu Keys"

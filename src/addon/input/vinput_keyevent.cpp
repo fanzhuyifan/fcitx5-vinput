@@ -66,13 +66,12 @@ void VinputEngine::handleKeyEvent(fcitx::Event& event) {
     return;
   }
 
-  if (!session_ && keyEvent.key().checkKeyList(scene_menu_key_) && !keyEvent.isRelease()) {
-    showSceneMenu(keyEvent.inputContext());
-    keyEvent.filterAndAccept();
-    return;
-  }
-
-  if (keyEvent.key().checkKeyList(scene_menu_key_) && keyEvent.isRelease()) {
+  const auto scene_menu_target =
+      MatchSceneMenuShortcut(keyEvent.key(), scene_menu_key_, command_scene_menu_key_);
+  if (scene_menu_target && !session_) {
+    if (!keyEvent.isRelease()) {
+      showSceneMenu(keyEvent.inputContext(), *scene_menu_target);
+    }
     keyEvent.filterAndAccept();
     return;
   }
