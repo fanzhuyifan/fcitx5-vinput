@@ -178,9 +178,10 @@ std::vector<std::string> ExtractCandidates(const json& response) {
     if (!value.is_string()) {
       continue;
     }
-    const auto candidate = TrimAsciiWhitespace(value.get<std::string>());
-    if (!candidate.empty()) {
-      candidates.emplace_back(candidate);
+    const auto candidate_text = value.get<std::string>();
+    const auto trimmed_candidate = TrimAsciiWhitespace(candidate_text);
+    if (!trimmed_candidate.empty()) {
+      candidates.emplace_back(trimmed_candidate);
     }
   }
 
