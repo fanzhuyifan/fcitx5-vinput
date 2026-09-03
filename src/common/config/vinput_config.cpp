@@ -8,14 +8,6 @@
 
 namespace {
 
-void EnsureI18nInitialized() {
-  static const bool initialized = []() {
-    vinput::i18n::Init();
-    return true;
-  }();
-  (void)initialized;
-}
-
 fcitx::ListConstrain<fcitx::KeyConstrain> TriggerKeyListConstrain() {
   return fcitx::KeyListConstrain(fcitx::KeyConstrainFlags{
       fcitx::KeyConstrainFlag::AllowModifierOnly,
@@ -38,12 +30,10 @@ std::string UserPkgConfigPath(std::string_view relative_path) {
 }
 
 std::string TriggerKeyLabel() {
-  EnsureI18nInitialized();
   return _("Trigger Key");
 }
 
 std::string TriggerKeyTooltip() {
-  EnsureI18nInitialized();
   const std::string path = UserPkgConfigPath(kVinputConfigPath);
   char buf[1024];
   std::snprintf(buf, sizeof(buf),
@@ -55,12 +45,10 @@ std::string TriggerKeyTooltip() {
 }
 
 std::string CommandKeysLabel() {
-  EnsureI18nInitialized();
   return _("Command Keys");
 }
 
 std::string CommandKeysTooltip() {
-  EnsureI18nInitialized();
   return _("Press and hold this key to record a voice command to operate on "
            "the selected text. If there is no active selection, vinput falls "
            "back to the current primary-selection clipboard text. Default is "
@@ -68,63 +56,52 @@ std::string CommandKeysTooltip() {
 }
 
 std::string SceneMenuKeyLabel() {
-  EnsureI18nInitialized();
   return _("Postprocess Menu Keys");
 }
 
 std::string SceneMenuKeyTooltip() {
-  EnsureI18nInitialized();
   return _("Configure one or more keys to open the postprocess menu. The "
            "default is Right Alt + Control.");
 }
 
 std::string AsrMenuKeyLabel() {
-  EnsureI18nInitialized();
   return _("ASR Menu Keys");
 }
 
 std::string AsrMenuKeyTooltip() {
-  EnsureI18nInitialized();
   return _("Configure one or more keys to open the ASR provider / model "
            "selection menu. The default is F8.");
 }
 
 std::string PagePrevKeysLabel() {
-  EnsureI18nInitialized();
   return _("Previous Page Keys");
 }
 
 std::string PagePrevKeysTooltip() {
-  EnsureI18nInitialized();
   return _("Keys for paging to the previous page in the postprocess menu and "
            "the postprocess candidate menu. Defaults to Page Up and keypad "
            "Page Up.");
 }
 
 std::string PageNextKeysLabel() {
-  EnsureI18nInitialized();
   return _("Next Page Keys");
 }
 
 std::string PageNextKeysTooltip() {
-  EnsureI18nInitialized();
   return _("Keys for paging to the next page in the postprocess menu and the "
            "postprocess candidate menu. Defaults to Page Down and keypad Page "
            "Down.");
 }
 
 std::string TriggerModeLabel() {
-  EnsureI18nInitialized();
   return _("Trigger Mode");
 }
 
 std::string MaxStreamingDisplayWidthLabel() {
-  EnsureI18nInitialized();
   return _("Max Streaming Display Width");
 }
 
 std::string MaxStreamingDisplayWidthTooltip() {
-  EnsureI18nInitialized();
   return _("Maximum visual column width for live streaming recognition preview. Older text is "
            "folded into 'head...tail'. Set to 0 to disable folding. Default is 60.");
 }
