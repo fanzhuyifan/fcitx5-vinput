@@ -1,13 +1,13 @@
 {
-  "id": 8,
-  "timestamp": 1788414985,
+  "id": 9,
+  "timestamp": 1788428121,
   "title": {
-    "en_US": "Vinput 2.3.9 — Shell completions, man pages, sherpa-onnx 1.13.7, and hk integration",
-    "zh_CN": "Vinput 2.3.9 — Shell 自动补全、Man 手册、sherpa-onnx 1.13.7 与 hk 门禁集成"
+    "en_US": "Vinput 2.3.10 — Fixed shell completions for Bash, Zsh, and Fish",
+    "zh_CN": "Vinput 2.3.10 — 修复 Bash、Zsh 与 Fish 自动补全"
   },
   "text": {
-    "en_US": "Added standalone shell completions for Bash, Zsh, and Fish; added bilingual man pages; bumped sherpa-onnx to v1.13.7; integrated hk git hook manager and AI agent guidelines; fixed LLM candidate text trimming.",
-    "zh_CN": "新增 Bash/Zsh/Fish 命令行自动补全；新增中英双语 man 手册；升级 sherpa-onnx 运行时至 v1.13.7；集成 hk 代码质量门禁与 AI Agent 开发规范；修复 LLM 候选词裁剪生命周期问题。"
+    "en_US": "Fixed Zsh completion state machine indexing, added portable environment fallback for Bash, and refined Fish subcommand completions.",
+    "zh_CN": "重构修复了 Zsh 补全状态机与下标索引问题；增加了 Bash 补全环境 fallback；优化了 Fish 补全的子命令匹配。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.9"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.10"
 }
