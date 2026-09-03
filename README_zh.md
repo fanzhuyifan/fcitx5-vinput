@@ -38,7 +38,11 @@ sudo pacman -S fcitx5-vinput
 也可以使用 AUR 二进制包：
 
 ```bash
+# 完整版（带本地 sherpa-onnx 离线推理）
 yay -S fcitx5-vinput-bin
+
+# 极简 Lite 版（纯云端 ASR + LLM，无本地 ONNX 运行时）
+yay -S fcitx5-vinput-lite-bin
 ```
 
 ### Fedora (COPR)
@@ -66,10 +70,15 @@ sudo apt-get install -f
 
 ### Nix (flake)
 
-支持 `x86_64-linux` 和 `aarch64-linux`。
+支持 `x86_64-linux` 和 `aarch64-linux`。完整版与 Lite 版均在 Cachix 预编译缓存：
 
 ```nix
 inputs.fcitx5-vinput.url = "github:xifan2333/fcitx5-vinput";
+
+# 完整版（默认）：
+#   inputs.fcitx5-vinput.packages.${system}.default
+# 极简 Lite 版（纯云端 ASR + LLM，零 ONNX 依赖）：
+#   inputs.fcitx5-vinput.packages.${system}.fcitx5-vinput-lite
 ```
 
 通过 [Cachix](https://fcitx5-vinput.cachix.org) 提供二进制缓存：

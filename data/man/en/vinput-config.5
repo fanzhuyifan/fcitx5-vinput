@@ -116,6 +116,46 @@ ID of the currently selected scene.
 \f[B]context_lines\f[R] (\f[I]integer\f[R])
 Number of preceding input lines sent to the LLM as conversational
 context.
+.SH VINPUT.CONF STRUCTURE (FCITX5 ADDON)
+The Fcitx5 addon configuration file is stored in INI format at
+\f[I]\(ti/.config/fcitx5/conf/vinput.conf\f[R].
+.IP
+.EX
+\f[B][Trigger]\f[R]
+TriggerMode=Both
+TriggerKey=Alt_R
+CommandKeys=Control_R
+SceneMenuKey=Shift_R
+AsrMenuKey=F8
+PagePrevKeys=Page_Up,KP_Page_Up
+PageNextKeys=Page_Down,KP_Page_Down
+MaxStreamingDisplayWidth=60
+.EE
+.TP
+\f[B]TriggerMode\f[R] (\f[I]enum: Tap, Hold, Both\f[R])
+Trigger activation mode.
+\f[CR]Tap\f[R] toggles recording; \f[CR]Hold\f[R] records while key is
+pressed; \f[CR]Both\f[R] enables tap\-to\-toggle and hold\-to\-talk.
+.TP
+\f[B]TriggerKey\f[R] (\f[I]key list\f[R])
+Keys used to trigger voice recording (default: Right Alt).
+.TP
+\f[B]CommandKeys\f[R] (\f[I]key list\f[R])
+Keys used to record a voice command on selected text (default: Right
+Control).
+.TP
+\f[B]SceneMenuKey\f[R] (\f[I]key list\f[R])
+Keys used to open the postprocess scene selection menu (default: Right
+Shift).
+.TP
+\f[B]AsrMenuKey\f[R] (\f[I]key list\f[R])
+Keys used to open the ASR provider / model selection menu (default: F8).
+.TP
+\f[B]MaxStreamingDisplayWidth\f[R] (\f[I]integer\f[R], \f[CR]0\f[R] \- \f[CR]500\f[R])
+Maximum visual column width for live streaming recognition preview.
+Older text is folded into \(aqhead...tail\(aq to keep the preedit
+tooltip within bounds.
+Set to \f[CR]0\f[R] to disable folding (default: \f[CR]60\f[R]).
 .SH FILES
 .TP
 \f[I]\(ti/.config/vinput/config.json\f[R]

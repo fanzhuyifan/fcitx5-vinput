@@ -15,10 +15,14 @@ If you use the [archlinuxcn](https://www.archlinuxcn.org/archlinux-cn-repo-and-m
 sudo pacman -S fcitx5-vinput
 ```
 
-The AUR binary package is also available:
+The AUR binary packages are also available:
 
 ```bash
+# Full version (with local sherpa-onnx runtime)
 yay -S fcitx5-vinput-bin
+
+# Lite version (cloud-only, zero local ONNX runtime)
+yay -S fcitx5-vinput-lite-bin
 ```
 
 ### Fedora (COPR)
@@ -96,7 +100,10 @@ Then put `fcitx5-vinput` into your Fcitx5 addon wrapper:
 ```nix
 { pkgs, ... }@inputs:
 let
+  # Full version (default):
   fcitx5-vinput = inputs.fcitx5-vinput.packages."${pkgs.stdenv.hostPlatform.system}".default;
+  # Or Lite version (pure cloud ASR + LLM, zero ONNX runtime):
+  # fcitx5-vinput = inputs.fcitx5-vinput.packages."${pkgs.stdenv.hostPlatform.system}".fcitx5-vinput-lite;
 in
 {
   home.packages = [

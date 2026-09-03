@@ -119,6 +119,40 @@ Defines prompt templates and candidate counts for text rewriting.
 **context_lines** (*integer*)
 :   Number of preceding input lines sent to the LLM as conversational context.
 
+# VINPUT.CONF STRUCTURE (FCITX5 ADDON)
+
+The Fcitx5 addon configuration file is stored in INI format at *~/.config/fcitx5/conf/vinput.conf*.
+
+```ini
+[Trigger]
+TriggerMode=Both
+TriggerKey=Alt_R
+CommandKeys=Control_R
+SceneMenuKey=Shift_R
+AsrMenuKey=F8
+PagePrevKeys=Page_Up,KP_Page_Up
+PageNextKeys=Page_Down,KP_Page_Down
+MaxStreamingDisplayWidth=60
+```
+
+**TriggerMode** (*enum: Tap, Hold, Both*)
+:   Trigger activation mode. `Tap` toggles recording; `Hold` records while key is pressed; `Both` enables tap-to-toggle and hold-to-talk.
+
+**TriggerKey** (*key list*)
+:   Keys used to trigger voice recording (default: Right Alt).
+
+**CommandKeys** (*key list*)
+:   Keys used to record a voice command on selected text (default: Right Control).
+
+**SceneMenuKey** (*key list*)
+:   Keys used to open the postprocess scene selection menu (default: Right Shift).
+
+**AsrMenuKey** (*key list*)
+:   Keys used to open the ASR provider / model selection menu (default: F8).
+
+**MaxStreamingDisplayWidth** (*integer*, `0` - `500`)
+:   Maximum visual column width for live streaming recognition preview. Older text is folded into 'head...tail' to keep the preedit tooltip within bounds. Set to `0` to disable folding (default: `60`).
+
 # FILES
 *~/.config/vinput/config.json*
 :   User core configuration file.

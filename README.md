@@ -38,7 +38,11 @@ sudo pacman -S fcitx5-vinput
 The AUR binary package is also available:
 
 ```bash
+# Full version (with local sherpa-onnx runtime)
 yay -S fcitx5-vinput-bin
+
+# Lite version (cloud-only, zero local ONNX runtime)
+yay -S fcitx5-vinput-lite-bin
 ```
 
 ### Fedora (COPR)
@@ -66,10 +70,15 @@ sudo apt-get install -f
 
 ### Nix (flake)
 
-Supports `x86_64-linux` and `aarch64-linux`.
+Supports `x86_64-linux` and `aarch64-linux`. Both full and lite packages are cached on Cachix.
 
 ```nix
 inputs.fcitx5-vinput.url = "github:xifan2333/fcitx5-vinput";
+
+# Full version (default):
+#   inputs.fcitx5-vinput.packages.${system}.default
+# Lite version (cloud-only, zero local ONNX runtime):
+#   inputs.fcitx5-vinput.packages.${system}.fcitx5-vinput-lite
 ```
 
 Binary cache via [Cachix](https://fcitx5-vinput.cachix.org):

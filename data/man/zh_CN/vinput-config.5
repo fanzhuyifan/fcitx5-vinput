@@ -114,6 +114,41 @@ PipeWire 音频采集节点名称，或 \f[CR]\(dqdefault\(dq\f[R]
 .TP
 \f[B]context_lines\f[R] (\f[I]整数\f[R])
 发送给 LLM 的历史上下文行数（\f[CR]0\f[R] 表示不附带上下文）。
+.SH VINPUT.CONF 结构 (FCITX5 插件配置)
+Fcitx5 插件的配置文件为 INI 格式，位于
+\f[I]\(ti/.config/fcitx5/conf/vinput.conf\f[R]。
+.IP
+.EX
+\f[B][Trigger]\f[R]
+TriggerMode=Both
+TriggerKey=Alt_R
+CommandKeys=Control_R
+SceneMenuKey=Shift_R
+AsrMenuKey=F8
+PagePrevKeys=Page_Up,KP_Page_Up
+PageNextKeys=Page_Down,KP_Page_Down
+MaxStreamingDisplayWidth=60
+.EE
+.TP
+\f[B]TriggerMode\f[R] (\f[I]枚举值: Tap, Hold, Both\f[R])
+按键触发模式。\f[CR]Tap\f[R] 短按切换开始/停止；\f[CR]Hold\f[R]
+长按说话松开识别；\f[CR]Both\f[R] 短按长按均可。
+.TP
+\f[B]TriggerKey\f[R] (\f[I]按键列表\f[R])
+触发语音录音的快捷键（默认：右 Alt）。
+.TP
+\f[B]CommandKeys\f[R] (\f[I]按键列表\f[R])
+对选中文本执行划词语音指令的按键（默认：右 Control）。
+.TP
+\f[B]SceneMenuKey\f[R] (\f[I]按键列表\f[R])
+打开后处理场景选择菜单的快捷键（默认：右 Shift）。
+.TP
+\f[B]AsrMenuKey\f[R] (\f[I]按键列表\f[R])
+打开 ASR 语音识别引擎切换菜单的快捷键（默认：F8）。
+.TP
+\f[B]MaxStreamingDisplayWidth\f[R] (\f[I]整数\f[R], \f[CR]0\f[R] \- \f[CR]500\f[R])
+实时流式识别预览的最大视觉显示列宽。超出时自动将较早文字折叠为\(lq句首...句尾\(rq。设为
+\f[CR]0\f[R] 则禁用折叠（默认：\f[CR]60\f[R]）。
 .SH 文件
 .TP
 \f[I]\(ti/.config/vinput/config.json\f[R]

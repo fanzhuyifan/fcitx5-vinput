@@ -131,6 +131,16 @@ Both options are also available on the **Control** page in Vinput GUI, under the
 vinput config set /global/default_language zh
 ```
 
+## Streaming Display Width
+
+`MaxStreamingDisplayWidth` controls the maximum visual column width of the live streaming recognition preview in the Fcitx5 preedit tooltip. When streaming recognition text exceeds this width, earlier words are automatically folded into `Head...Tail` to keep the floating input window within screen bounds. Set to `0` to disable folding. Default is `60`.
+
+Configurable via Fcitx5 Configuration GUI or in `~/.config/fcitx5/conf/vinput.conf`:
+
+```ini
+MaxStreamingDisplayWidth=60
+```
+
 ## General CLI
 
 ```bash

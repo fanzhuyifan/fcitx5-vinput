@@ -119,6 +119,40 @@ vinput-config - fcitx5-vinput 配置文件格式与选项说明
 **context_lines** (*整数*)
 :   发送给 LLM 的历史上下文行数（`0` 表示不附带上下文）。
 
+# VINPUT.CONF 结构 (FCITX5 插件配置)
+
+Fcitx5 插件的配置文件为 INI 格式，位于 *~/.config/fcitx5/conf/vinput.conf*。
+
+```ini
+[Trigger]
+TriggerMode=Both
+TriggerKey=Alt_R
+CommandKeys=Control_R
+SceneMenuKey=Shift_R
+AsrMenuKey=F8
+PagePrevKeys=Page_Up,KP_Page_Up
+PageNextKeys=Page_Down,KP_Page_Down
+MaxStreamingDisplayWidth=60
+```
+
+**TriggerMode** (*枚举值: Tap, Hold, Both*)
+:   按键触发模式。`Tap` 短按切换开始/停止；`Hold` 长按说话松开识别；`Both` 短按长按均可。
+
+**TriggerKey** (*按键列表*)
+:   触发语音录音的快捷键（默认：右 Alt）。
+
+**CommandKeys** (*按键列表*)
+:   对选中文本执行划词语音指令的按键（默认：右 Control）。
+
+**SceneMenuKey** (*按键列表*)
+:   打开后处理场景选择菜单的快捷键（默认：右 Shift）。
+
+**AsrMenuKey** (*按键列表*)
+:   打开 ASR 语音识别引擎切换菜单的快捷键（默认：F8）。
+
+**MaxStreamingDisplayWidth** (*整数*, `0` - `500`)
+:   实时流式识别预览的最大视觉显示列宽。超出时自动将较早文字折叠为“句首...句尾”。设为 `0` 则禁用折叠（默认：`60`）。
+
 # 文件
 *~/.config/vinput/config.json*
 :   用户核心配置文件。

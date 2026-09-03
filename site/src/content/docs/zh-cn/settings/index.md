@@ -122,6 +122,16 @@ vinput config set /global/duck_output_volume 0.25
 vinput config set /global/default_language zh
 ```
 
+## 流式识别最大显示列宽
+
+`MaxStreamingDisplayWidth` 控制 Fcitx5 预编辑悬浮气泡在流式语音识别时的最大视觉显示列宽。当说话内容超出该宽度时，系统会自动将前面的内容折叠为“句首...句尾”的三明治格式，防止窗口撑出屏幕边缘。设为 `0` 则禁用折叠。默认值为 `60`。
+
+可在 Fcitx5 配置器中图形化调节，或直接在 `~/.config/fcitx5/conf/vinput.conf` 中配置：
+
+```ini
+MaxStreamingDisplayWidth=60
+```
+
 ## 通用 CLI
 
 ```bash

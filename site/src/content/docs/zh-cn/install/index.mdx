@@ -18,7 +18,11 @@ sudo pacman -S fcitx5-vinput
 也可以使用 AUR 二进制包：
 
 ```bash
+# 完整版（带本地 sherpa-onnx 离线推理）
 yay -S fcitx5-vinput-bin
+
+# 极简 Lite 版（纯云端 ASR + LLM，零本地 ONNX 运行时）
+yay -S fcitx5-vinput-lite-bin
 ```
 
 ### Fedora (COPR)
@@ -96,7 +100,10 @@ sudo apt install fcitx5-vinput
 ```nix
 { pkgs, ... }@inputs:
 let
+  # 完整版（默认）：
   fcitx5-vinput = inputs.fcitx5-vinput.packages."${pkgs.stdenv.hostPlatform.system}".default;
+  # 或者极简 Lite 版（纯云端 ASR + LLM，零 ONNX 运行时依赖）：
+  # fcitx5-vinput = inputs.fcitx5-vinput.packages."${pkgs.stdenv.hostPlatform.system}".fcitx5-vinput-lite;
 in
 {
   home.packages = [
