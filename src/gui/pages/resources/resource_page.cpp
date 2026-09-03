@@ -13,6 +13,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 
+#include "common/registry/registry_models.h"
 #include "common/utils/string_utils.h"
 
 #include "cli/runtime/dbus_client.h"
@@ -21,6 +22,7 @@
 #include "gui/utils/download_worker.h"
 #include "gui/utils/i18n_cache.h"
 
+#include "config.h"
 #include "utils/gui_helpers.h"
 
 namespace vinput::gui {
@@ -79,6 +81,7 @@ ResourcePage::ResourcePage(QWidget* parent) : QWidget(parent) {
   resourceTabs_ = new QTabWidget(this);
   layout->addWidget(resourceTabs_, 1);
 
+#if VINPUT_ENABLE_LOCAL_ASR
   auto* modelsTab = new QWidget(this);
   auto* modelsLayout = new QVBoxLayout(modelsTab);
 
@@ -122,6 +125,16 @@ ResourcePage::ResourcePage(QWidget* parent) : QWidget(parent) {
   remoteLayout->addLayout(dlLayout);
   modelsLayout->addLayout(remoteLayout, 1);
   resourceTabs_->addTab(modelsTab, tr("Models"));
+#else
+  filterInstalledModels_ = nullptr;
+  filterAvailableModels_ = nullptr;
+  tableInstalledModels_ = nullptr;
+  tableAvailableModels_ = nullptr;
+  btnUseModel_ = nullptr;
+  btnRemoveModel_ = nullptr;
+  btnDownloadModel_ = nullptr;
+  btnRefreshResources_ = new QPushButton(tr("Refresh"));
+#endif
 
   auto* providersTab = new QWidget(this);
   auto* providersLayout = new QVBoxLayout(providersTab);
@@ -139,6 +152,9 @@ ResourcePage::ResourcePage(QWidget* parent) : QWidget(parent) {
   btnAddProvider_ = new QPushButton(tr("Install"));
   auto* providerBtnLayout = new QVBoxLayout();
   providerBtnLayout->addWidget(btnAddProvider_);
+#if !VINPUT_ENABLE_LOCAL_ASR
+  providerBtnLayout->addWidget(btnRefreshResources_);
+#endif
   providerBtnLayout->addStretch();
   providerLayout->addLayout(providerBtnLayout);
   providersLayout->addLayout(providerLayout, 1);
@@ -180,16 +196,18 @@ ResourcePage::ResourcePage(QWidget* parent) : QWidget(parent) {
 
   layout->addWidget(textLog_);
 
+#if VINPUT_ENABLE_LOCAL_ASR
   connect(btnUseModel_, &QPushButton::clicked, this, &ResourcePage::onUseModelClicked);
   connect(btnRemoveModel_, &QPushButton::clicked, this, &ResourcePage::onRemoveModelClicked);
-  connect(btnRefreshResources_, &QPushButton::clicked, this, &ResourcePage::refreshAll);
   connect(btnDownloadModel_, &QPushButton::clicked, this, &ResourcePage::onDownloadModelClicked);
-  connect(btnAddProvider_, &QPushButton::clicked, this, &ResourcePage::onAddProviderClicked);
-  connect(btnAddAdapter_, &QPushButton::clicked, this, &ResourcePage::onAddAdapterClicked);
   connect(filterInstalledModels_, &QLineEdit::textChanged, this,
           [this](const QString& text) { applyTableFilter(tableInstalledModels_, text); });
   connect(filterAvailableModels_, &QLineEdit::textChanged, this,
           [this](const QString& text) { applyTableFilter(tableAvailableModels_, text); });
+#endif
+  connect(btnRefreshResources_, &QPushButton::clicked, this, &ResourcePage::refreshAll);
+  connect(btnAddProvider_, &QPushButton::clicked, this, &ResourcePage::onAddProviderClicked);
+  connect(btnAddAdapter_, &QPushButton::clicked, this, &ResourcePage::onAddAdapterClicked);
   connect(filterAvailableProviders_, &QLineEdit::textChanged, this,
           [this](const QString& text) { applyTableFilter(tableAvailableProviders_, text); });
   connect(filterAvailableAdapters_, &QLineEdit::textChanged, this,
@@ -199,12 +217,14 @@ ResourcePage::ResourcePage(QWidget* parent) : QWidget(parent) {
           [this](quint64 generation) { finishRefreshAfterI18n({}, generation); });
   connect(&I18nCache::Get(), &I18nCache::reloadFailed, this, &ResourcePage::finishRefreshAfterI18n);
 
+#if VINPUT_ENABLE_LOCAL_ASR
   // Show installed models immediately; remote lists fill after refreshAll.
   {
     CoreConfig config = ConfigManager::Get().Load();
     ModelManager manager(ResolveModelBaseDir(config).string());
     populateLocalModels(manager.ListDetailed(ResolvePreferredLocalModel(config)));
   }
+#endif
 
   QTimer::singleShot(0, this, &ResourcePage::refreshAll);
 }
@@ -214,10 +234,12 @@ void ResourcePage::reload() {
 }
 
 void ResourcePage::refreshLocalizedTables() {
+#if VINPUT_ENABLE_LOCAL_ASR
   CoreConfig config = ConfigManager::Get().Load();
   ModelManager manager(ResolveModelBaseDir(config).string());
   populateLocalModels(manager.ListDetailed(ResolvePreferredLocalModel(config)));
   populateRemoteModels(remoteModels_);
+#endif
   populateRemoteProviders(remoteProviders_);
   populateRemoteAdapters(remoteAdapters_);
 }
@@ -272,6 +294,13 @@ void ResourcePage::applyTableFilter(QTableWidget* table, const QString& filter_t
 }
 
 void ResourcePage::populateLocalModels(const std::vector<ModelSummary>& models) {
+#if !VINPUT_ENABLE_LOCAL_ASR
+  (void)models;
+  return;
+#else
+  if (tableInstalledModels_ == nullptr) {
+    return;
+  }
   tableInstalledModels_->setRowCount(0);
 
   auto i18n_map = I18nCache::Get().GetMap();
@@ -312,9 +341,17 @@ void ResourcePage::populateLocalModels(const std::vector<ModelSummary>& models) 
   }
 
   applyTableFilter(tableInstalledModels_, filterInstalledModels_->text());
+#endif
 }
 
 void ResourcePage::populateRemoteModels(const std::vector<RemoteModelEntry>& models) {
+#if !VINPUT_ENABLE_LOCAL_ASR
+  (void)models;
+  return;
+#else
+  if (tableAvailableModels_ == nullptr) {
+    return;
+  }
   tableAvailableModels_->setRowCount(0);
 
   CoreConfig config = ConfigManager::Get().Load();
@@ -359,6 +396,7 @@ void ResourcePage::populateRemoteModels(const std::vector<RemoteModelEntry>& mod
   }
 
   applyTableFilter(tableAvailableModels_, filterAvailableModels_->text());
+#endif
 }
 
 void ResourcePage::populateRemoteProviders(
@@ -444,8 +482,10 @@ void ResourcePage::refreshAll() {
   i18nWaitGeneration_ = 0;
 
   // Keep installed models visible during the network round-trip.
+#if VINPUT_ENABLE_LOCAL_ASR
   ModelManager local_manager(baseDir.toStdString());
   populateLocalModels(local_manager.ListDetailed(ResolvePreferredLocalModel(config)));
+#endif
 
   btnRefreshResources_->setEnabled(false);
   textLog_->append(tr("Fetching remote registry..."));
@@ -455,14 +495,18 @@ void ResourcePage::refreshAll() {
       return;
     }
 
-    ModelRepository repo(baseDir.toStdString());
     std::vector<std::string> warnings;
     std::string models_error;
     std::string providers_error;
     std::string adapters_error;
 
+#if VINPUT_ENABLE_LOCAL_ASR
+    const ModelRepository repo(baseDir.toStdString());
     auto remote_models = repo.FetchRegistry(config, ResolveModelRegistryUrls(config), &models_error,
                                             nullptr, &warnings);
+#else
+    std::vector<RemoteModelEntry> remote_models;
+#endif
     auto remote_providers = vinput::script::FetchRegistry(
         config, vinput::script::Kind::kAsrProvider, ResolveAsrProviderRegistryUrls(config),
         &providers_error, nullptr, &warnings);
@@ -534,6 +578,9 @@ void ResourcePage::abortDownload() {
 }
 
 void ResourcePage::onUseModelClicked() {
+  if (tableInstalledModels_ == nullptr) {
+    return;
+  }
   auto items = tableInstalledModels_->selectedItems();
   if (items.isEmpty())
     return;
@@ -570,6 +617,9 @@ void ResourcePage::onUseModelClicked() {
 }
 
 void ResourcePage::onRemoveModelClicked() {
+  if (tableInstalledModels_ == nullptr) {
+    return;
+  }
   auto items = tableInstalledModels_->selectedItems();
   if (items.isEmpty())
     return;
@@ -628,10 +678,14 @@ void ResourcePage::onDownloadError(QString msg) {
 }
 
 void ResourcePage::onDownloadFinished() {
-  btnDownloadModel_->setEnabled(true);
+  if (btnDownloadModel_ != nullptr) {
+    btnDownloadModel_->setEnabled(true);
+  }
   btnAddProvider_->setEnabled(true);
   btnAddAdapter_->setEnabled(true);
-  btnRemoveModel_->setEnabled(true);
+  if (btnRemoveModel_ != nullptr) {
+    btnRemoveModel_->setEnabled(true);
+  }
   downloadStatusLabel_->clear();
   downloadStatusLabel_->setVisible(false);
   downloadProgressBar_->setValue(0);
@@ -645,6 +699,9 @@ void ResourcePage::onDownloadFinished() {
 }
 
 void ResourcePage::onDownloadModelClicked() {
+  if (tableAvailableModels_ == nullptr) {
+    return;
+  }
   auto items = tableAvailableModels_->selectedItems();
   if (items.isEmpty())
     return;

@@ -29,6 +29,8 @@ set(VINPUT_PACKAGE_DESCRIPTION_SUMMARY
     "Offline voice input addon for Fcitx5 with optional OpenAI-compatible postprocess"
     CACHE STRING "Short description used by generated distro packages")
 
+option(VINPUT_ENABLE_LOCAL_ASR "Build with sherpa-onnx local ASR support" ON)
+
 find_package(Fcitx5Core REQUIRED)
 find_package(Fcitx5Config REQUIRED)
 include("${FCITX_INSTALL_CMAKECONFIG_DIR}/Fcitx5Utils/Fcitx5CompilerSettings.cmake")
@@ -182,7 +184,22 @@ add_custom_target(translations ALL DEPENDS ${VINPUT_TRANSLATIONS_DEPS})
 
 string(REPLACE "-" "~" VINPUT_DEBIAN_UPSTREAM_VERSION "${PROJECT_VERSION}")
 
-set(CPACK_PACKAGE_NAME "fcitx5-vinput")
+if(NOT VINPUT_ENABLE_LOCAL_ASR)
+    set(CPACK_PACKAGE_NAME "fcitx5-vinput-lite")
+    set(CPACK_DEBIAN_PACKAGE_NAME "fcitx5-vinput-lite")
+    set(CPACK_DEBIAN_PACKAGE_PROVIDES "fcitx5-vinput (= ${VINPUT_DEBIAN_UPSTREAM_VERSION}-${VINPUT_PACKAGE_RELEASE})")
+    set(CPACK_DEBIAN_PACKAGE_CONFLICTS "fcitx5-vinput")
+    set(CPACK_RPM_PACKAGE_NAME "fcitx5-vinput-lite")
+    set(CPACK_RPM_PACKAGE_PROVIDES "fcitx5-vinput = ${PROJECT_VERSION}-${VINPUT_PACKAGE_RELEASE}")
+    set(CPACK_RPM_PACKAGE_CONFLICTS "fcitx5-vinput")
+else()
+    set(CPACK_PACKAGE_NAME "fcitx5-vinput")
+    set(CPACK_DEBIAN_PACKAGE_NAME "fcitx5-vinput")
+    set(CPACK_DEBIAN_PACKAGE_CONFLICTS "fcitx5-vinput-lite")
+    set(CPACK_RPM_PACKAGE_NAME "fcitx5-vinput")
+    set(CPACK_RPM_PACKAGE_CONFLICTS "fcitx5-vinput-lite")
+endif()
+
 set(CPACK_PACKAGE_VENDOR "fcitx5-vinput")
 set(CPACK_PACKAGE_CONTACT "${VINPUT_PACKAGE_CONTACT}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${VINPUT_PACKAGE_DESCRIPTION_SUMMARY}")
@@ -192,7 +209,6 @@ if(VINPUT_PACKAGE_HOMEPAGE_URL)
     set(CPACK_PACKAGE_HOMEPAGE_URL "${VINPUT_PACKAGE_HOMEPAGE_URL}")
 endif()
 
-set(CPACK_DEBIAN_PACKAGE_NAME "fcitx5-vinput")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${VINPUT_PACKAGE_CONTACT}")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
