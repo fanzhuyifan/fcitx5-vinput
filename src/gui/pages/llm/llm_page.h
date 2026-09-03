@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QListWidget>
+#include <QListWidgetItem>
 #include <QPushButton>
 #include <QWidget>
 
@@ -26,8 +27,10 @@ private slots:
   void onLlmRemove();
   void onLlmTest();
   void onAdapterEdit();
+  void onAdapterRemove();
   void onAdapterStart();
   void onAdapterStop();
+  void updateAdapterButtons();
   void onSceneAdd();
   void onSceneEdit();
   void onSceneRemove();
@@ -42,6 +45,7 @@ private:
 
   QListWidget* listAdapters_;
   QPushButton* btnAdapterEdit_;
+  QPushButton* btnAdapterRemove_;
   QPushButton* btnAdapterStart_;
   QPushButton* btnAdapterStop_;
   QPushButton* btnAdapterRefresh_;

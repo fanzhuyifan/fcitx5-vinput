@@ -5,6 +5,7 @@
 #include <QDoubleSpinBox>
 #include <QLabel>
 #include <QListWidget>
+#include <QListWidgetItem>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QTimer>
@@ -41,7 +42,6 @@ private slots:
   void refreshAsrList();
   void updateAsrButtons();
   void onAsrEdit();
-  void onAsrRemove();
   void onAsrSetActive();
 
   void refreshDaemonStatus();
@@ -63,7 +63,6 @@ private:
   QSpinBox* spinDuckVolume_;
   QListWidget* listAsrProviders_;
   QPushButton* btnAsrEdit_;
-  QPushButton* btnAsrRemove_;
   QPushButton* btnAsrSetActive_;
 
   QLabel* lblDaemonStatus_;
