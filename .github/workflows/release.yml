@@ -100,11 +100,14 @@ jobs:
           name: source-archive
           path: dist
 
+      - name: Unpack source archive
+        run: |
+          tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
+
       - name: Install sherpa-onnx build runtime
         if: matrix.enable_local_asr == 'ON'
         run: |
           prefix="${RUNNER_TEMP}/sherpa-onnx-install"
-          tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
           source "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}/scripts/sherpa-onnx-vars.sh"
           bash "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}/scripts/build-sherpa-onnx.sh" \
             "${SHERPA_ONNX_VERSION}" "${prefix}"
@@ -225,11 +228,14 @@ jobs:
           name: source-archive
           path: dist
 
+      - name: Unpack source archive
+        run: |
+          tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
+
       - name: Prepare distro-native runtime prefix
         if: matrix.enable_local_asr == 'ON'
         run: |
           prefix="${GITHUB_WORKSPACE}/runtime"
-          tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
           bash "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}/scripts/build-sherpa-onnx.sh" \
             "" "${prefix}"
 

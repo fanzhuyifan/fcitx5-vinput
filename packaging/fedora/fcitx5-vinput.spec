@@ -5,13 +5,10 @@
 %global __provides_exclude_from ^%{_libdir}/fcitx5-vinput/.*$
 %global __requires_exclude_from ^%{_libdir}/fcitx5-vinput/.*$
 %global __requires_exclude ^lib(onnxruntime|sherpa-onnx-c-api|sherpa-onnx-cxx-api)\\.so(\\(.*\\))?$
-
 Name:           fcitx5-vinput
 Source1:        sherpa-onnx-v%{sherpa_onnx_ver}-linux-x64-shared-no-tts.tar.bz2
 %else
 Name:           fcitx5-vinput-lite
-Provides:       fcitx5-vinput = %{version}-%{release}
-Conflicts:      fcitx5-vinput
 %endif
 
 Version:        @VINPUT_VERSION@
@@ -20,6 +17,13 @@ Summary:        Voice input addon for Fcitx5
 License:        GPL-3.0-only
 URL:            https://github.com/xifan2333/fcitx5-vinput
 Source0:        %{url}/archive/v%{version}/fcitx5-vinput-%{version}.tar.gz
+
+%if ! %{with local_asr}
+Provides:       fcitx5-vinput = %{version}-%{release}
+Conflicts:      fcitx5-vinput
+%else
+Conflicts:      fcitx5-vinput-lite
+%endif
 
 BuildRequires:  cmake >= 3.16
 BuildRequires:  ninja-build
@@ -93,12 +97,12 @@ bash scripts/build-sherpa-onnx.sh %{sherpa_onnx_ver} %{_builddir}/sherpa-onnx-in
 %{_libdir}/fcitx5/fcitx5-vinput.so
 %if %{with local_asr}
 %{_libdir}/fcitx5-vinput/
-%{_datadir}/fcitx5-vinput/
 %endif
 %{_datadir}/fcitx5/addon/vinput.conf
 %{_datadir}/dbus-1/services/org.fcitx.Vinput.service
 %{_datadir}/systemd/user/vinput-daemon.service
 %{_datadir}/locale/*/LC_MESSAGES/fcitx5-vinput.mo
+%{_datadir}/fcitx5-vinput/
 %{_datadir}/applications/vinput-gui.desktop
 %{_datadir}/icons/hicolor/
 %{_mandir}/man*/*
