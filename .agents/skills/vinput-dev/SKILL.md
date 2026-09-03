@@ -63,7 +63,7 @@ Follow progressive disclosure: consult specific reference files depending on you
 Read **[references/issue-pr-workflow.md](references/issue-pr-workflow.md)**
 - Dual-planning model: Task Planning (Issue breakdown) vs Quality Gate Pre-check (`hk --plan`).
 - The 5-step Issue + Draft PR lifecycle (`gh pr create --draft`).
-- Single-item closed-loop implementation and updating PR checklist checkboxes (`- [x]`).
+- Single-item local atomic commits, unified push on completion, and updating PR checklist checkboxes (`- [x]`).
 - Finalizing, marking ready (`gh pr ready`), and squash merging.
 
 ### Task: Working in a Fork / Submitting a PR
