@@ -1,13 +1,13 @@
 {
-  "id": 7,
-  "timestamp": 1786681347,
+  "id": 8,
+  "timestamp": 1788414985,
   "title": {
-    "en_US": "Vinput 2.3.8 — arm64 release artifacts and optional clipboard",
-    "zh_CN": "Vinput 2.3.8 — arm64 发布包与可选剪贴板依赖"
+    "en_US": "Vinput 2.3.9 — Shell completions, man pages, sherpa-onnx 1.13.7, and hk integration",
+    "zh_CN": "Vinput 2.3.9 — Shell 自动补全、Man 手册、sherpa-onnx 1.13.7 与 hk 门禁集成"
   },
   "text": {
-    "en_US": "Release tarballs and Debian packages now ship for both x86_64 and arm64. The clipboard addon is now optional: vinput loads even when clipboard history is disabled, and clipboard-based insertion degrades gracefully at runtime. sherpa-onnx has been bumped to v1.13.5.",
-    "zh_CN": "发布包（tar.gz 与 Debian 包）现在同时提供 x86_64 与 arm64 架构。clipboard 依赖改为可选：即使禁用剪贴板历史，vinput 也能正常加载，基于剪贴板的插入会在运行时优雅降级。sherpa-onnx 已更新至 v1.13.5。"
+    "en_US": "Added standalone shell completions for Bash, Zsh, and Fish; added bilingual man pages; bumped sherpa-onnx to v1.13.7; integrated hk git hook manager and AI agent guidelines; fixed LLM candidate text trimming.",
+    "zh_CN": "新增 Bash/Zsh/Fish 命令行自动补全；新增中英双语 man 手册；升级 sherpa-onnx 运行时至 v1.13.7；集成 hk 代码质量门禁与 AI Agent 开发规范；修复 LLM 候选词裁剪生命周期问题。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.8"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.9"
 }
