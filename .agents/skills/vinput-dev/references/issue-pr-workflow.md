@@ -40,17 +40,18 @@ To avoid confusing functional planning with toolchain validation:
                 +-------------------+-------------------+
                                     |
                 +-------------------v-------------------+
-                | 4. Atomic Commit + Check Off + Push   |
+                | 4. Local Atomic Commit                |
                 |    git add <files>                    |
                 |    git commit -m "feat(scope): ..."   |
-                |    git push                           |
-                |    gh pr edit --body (update to - [x])|
+                |    (Keep commit local)                |
                 +-------------------+-------------------+
                                     | (Remaining tasks?)
                                     +-------- Yes -------+
                                     | No                 |
 +-----------------------------------v-------------------+|
-| 5. Full Validation, Ready & Merge                     ||
+| 5. Unified Push, Checks & Merge                       ||
+|    git push origin <branch>                           ||
+|    gh pr edit --body (check all - [x])                ||
 |    gh pr checks (verify PR CI passed)                 ||
 |    gh pr ready (mark as ready for review)             ||
 |    gh pr merge --squash --delete-branch               ||
@@ -96,27 +97,28 @@ For each unchecked `- [ ]` task in order:
    # For iterative diagnostics:
    hk run check --safe --format jsonl
    ```
-3. **Atomic Commit & Push**:
+3. **Local Atomic Commit**:
+   Keep commits strictly atomic (one commit per `- [ ]` task), but keep them local during intermediate steps:
    ```bash
    git add <modified_files>
    git commit -m "<type>(<scope>): complete task N (#<issue_id>)"
-   git push origin <branch>
-   ```
-4. **Update PR Checklist**:
-   ```bash
-   # Update Draft PR body to check off the completed task (- [x])
-   gh pr edit --body "..."
    ```
 
-### Phase 3: Finalize & Merge
+### Phase 3: Finalize, Unified Push & Merge
 ```bash
-# 1. Verify PR CI status
+# 1. Push all completed atomic commits in one unified push
+git push origin <branch>
+
+# 2. Update Draft PR body to check off all completed tasks (- [x])
+gh pr edit --body "..."
+
+# 3. Verify PR CI status
 gh pr checks
 
-# 2. (Optional for core changes) Trigger remote matrix dry build
+# 4. (Optional for core changes) Trigger remote matrix dry build
 gh workflow run release.yml && gh run watch
 
-# 3. Mark PR ready and squash-merge
+# 5. Mark PR ready and squash-merge
 gh pr ready
 gh pr merge --squash --delete-branch
 ```

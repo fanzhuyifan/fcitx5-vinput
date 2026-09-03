@@ -73,17 +73,18 @@ All coding agents must strictly operate within this closed-loop chronological li
                 +--------------+--------------+
                                |
                 +--------------v--------------+
-                | 4. Atomic Commit, Push & PR |
+                | 4. Local Atomic Commit      |
                 |    git commit -m "feat:..." |
-                |    git push                 |
-                |    gh pr edit --body (- [x])|
+                |    (Keep commit local)      |
                 +--------------+--------------+
                                | (Remaining tasks?)
                                +---------- Yes ---------+
                                | No                     |
 +------------------------------v--------------+         |
-| 5. Full Validation, Ready & Merge           |         |
-|    gh pr checks                             |         |
+| 5. Unified Push, Checks & Merge             |         |
+|    git push origin <branch>                 |         |
+|    gh pr edit --body (check all - [x])      |         |
+|    gh pr checks (verify CI passed)          |         |
 |    gh pr ready                              |         |
 |    gh pr merge --squash --delete-branch     |         |
 +---------------------------------------------+         |
@@ -125,24 +126,25 @@ Repeat for each unchecked `- [ ]` item:
    - Auto-format if needed: `hk fix` (or `mise run fix`).
    - Validate translations: `python3 scripts/check-i18n.py`.
    - If local machine hardware permits: `mise run build-debug`. If resource-constrained, rely on CI.
-3. **Atomic Commit & Push**:
+3. **Local Atomic Commit**:
+   Keep commits strictly atomic (one commit per `- [ ]` task), but keep them local during intermediate steps to avoid triggering redundant, cancelled CI runs:
    ```bash
    git add <modified_files>
    git commit -m "<type>(<scope>): <concise message> (#<issue_id>)"
+   ```
+
+### Phase 3: Final Validation, Unified Push & Merge
+1. Once all checklist tasks are locally completed and committed:
+   ```bash
    git push origin <branch_name>
    ```
-4. **Update PR Todo (Check Off Task)**:
-   Update the Draft PR body to check off the completed item (`- [x]`):
+2. Update the Draft PR body to check off all completed items (`- [x]`):
    ```bash
    gh pr edit --body "..."
    ```
-   *(The PR progress bar dynamically updates: e.g. 1 of 3 tasks completed)*
-
-### Phase 3: Final Validation & Merge
-1. Repeat Phase 2 until all checklist items are checked (`- [x]`).
-2. Verify PR CI checks: `gh pr checks`.
-3. (Optional for core changes) Trigger remote matrix dry build: `gh workflow run release.yml && gh run watch`.
-4. Mark PR ready and squash-merge: `gh pr ready && gh pr merge --squash --delete-branch`.
+3. Verify PR CI checks: `gh pr checks`.
+4. (Optional for core changes) Trigger remote matrix dry build: `gh workflow run release.yml && gh run watch`.
+5. Mark PR ready and squash-merge: `gh pr ready && gh pr merge --squash --delete-branch`.
 
 ---
 

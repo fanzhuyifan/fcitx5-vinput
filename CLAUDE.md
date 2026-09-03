@@ -9,9 +9,9 @@ See [AGENTS.md](AGENTS.md) for full architecture, dual-planning model, compilati
     `gh issue view <id>` -> `git checkout -b <type>/issue-<id>-<desc>` -> `git commit --allow-empty -m "chore: init draft pr"` -> `git push -u origin <branch>` -> `gh pr create --draft --body "Closes #<id>\n\n### Tasks\n- [ ] 1. ..."`
   - *Phase B (Quality Gate Pre-check - AFTER EDIT)*: `mise run check:plan`
 - **Execution Loop (ONE ITEM AT A TIME)**:
-  - Code task N -> `mise run check:changed` (or `hk fix`) -> atomic commit & push -> `gh pr edit --body` (update task N to `- [x]`)
+  - Code task N -> `mise run check:changed` (or `hk fix`) -> local atomic commit -> Repeat for all tasks
   - Structured fix stream: `hk run check --safe --format jsonl`
-  - Finish: `gh pr ready && gh pr merge --squash --delete-branch`
+  - Finish: `git push origin <branch>` -> `gh pr edit --body` (update tasks to `- [x]`) -> `gh pr ready && gh pr merge --squash --delete-branch`
 - **Quality Gate Tasks (`mise`)**:
   - `mise run check:changed`: Run safe check only on modified files
   - `mise run check:plan`: Preview execution plan without running tools
