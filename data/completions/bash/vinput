@@ -8,9 +8,25 @@ _vinput_installed_scenes() {
     vinput scene list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
 }
 
+_vinput_installed_providers() {
+    vinput provider list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+}
+
+_vinput_installed_llm_providers() {
+    vinput llm list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+}
+
 _vinput() {
     local cur prev words cword
-    _init_completion || return
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion || return
+    else
+        COMPREPLY=()
+        cur="${COMP_WORDS[COMP_CWORD]}"
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+    fi
 
     local global_opts="-j --json -h --help -v --version"
     local subcommands="init model provider llm adapter hotword device scene config daemon recording rec"
@@ -50,6 +66,9 @@ _vinput() {
                     list|ls)
                         COMPREPLY=($(compgen -W "-a --available -h --help" -- "$cur"))
                         ;;
+                    use|edit|e|remove|rm)
+                        COMPREPLY=($(compgen -W "$(_vinput_installed_providers)" -- "$cur"))
+                        ;;
                 esac
             fi
             return 0
@@ -59,8 +78,11 @@ _vinput() {
                 COMPREPLY=($(compgen -W "list ls add edit e remove rm test -h --help" -- "$cur"))
             else
                 case "${words[2]}" in
-                    add|edit|e)
+                    add)
                         COMPREPLY=($(compgen -W "-u --base-url -k --api-key -e --extra-body -h --help" -- "$cur"))
+                        ;;
+                    edit|e|remove|rm|test)
+                        COMPREPLY=($(compgen -W "$(_vinput_installed_llm_providers) -u --base-url -k --api-key -e --extra-body -h --help" -- "$cur"))
                         ;;
                 esac
             fi
@@ -82,7 +104,11 @@ _vinput() {
             if [[ $cword -eq 2 ]]; then
                 COMPREPLY=($(compgen -W "get set clear edit e -h --help" -- "$cur"))
             elif [[ "${words[2]}" == "set" ]]; then
-                _filedir
+                if declare -F _filedir >/dev/null 2>&1; then
+                    _filedir
+                else
+                    COMPREPLY=($(compgen -f -- "$cur"))
+                fi
             fi
             return 0
             ;;
@@ -98,7 +124,7 @@ _vinput() {
             else
                 case "${words[2]}" in
                     add|edit|e)
-                        COMPREPLY=($(compgen -W "--id -l --label -t --prompt -p --provider -m --model -c --candidates --timeout --context-lines -h --help" -- "$cur"))
+                        COMPREPLY=($(compgen -W "$(_vinput_installed_scenes) --id -l --label -t --prompt -p --provider -m --model -c --candidates --timeout --context-lines -h --help" -- "$cur"))
                         ;;
                     use|remove|rm)
                         COMPREPLY=($(compgen -W "$(_vinput_installed_scenes)" -- "$cur"))

@@ -12,6 +12,18 @@ _vinput_installed_scenes() {
     _describe 'installed scene' scenes
 }
 
+_vinput_installed_providers() {
+    local -a providers
+    providers=(${(f)"$(vinput provider list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    _describe 'installed provider' providers
+}
+
+_vinput_installed_llm_providers() {
+    local -a llm_providers
+    llm_providers=(${(f)"$(vinput llm list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    _describe 'configured llm provider' llm_providers
+}
+
 _vinput() {
     local curcontext="$curcontext" state line
     typeset -A opt_args
@@ -29,172 +41,302 @@ _vinput() {
         'config:Read or write configuration values'
         'daemon:Control daemon lifecycle'
         'recording:Control voice recording'
+        'rec:Control voice recording (alias)'
     )
 
     _arguments -C \
         '(-j --json)'{-j,--json}'[Output in JSON format]' \
         '(-h --help)'{-h,--help}'[Print help message and exit]' \
         '(-v --version)'{-v,--version}'[Display program version and exit]' \
-        '1: :_describe "subcommand" subcommands' \
-        '*:: :->args'
+        '1:subcommand:_describe "subcommand" subcommands' \
+        '*::arg:->subcmd' && return 0
 
-    case $words[1] in
-        init)
-            _arguments '(-f --force)'{-f,--force}'[Overwrite existing config]' ;;
-        model)
-            local -a model_cmds
-            model_cmds=(
-                'list:List installed or remote models'
-                'add:Download and install a model'
-                'use:Set active local ASR model'
-                'remove:Uninstall a local model'
-                'info:Show model details'
-            )
-            _arguments -C '1: :_describe "command" model_cmds' '*:: :->model_args'
-            case $words[1] in
-                list|ls)
-                    _arguments '(-a --available)'{-a,--available}'[List remote models]' ;;
-                use|remove|rm|info)
-                    _vinput_installed_models ;;
-            esac
-            ;;
-        provider)
-            local -a provider_cmds
-            provider_cmds=(
-                'list:List configured or remote providers'
-                'add:Install a provider script from registry'
-                'use:Set active ASR provider'
-                'edit:Edit provider script in editor'
-                'remove:Uninstall an ASR provider'
-            )
-            _arguments -C '1: :_describe "command" provider_cmds' '*:: :->provider_args'
-            case $words[1] in
-                list|ls)
-                    _arguments '(-a --available)'{-a,--available}'[List remote providers]' ;;
-            esac
-            ;;
-        llm)
-            local -a llm_cmds
-            llm_cmds=(
-                'list:List configured LLM providers'
-                'add:Add an LLM provider'
-                'edit:Edit an LLM provider'
-                'remove:Remove an LLM provider'
-                'test:Test LLM provider connectivity'
-            )
-            _arguments -C '1: :_describe "command" llm_cmds' '*:: :->llm_args'
-            case $words[1] in
-                add|edit|e)
+    case $state in
+        subcmd)
+            local cmd=$words[1]
+            curcontext="${curcontext%:*:*}:vinput-${cmd}:"
+            case $cmd in
+                init)
                     _arguments \
-                        '(-u --base-url)'{-u,--base-url}'[Base URL]:url:' \
-                        '(-k --api-key)'{-k,--api-key}'[API key]:key:' \
-                        '(-e --extra-body)'{-e,--extra-body}'[Extra JSON body]:json:' ;;
-            esac
-            ;;
-        adapter)
-            local -a adapter_cmds
-            adapter_cmds=(
-                'list:List local or remote adapters'
-                'add:Install an adapter script'
-                'start:Start an adapter process'
-                'stop:Stop an adapter process'
-            )
-            _arguments -C '1: :_describe "command" adapter_cmds' '*:: :->adapter_args'
-            case $words[1] in
-                list|ls)
-                    _arguments '(-a --available)'{-a,--available}'[List remote adapters]' ;;
-            esac
-            ;;
-        hotword)
-            local -a hotword_cmds
-            hotword_cmds=(
-                'get:Show configured hotword file path'
-                'set:Set hotword file path'
-                'clear:Clear hotword file path'
-                'edit:Edit hotword file in editor'
-            )
-            _arguments -C '1: :_describe "command" hotword_cmds' '*:: :->hotword_args'
-            case $words[1] in
-                set)
-                    _files ;;
-            esac
-            ;;
-        device)
-            local -a device_cmds
-            device_cmds=(
-                'list:List available audio input devices'
-                'use:Set active capture device'
-            )
-            _arguments '1: :_describe "command" device_cmds'
-            ;;
-        scene)
-            local -a scene_cmds
-            scene_cmds=(
-                'list:List all scenes'
-                'add:Add a new scene'
-                'edit:Edit an existing scene'
-                'use:Set active scene'
-                'remove:Remove a scene'
-            )
-            _arguments -C '1: :_describe "command" scene_cmds' '*:: :->scene_args'
-            case $words[1] in
-                add|edit|e)
-                    _arguments \
-                        '--id[Scene ID]:id:' \
-                        '(-l --label)'{-l,--label}'[Display label]:label:' \
-                        '(-t --prompt)'{-t,--prompt}'[LLM prompt]:prompt:' \
-                        '(-p --provider)'{-p,--provider}'[LLM provider ID]:provider:' \
-                        '(-m --model)'{-m,--model}'[LLM model ID]:model:' \
-                        '(-c --candidates)'{-c,--candidates}'[Candidate count]:count:' \
-                        '--timeout[Request timeout in ms]:ms:' \
-                        '--context-lines[Context history lines]:lines:' ;;
-                use|remove|rm)
-                    _vinput_installed_scenes ;;
-            esac
-            ;;
-        config)
-            local -a config_cmds
-            config_cmds=(
-                'get:Get a config value by JSON Pointer'
-                'set:Set a config value by JSON Pointer'
-                'edit:Open config file in editor'
-            )
-            _arguments -C '1: :_describe "command" config_cmds' '*:: :->config_args'
-            case $words[1] in
-                edit|e)
-                    _arguments '1:config target:(core fcitx)' ;;
-                set)
-                    _arguments '(-i --stdin)'{-i,--stdin}'[Read value from stdin]' ;;
-            esac
-            ;;
-        daemon)
-            local -a daemon_cmds
-            daemon_cmds=(
-                'status:Show daemon status'
-                'start:Start daemon service'
-                'stop:Stop daemon service'
-                'restart:Restart daemon service'
-                'log:Show daemon logs'
-            )
-            _arguments -C '1: :_describe "command" daemon_cmds' '*:: :->daemon_args'
-            case $words[1] in
-                log)
-                    _arguments \
-                        '(-f --follow)'{-f,--follow}'[Follow log output]' \
-                        '(-n --lines)'{-n,--lines}'[Number of log lines]:lines:' ;;
-            esac
-            ;;
-        recording|rec)
-            local -a rec_cmds
-            rec_cmds=(
-                'start:Start voice recording'
-                'stop:Stop voice recording and recognize'
-                'toggle:Toggle voice recording'
-            )
-            _arguments -C '1: :_describe "command" rec_cmds' '*:: :->rec_args'
-            case $words[1] in
-                stop|toggle)
-                    _arguments '(-s --scene)'{-s,--scene}'[Scene ID]:scene:_vinput_installed_scenes' ;;
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '(-f --force)'{-f,--force}'[Overwrite existing config]'
+                    ;;
+                model)
+                    local -a model_cmds
+                    model_cmds=(
+                        'list:List installed or remote models'
+                        'ls:List installed or remote models'
+                        'add:Download and install a model'
+                        'use:Set active local ASR model'
+                        'remove:Uninstall a local model'
+                        'rm:Uninstall a local model'
+                        'info:Show model details'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" model_cmds' \
+                        '*::arg:->model_args' && return 0
+                    case $state in
+                        model_args)
+                            case $words[1] in
+                                list|ls)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-a --available)'{-a,--available}'[List remote models]' ;;
+                                use|remove|rm|info)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:model:_vinput_installed_models' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                provider)
+                    local -a provider_cmds
+                    provider_cmds=(
+                        'list:List configured or remote providers'
+                        'ls:List configured or remote providers'
+                        'add:Install a provider script from registry'
+                        'use:Set active ASR provider'
+                        'edit:Edit provider script in editor'
+                        'e:Edit provider script in editor'
+                        'remove:Uninstall an ASR provider'
+                        'rm:Uninstall an ASR provider'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" provider_cmds' \
+                        '*::arg:->provider_args' && return 0
+                    case $state in
+                        provider_args)
+                            case $words[1] in
+                                list|ls)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-a --available)'{-a,--available}'[List remote providers]' ;;
+                                use|edit|e|remove|rm)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:provider:_vinput_installed_providers' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                llm)
+                    local -a llm_cmds
+                    llm_cmds=(
+                        'list:List configured LLM providers'
+                        'ls:List configured LLM providers'
+                        'add:Add an LLM provider'
+                        'edit:Edit an LLM provider'
+                        'e:Edit an LLM provider'
+                        'remove:Remove an LLM provider'
+                        'rm:Remove an LLM provider'
+                        'test:Test LLM provider connectivity'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" llm_cmds' \
+                        '*::arg:->llm_args' && return 0
+                    case $state in
+                        llm_args)
+                            case $words[1] in
+                                add)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-u --base-url)'{-u,--base-url}'[Base URL]:url:' \
+                                        '(-k --api-key)'{-k,--api-key}'[API key]:key:' \
+                                        '(-e --extra-body)'{-e,--extra-body}'[Extra JSON body]:json:' ;;
+                                edit|e|remove|rm|test)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-u --base-url)'{-u,--base-url}'[Base URL]:url:' \
+                                        '(-k --api-key)'{-k,--api-key}'[API key]:key:' \
+                                        '(-e --extra-body)'{-e,--extra-body}'[Extra JSON body]:json:' \
+                                        '1:provider:_vinput_installed_llm_providers' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                adapter)
+                    local -a adapter_cmds
+                    adapter_cmds=(
+                        'list:List local or remote adapters'
+                        'ls:List local or remote adapters'
+                        'add:Install an adapter script'
+                        'start:Start an adapter process'
+                        'stop:Stop an adapter process'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" adapter_cmds' \
+                        '*::arg:->adapter_args' && return 0
+                    case $state in
+                        adapter_args)
+                            case $words[1] in
+                                list|ls)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-a --available)'{-a,--available}'[List remote adapters]' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                hotword)
+                    local -a hotword_cmds
+                    hotword_cmds=(
+                        'get:Show configured hotword file path'
+                        'set:Set hotword file path'
+                        'clear:Clear hotword file path'
+                        'edit:Edit hotword file in editor'
+                        'e:Edit hotword file in editor'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" hotword_cmds' \
+                        '*::arg:->hotword_args' && return 0
+                    case $state in
+                        hotword_args)
+                            case $words[1] in
+                                set)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:file:_files' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                device)
+                    local -a device_cmds
+                    device_cmds=(
+                        'list:List available audio input devices'
+                        'ls:List available audio input devices'
+                        'use:Set active capture device'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" device_cmds' \
+                        '*::arg:->device_args' && return 0
+                    ;;
+                scene)
+                    local -a scene_cmds
+                    scene_cmds=(
+                        'list:List all scenes'
+                        'ls:List all scenes'
+                        'add:Add a new scene'
+                        'edit:Edit an existing scene'
+                        'e:Edit an existing scene'
+                        'use:Set active scene'
+                        'remove:Remove a scene'
+                        'rm:Remove a scene'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" scene_cmds' \
+                        '*::arg:->scene_args' && return 0
+                    case $state in
+                        scene_args)
+                            case $words[1] in
+                                add|edit|e)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '--id[Scene ID]:id:' \
+                                        '(-l --label)'{-l,--label}'[Display label]:label:' \
+                                        '(-t --prompt)'{-t,--prompt}'[LLM prompt]:prompt:' \
+                                        '(-p --provider)'{-p,--provider}'[LLM provider ID]:provider:_vinput_installed_llm_providers' \
+                                        '(-m --model)'{-m,--model}'[LLM model ID]:model:' \
+                                        '(-c --candidates)'{-c,--candidates}'[Candidate count]:count:' \
+                                        '--timeout[Request timeout in ms]:ms:' \
+                                        '--context-lines[Context history lines]:lines:' \
+                                        '1:scene:_vinput_installed_scenes' ;;
+                                use|remove|rm)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:scene:_vinput_installed_scenes' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                config)
+                    local -a config_cmds
+                    config_cmds=(
+                        'get:Get a config value by JSON Pointer'
+                        'set:Set a config value by JSON Pointer'
+                        'edit:Open config file in editor'
+                        'e:Open config file in editor'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" config_cmds' \
+                        '*::arg:->config_args' && return 0
+                    case $state in
+                        config_args)
+                            case $words[1] in
+                                edit|e)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:target:(core fcitx)' ;;
+                                set)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-i --stdin)'{-i,--stdin}'[Read value from stdin]' \
+                                        '1:path:' \
+                                        '2:value:' ;;
+                                get)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:path:' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                daemon)
+                    local -a daemon_cmds
+                    daemon_cmds=(
+                        'status:Show daemon status'
+                        'start:Start daemon service'
+                        'stop:Stop daemon service'
+                        'restart:Restart daemon service'
+                        'log:Show daemon logs'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" daemon_cmds' \
+                        '*::arg:->daemon_args' && return 0
+                    case $state in
+                        daemon_args)
+                            case $words[1] in
+                                log)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-f --follow)'{-f,--follow}'[Follow log output]' \
+                                        '(-n --lines)'{-n,--lines}'[Number of log lines]:lines:' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
+                recording|rec)
+                    local -a rec_cmds
+                    rec_cmds=(
+                        'start:Start voice recording'
+                        'stop:Stop voice recording and recognize'
+                        'toggle:Toggle voice recording'
+                    )
+                    _arguments -C \
+                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                        '1:command:_describe "command" rec_cmds' \
+                        '*::arg:->rec_args' && return 0
+                    case $state in
+                        rec_args)
+                            case $words[1] in
+                                stop|toggle)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '(-s --scene)'{-s,--scene}'[Scene ID]:scene:_vinput_installed_scenes' ;;
+                            esac
+                            ;;
+                    esac
+                    ;;
             esac
             ;;
     esac
