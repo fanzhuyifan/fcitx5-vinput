@@ -32,29 +32,24 @@ Verify target repository before making changes:
 
 ---
 
-## 3. Universal Code Quality Gate (`hk`)
+## 3. Universal Code Quality Gate (`hk` / `mise`)
 
 Always run verification before committing or reporting task completion:
 
 ```bash
 # 1. Preview which steps match edited files
-{
-  git diff --name-only -z
-  git diff --cached --name-only -z
-  git ls-files --others --exclude-standard -z
-} | hk run check --files0-from - --safe --plan
+mise run check:plan
 
 # 2. Check changed files safely
-{
-  git diff --name-only -z
-  git diff --cached --name-only -z
-  git ls-files --others --exclude-standard -z
-} | hk run check --files0-from - --safe
+mise run check:changed
 
-# 3. Automatically fix formatting issues (clang-format, mise, whitespace)
-hk fix
+# 3. Structured JSONL for automated diagnostic loops (file, line, col)
+hk run check --safe --format jsonl
 
-# 4. Validate translations & configs
+# 4. Automatically fix formatting issues (clang-format, mise, whitespace)
+mise run fix
+
+# 5. Validate translations & configs
 python3 scripts/check-i18n.py
 ```
 

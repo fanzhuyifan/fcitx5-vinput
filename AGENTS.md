@@ -12,7 +12,7 @@ Guidelines, dual-planning model, and hard constraints for AI coding agents worki
 - `src/daemon/`: Core daemon (`vinput-daemon`), handles PipeWire audio recording, sherpa-onnx inference, cloud ASR engines, LLM scene transformations, D-Bus service (`org.fcitx.Vinput`).
 - `src/cli/`: Standalone `vinput` CLI for manual recording, profile switching, and status inspection.
 - `src/common/`: Shared types, configuration structs (`nlohmann-json`), D-Bus XML interfaces.
-- `po/` & `i18n/`: Localization catalogs (Gettext and Qt `.ts` / `.qm`).
+- `po/` & `i18n/`: Translations (Gettext and Qt `.ts` / `.qm`).
 
 ---
 
@@ -42,7 +42,7 @@ To avoid ambiguity between functional task planning and toolchain validation, ag
 | Phase | Concept & Terminology | Timing | Tool & Output | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase A** | **Task Planning**<br>*(Feature / Bugfix Breakdown)* | **Pre-development**<br>*(Before coding)* | GitHub Issue & Draft PR body (`- [ ]` checklist) | Defines *what* code to write, module boundaries, and task sequencing. |
-| **Phase B** | **Quality Gate Pre-check**<br>*(hk --plan)* | **Post-edit**<br>*(Before committing)* | `hk run check --files0-from - --safe --plan` | Previews *which* linters/formatters will run and their side-effects on edited files. |
+| **Phase B** | **Quality Gate Pre-check**<br>*(hk --plan)* | **Post-edit**<br>*(Before committing)* | `mise run check:plan`<br>*(or `hk run check --safe --plan`)* | Previews *which* linters/formatters will run and their side-effects on edited files. |
 
 ---
 
@@ -65,8 +65,8 @@ All coding agents must strictly operate within this closed-loop lifecycle:
                                |
                 +--------------v--------------+
                 | 3. Quality Gate & Pre-check |
-                |    hk --plan (preview steps)|
-                |    hk run check --safe      |
+                |    mise run check:plan      |
+                |    mise run check:changed   |
                 |    hk fix (if formatting)   |
                 +--------------+--------------+
                                |
@@ -108,21 +108,24 @@ All coding agents must strictly operate within this closed-loop lifecycle:
 - **Strict rule**: Focus ONLY on the topmost unchecked task (`- [ ]`).
 - Do not modify unrelated files or bundle multiple tasks together.
 
-### Step 3: Quality Gate & Pre-check (hk)
-- Inspect which checks match modified files:
+### Step 3: Quality Gate & Pre-check (hk / mise)
+- Preview matched rules:
   ```bash
-  {
-    git diff --name-only -z
-    git diff --cached --name-only -z
-    git ls-files --others --exclude-standard -z
-  } | hk run check --files0-from - --safe --plan
+  mise run check:plan
   ```
-- Run safe validation and auto-format:
+- Run safe validation on changed files:
   ```bash
-  hk run check --safe
-  hk fix
-  python3 scripts/check-i18n.py
+  mise run check:changed
   ```
+- Automated Fix Loops & Structured Output (`--format jsonl`):
+  When resolving linter errors iteratively, agents should use `--format jsonl`:
+  ```bash
+  hk run check --safe --format jsonl
+  ```
+  - Intermediate events stream normalized diagnostics with exact `file`, `line`, and `column` numbers.
+  - The final event is the authoritative summary emitted even when steps fail.
+- Auto-format if needed: `hk fix` (or `mise run fix`).
+- Validate translations: `python3 scripts/check-i18n.py`.
 - If local machine hardware permits: `mise run build-debug`. If resource-constrained, rely on CI.
 
 ### Step 4: Atomic Commit, Push & Check Off
@@ -166,7 +169,7 @@ Compilation strategy should adapt to local hardware capabilities:
 
 1. **No Direct Main Commits**: Never push implementation code directly to `main`.
 2. **No Multi-Task Lump Commits**: Every commit must map to exactly one `- [ ]` task in the PR checklist.
-3. **No Push Without Quality Gate**: Never push code before running `hk run check --safe`.
+3. **No Push Without Quality Gate**: Never push code before running `mise run check:changed` or `hk run check --safe`.
 4. **Transparent Progress Tracking**: When asked for status, agents must report progress based on the PR checklist (e.g., "Completed 2 of 4 tasks; currently implementing task 3").
 5. **Hardware-Adaptive Compilation**: On modest hardware, prioritize GitHub Actions CI (`ci.yml` / `release.yml`) over heavy local full builds.
 6. **User-Facing Strings**: Must be wrapped in `_("...")` or `ki18n` for gettext localization. Run `mise run check-i18n` to validate po files.

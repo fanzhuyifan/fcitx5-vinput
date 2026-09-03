@@ -6,25 +6,21 @@ See [AGENTS.md](AGENTS.md) for full architecture, dual-planning model, compilati
 
 - **Dual-Planning Model**:
   - *Phase A (Task Planning)*: `gh issue view <id>` -> `git checkout -b <type>/issue-<id>-<desc>` -> `gh pr create --draft --body "Closes #<id>\n\n### Tasks\n- [ ] 1. ..."`
-  - *Phase B (Quality Gate Pre-check)*: `{ git diff... } | hk run check --files0-from - --safe --plan`
+  - *Phase B (Quality Gate Pre-check)*: `mise run check:plan`
 - **Execution Loop**:
-  - Code 1 item -> `hk run check --safe` (or `hk fix`) -> atomic commit & push -> `gh pr edit --body` (update to `- [x]`)
+  - Code 1 item -> `mise run check:changed` (or `hk fix`) -> atomic commit & push -> `gh pr edit --body` (update to `- [x]`)
+  - Structured fix stream: `hk run check --safe --format jsonl`
   - Finish: `gh pr ready && gh pr merge --squash --delete-branch`
+- **Quality Gate Tasks (`mise`)**:
+  - `mise run check:changed`: Run safe check only on modified files
+  - `mise run check:plan`: Preview execution plan without running tools
+  - `mise run check:safe`: Run safe check across the repo
+  - `mise run fix`: Auto-format all files
+  - `mise run check`: Full repository validation
 - **Compilation (Hardware-Adaptive)**:
   - *Modest Hardware (CI-First)*: `gh workflow run ci.yml && gh run watch`
   - *Pre-release Matrix Dry Build*: `gh workflow run release.yml && gh run watch`
   - *Local Incremental (Powerful hardware only)*: `mise run dev` -> `mise run build-debug`
-- **Code Quality (`hk`)**:
-  - Check changed files:
-    ```bash
-    {
-      git diff --name-only -z
-      git diff --cached --name-only -z
-      git ls-files --others --exclude-standard -z
-    } | hk run check --files0-from - --safe
-    ```
-  - Auto-fix code format: `hk fix`
-  - Full repo verification: `hk check`
 
 ## Ecosystem Repositories
 - **Core Engine (C++20)**: [xifan2333/fcitx5-vinput](https://github.com/xifan2333/fcitx5-vinput) (`~/Code/fcitx5-vinput`)
