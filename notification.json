@@ -1,13 +1,13 @@
 {
-  "id": 9,
-  "timestamp": 1788428121,
+  "id": 10,
+  "timestamp": 1788433778,
   "title": {
-    "en_US": "Vinput 2.3.10 — Fixed shell completions for Bash, Zsh, and Fish",
-    "zh_CN": "Vinput 2.3.10 — 修复 Bash、Zsh 与 Fish 自动补全"
+    "en_US": "Vinput 2.3.11 — Streaming display folding, Fcitx config i18n, and result shortcuts fix",
+    "zh_CN": "Vinput 2.3.11 — 流式识别视觉折叠、Fcitx 配置界面多语言与候选词序号修复"
   },
   "text": {
-    "en_US": "Fixed Zsh completion state machine indexing, added portable environment fallback for Bash, and refined Fish subcommand completions.",
-    "zh_CN": "重构修复了 Zsh 补全状态机与下标索引问题；增加了 Bash 补全环境 fallback；优化了 Fish 补全的子命令匹配。"
+    "en_US": "Added MaxStreamingDisplayWidth to fold long streaming recognition text; fixed Fcitx5 config GUI i18n initialization; aligned result menu candidate shortcuts with Fcitx global page settings.",
+    "zh_CN": "新增流式识别最大显示列宽（自适应中英折叠，防止窗口撑爆屏幕）；修复 Fcitx5 图形设置界面选项中文翻译未生效的问题；修复候选词菜单按键序号对齐与全局分页支持。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.10"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.11"
 }
