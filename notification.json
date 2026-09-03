@@ -1,13 +1,13 @@
 {
-  "id": 10,
-  "timestamp": 1788433778,
+  "id": 11,
+  "timestamp": 1788453165,
   "title": {
-    "en_US": "Vinput 2.3.11 — Streaming display folding, Fcitx config i18n, and result shortcuts fix",
-    "zh_CN": "Vinput 2.3.11 — 流式识别视觉折叠、Fcitx 配置界面多语言与候选词序号修复"
+    "en_US": "Vinput 2.3.12 — Official Lite mode, documentation, and man pages",
+    "zh_CN": "Vinput 2.3.12 — 官方 Lite 模式支持、文档与 Man 手册升级"
   },
   "text": {
-    "en_US": "Added MaxStreamingDisplayWidth to fold long streaming recognition text; fixed Fcitx5 config GUI i18n initialization; aligned result menu candidate shortcuts with Fcitx global page settings.",
-    "zh_CN": "新增流式识别最大显示列宽（自适应中英折叠，防止窗口撑爆屏幕）；修复 Fcitx5 图形设置界面选项中文翻译未生效的问题；修复候选词菜单按键序号对齐与全局分页支持。"
+    "en_US": "Added first-class Lite mode without local ONNX runtime for cloud-only deployments; updated documentation and bilingual man pages; published Full and Lite variants across all channels.",
+    "zh_CN": "新增官方 Lite 纯云端轻量模式（零 ONNX 运行时依赖）；更新网站安装文档与中英双语 man 手册；全渠道同时支持 Full 与 Lite 双变体发布。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.11"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.12"
 }
