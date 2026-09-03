@@ -4,7 +4,18 @@ Development must follow an iterative, atomic **Issue -> Draft PR -> Single-Item 
 
 ---
 
-## The 5-Step Lifecycle
+## 1. Dual-Planning Model
+
+To avoid confusing functional planning with toolchain validation:
+
+1. **Phase A: Task Planning (Pre-development)**:
+   - Defining *what* to build: Issue analysis, module boundaries, and creating the Draft PR `- [ ]` checklist.
+2. **Phase B: Quality Gate Pre-check (Post-edit)**:
+   - Previewing *which* linter steps will execute on edited files via `hk --plan`.
+
+---
+
+## 2. The 5-Step Lifecycle
 
 ```
 +------------------------------------------------------------------------+
@@ -20,7 +31,8 @@ Development must follow an iterative, atomic **Issue -> Draft PR -> Single-Item 
                 +-------------------+-------------------+
                                     |
                 +-------------------v-------------------+
-                | 3. Local Quality Gate                 |
+                | 3. Local Quality Gate & Pre-check     |
+                |    hk --plan (preview steps)          |
                 |    hk run check --safe                |
                 |    hk fix (if formatting needed)      |
                 +-------------------+-------------------+
@@ -47,7 +59,7 @@ Development must follow an iterative, atomic **Issue -> Draft PR -> Single-Item 
 
 ---
 
-## Detailed Execution Steps
+## 3. Detailed Execution Steps
 
 ### 1. Initialize Task & Draft PR
 ```bash
@@ -68,6 +80,14 @@ Pick ONLY the topmost unchecked `- [ ]` item. Do not touch unrelated files.
 
 ### 3. Verify with `hk`
 ```bash
+# Preview matched linters
+{
+  git diff --name-only -z
+  git diff --cached --name-only -z
+  git ls-files --others --exclude-standard -z
+} | hk run check --files0-from - --safe --plan
+
+# Run safe check and auto-format
 hk run check --safe
 hk fix
 ```

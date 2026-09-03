@@ -1,18 +1,19 @@
 # Claude Code Guide
 
-See [AGENTS.md](AGENTS.md) for full architecture, compilation strategies, Issue+PR workflow, and code quality guidelines.
+See [AGENTS.md](AGENTS.md) for full architecture, dual-planning model, compilation strategies, Issue+PR workflow, and hard constraints.
 
 ## Quick CLI Reference
 
-- **Compilation (Hardware-Adaptive)**:
-  - Modest Hardware (CI-First): `gh workflow run ci.yml && gh run watch`
-  - Pre-release Matrix Dry Build: `gh workflow run release.yml && gh run watch`
-  - Local Incremental (Powerful hardware only): `mise run dev` -> `mise run build-debug`
-- **Issue + PR Workflow**:
-  - `git checkout -b <type>/issue-<id>-<desc>`
-  - `gh pr create --draft --body "Closes #<id>\n\n### Tasks\n- [ ] 1. ..."`
-  - Loop: Code 1 item -> `hk run check --safe` -> atomic commit & push -> `gh pr edit --body` (- [x])
+- **Dual-Planning Model**:
+  - *Phase A (Task Planning)*: `gh issue view <id>` -> `git checkout -b <type>/issue-<id>-<desc>` -> `gh pr create --draft --body "Closes #<id>\n\n### Tasks\n- [ ] 1. ..."`
+  - *Phase B (Quality Gate Pre-check)*: `{ git diff... } | hk run check --files0-from - --safe --plan`
+- **Execution Loop**:
+  - Code 1 item -> `hk run check --safe` (or `hk fix`) -> atomic commit & push -> `gh pr edit --body` (update to `- [x]`)
   - Finish: `gh pr ready && gh pr merge --squash --delete-branch`
+- **Compilation (Hardware-Adaptive)**:
+  - *Modest Hardware (CI-First)*: `gh workflow run ci.yml && gh run watch`
+  - *Pre-release Matrix Dry Build*: `gh workflow run release.yml && gh run watch`
+  - *Local Incremental (Powerful hardware only)*: `mise run dev` -> `mise run build-debug`
 - **Code Quality (`hk`)**:
   - Check changed files:
     ```bash
@@ -32,4 +33,4 @@ See [AGENTS.md](AGENTS.md) for full architecture, compilation strategies, Issue+
 - **Flatpak OSTree Repository Automation**: [xifan2333/flatpak-auto](https://github.com/xifan2333/flatpak-auto) (`~/Code/flatpak-auto`)
 
 ## Unified Project Skill
-- **`vinput-dev`** (`.agents/skills/vinput-dev/SKILL.md`): Architecture, Fork contribution, pre-PR code health-check, Issue+PR workflow, PipeWire debugging, ecosystem extension, release packaging.
+- **`vinput-dev`** (`.agents/skills/vinput-dev/SKILL.md`): Architecture, Dual-planning, Fork contribution, pre-PR code health-check, Issue+PR workflow, PipeWire debugging, ecosystem extension, release packaging.

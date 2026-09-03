@@ -1,6 +1,6 @@
 # fcitx5-vinput Agent Guide
 
-Guidelines and baseline rules for AI coding agents working on `fcitx5-vinput`.
+Guidelines, dual-planning model, and hard constraints for AI coding agents working on `fcitx5-vinput`.
 
 ---
 
@@ -12,7 +12,7 @@ Guidelines and baseline rules for AI coding agents working on `fcitx5-vinput`.
 - `src/daemon/`: Core daemon (`vinput-daemon`), handles PipeWire audio recording, sherpa-onnx inference, cloud ASR engines, LLM scene transformations, D-Bus service (`org.fcitx.Vinput`).
 - `src/cli/`: Standalone `vinput` CLI for manual recording, profile switching, and status inspection.
 - `src/common/`: Shared types, configuration structs (`nlohmann-json`), D-Bus XML interfaces.
-- `po/` & `i18n/`: Translations (Gettext and Qt `.ts` / `.qm`).
+- `po/` & `i18n/`: Localization catalogs (Gettext and Qt `.ts` / `.qm`).
 
 ---
 
@@ -35,42 +35,37 @@ For detailed operational guides, fork contribution, code health check SOPs, and 
 
 ---
 
-## 3. Compilation Strategy: Hardware-Adaptive (CI-First on Modest Hardware)
+## 3. Dual-Planning Model for AI Agents
 
-Compilation strategy should adapt to the local machine's hardware capabilities:
+To avoid ambiguity between functional task planning and toolchain validation, agents must distinguish between two distinct planning phases:
 
-- **Modest / Resource-Constrained Local Hardware -> CI-First Strategy**:
-  - Do NOT run heavy local full builds, multi-arch cross-compilations, or container builds locally.
-  - Rely on **GitHub Actions CI** for building, testing, and matrix validation:
-    - Standard CI: `gh workflow run ci.yml && gh run watch`
-    - Pre-release full matrix dry run: `gh workflow run release.yml && gh run watch`
-    - Packaging channels: `mise run channels`
-  - Local operations should stay lightweight: code editing, static formatting/linting via `hk`, and json/i18n validation.
-- **High-Performance Hardware with Full Toolchains**:
-  - Local incremental debug builds are permitted: `mise run dev` -> `mise run build-debug`.
-  - Always run `gh workflow run release.yml` before cutting a release for clean-room multi-distro verification.
+| Phase | Concept & Terminology | Timing | Tool & Output | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Phase A** | **Task Planning**<br>*(Feature / Bugfix Breakdown)* | **Pre-development**<br>*(Before coding)* | GitHub Issue & Draft PR body (`- [ ]` checklist) | Defines *what* code to write, module boundaries, and task sequencing. |
+| **Phase B** | **Quality Gate Pre-check**<br>*(hk --plan)* | **Post-edit**<br>*(Before committing)* | `hk run check --files0-from - --safe --plan` | Previews *which* linters/formatters will run and their side-effects on edited files. |
 
 ---
 
-## 4. Issue + PR Driven Development Workflow (SOP)
+## 4. Standard 5-Step Agent Execution Workflow
 
-All non-trivial changes must strictly follow the **Issue -> Draft PR with Todo-List -> Atomic Commit -> Check off Todo -> Merge** loop:
+All coding agents must strictly operate within this closed-loop lifecycle:
 
 ```
 +-------------------------------------------------------------+
-| 1. Plan & Draft PR (Issue Breakdown & Draft PR Setup)       |
+| 1. Task Planning & Draft PR Initialization                  |
 |    gh issue view <id>                                       |
 |    git checkout -b <type>/issue-<id>-<desc>                 |
 |    gh pr create --draft --body "Closes #<id>\n- [ ] Task..."|
 +------------------------------+------------------------------+
                                |
                 +--------------v--------------+
-                | 2. Single-Item Dev          |
-                |    Only code the first - [ ]|
+                | 2. Single-Item Implementation|
+                |    Code ONLY the topmost - [ ]
                 +--------------+--------------+
                                |
                 +--------------v--------------+
-                | 3. Quality Gate             |
+                | 3. Quality Gate & Pre-check |
+                |    hk --plan (preview steps)|
                 |    hk run check --safe      |
                 |    hk fix (if formatting)   |
                 +--------------+--------------+
@@ -85,7 +80,7 @@ All non-trivial changes must strictly follow the **Issue -> Draft PR with Todo-L
                                +---------- Yes ---------+
                                | No                     |
 +------------------------------v--------------+         |
-| 5. Full Validation & Merge                  |         |
+| 5. Full Validation, Ready & Merge           |         |
 |    gh pr checks                             |         |
 |    gh pr ready                              |         |
 |    gh pr merge --squash --delete-branch     |         |
@@ -94,11 +89,11 @@ All non-trivial changes must strictly follow the **Issue -> Draft PR with Todo-L
                                +-------------------------+
 ```
 
-### The 5 Steps:
-1. **Analyze Issue & Create Draft PR**:
+### Step 1: Task Planning (Issue Analysis & Draft PR Setup)
+1. Inspect the issue requirements: `gh issue view <issue_id>`
+2. Create a clean feature branch: `git checkout -b <type>/issue-<id>-<short-description>`
+3. Create a **Draft PR** containing the structured implementation checklist:
    ```bash
-   gh issue view <issue_id>
-   git checkout -b feat/issue-<id>-<short-description>
    gh pr create --draft \
      --title "<type>: <description> (#<issue_id>)" \
      --body "Closes #<issue_id>
@@ -108,38 +103,70 @@ All non-trivial changes must strictly follow the **Issue -> Draft PR with Todo-L
    - [ ] 2. Implement logic in src/daemon/
    - [ ] 3. Update i18n and tests"
    ```
-2. **Execute One Item at a Time**: Focus strictly on the topmost unchecked task (`- [ ]`).
-3. **Verify via `hk`**: Run `hk run check --safe` (and `hk fix` if needed). If local hardware permits, run `mise run build-debug`.
-4. **Atomic Commit, Push & Check Off**:
-   - `git add <files> && git commit -m "<type>(<scope>): <desc> (#<id>)" && git push origin <branch>`
-   - Update PR body to mark the task completed (`- [x]`) via `gh pr edit --body "..."`.
-5. **Loop to Finish & Merge**:
-   - Repeat steps 2-4 until all items are checked.
-   - Verify PR CI: `gh pr checks`.
-   - Mark ready and merge: `gh pr ready && gh pr merge --squash --delete-branch`.
 
----
+### Step 2: Single-Item Focused Execution
+- **Strict rule**: Focus ONLY on the topmost unchecked task (`- [ ]`).
+- Do not modify unrelated files or bundle multiple tasks together.
 
-## 5. Code Quality & Verification (`hk` CLI)
-
-This repository uses **`hk`** (Git Hook Manager) with `mise` to enforce formatting and validation:
-
-- **Run checks on changed files (Required before committing/pushing)**:
+### Step 3: Quality Gate & Pre-check (hk)
+- Inspect which checks match modified files:
   ```bash
   {
     git diff --name-only -z
     git diff --cached --name-only -z
     git ls-files --others --exclude-standard -z
-  } | hk run check --files0-from - --safe
+  } | hk run check --files0-from - --safe --plan
   ```
-- **Auto-fix formatting violations**: `hk fix`
-- **Full repository check**: `hk check`
-- **Static analysis**: `mise run tidy`
+- Run safe validation and auto-format:
+  ```bash
+  hk run check --safe
+  hk fix
+  python3 scripts/check-i18n.py
+  ```
+- If local machine hardware permits: `mise run build-debug`. If resource-constrained, rely on CI.
+
+### Step 4: Atomic Commit, Push & Check Off
+1. Commit with Conventional Commits format referencing the issue:
+   ```bash
+   git add <modified_files>
+   git commit -m "<type>(<scope>): <concise message> (#<issue_id>)"
+   git push origin <branch_name>
+   ```
+2. Update the Draft PR body to check off the completed item (`- [x]`):
+   ```bash
+   gh pr edit --body "..."
+   ```
+
+### Step 5: Final Validation & Merge
+1. Repeat Steps 2-4 until all checklist items are checked (`- [x]`).
+2. Verify PR CI checks: `gh pr checks`.
+3. (Optional for core changes) Trigger remote matrix dry build: `gh workflow run release.yml && gh run watch`.
+4. Mark PR ready and squash-merge: `gh pr ready && gh pr merge --squash --delete-branch`.
 
 ---
 
-## 6. Coding & Contribution Rules
+## 5. Compilation Strategy: Hardware-Adaptive (CI-First on Modest Hardware)
 
-1. **C++ Standard**: C++20. Follow existing patterns in the codebase.
-2. **User-facing Strings**: Must be wrapped in `_("...")` or `ki18n` for gettext localization. Run `mise run check-i18n` to validate po files.
-3. **Agent Discipline**: Never batch all changes into one giant commit without updating the PR Todo list. Keep commits atomic and traceable.
+Compilation strategy should adapt to local hardware capabilities:
+
+- **Modest / Resource-Constrained Local Hardware -> CI-First Strategy**:
+  - Do NOT run heavy local full builds, multi-arch cross-compilations, or container builds locally.
+  - Rely on **GitHub Actions CI** for building, testing, and matrix validation:
+    - Standard CI: `gh workflow run ci.yml && gh run watch`
+    - Pre-release full matrix dry run: `gh workflow run release.yml && gh run watch`
+    - Packaging channels: `mise run channels`
+  - Local operations should stay lightweight: code editing, static formatting/linting via `hk`, and json/i18n validation.
+- **High-Performance Hardware with Full Toolchains**:
+  - Local incremental debug builds are permitted: `mise run dev` -> `mise run build-debug`.
+  - Always run `gh workflow run release.yml` before cutting a release for clean-room multi-distro verification.
+
+---
+
+## 6. Agent Hard Constraints (Red Lines)
+
+1. **No Direct Main Commits**: Never push implementation code directly to `main`.
+2. **No Multi-Task Lump Commits**: Every commit must map to exactly one `- [ ]` task in the PR checklist.
+3. **No Push Without Quality Gate**: Never push code before running `hk run check --safe`.
+4. **Transparent Progress Tracking**: When asked for status, agents must report progress based on the PR checklist (e.g., "Completed 2 of 4 tasks; currently implementing task 3").
+5. **Hardware-Adaptive Compilation**: On modest hardware, prioritize GitHub Actions CI (`ci.yml` / `release.yml`) over heavy local full builds.
+6. **User-Facing Strings**: Must be wrapped in `_("...")` or `ki18n` for gettext localization. Run `mise run check-i18n` to validate po files.
