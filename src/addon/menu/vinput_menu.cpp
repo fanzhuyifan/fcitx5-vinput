@@ -165,17 +165,14 @@ std::string ResultMenuTitle(std::size_t count) {
   return buf;
 }
 
-std::string ResultCandidateComment(const vinput::result::Candidate& candidate,
-                                   std::size_t llm_index) {
+std::string ResultCandidateComment(const vinput::result::Candidate& candidate) {
   if (candidate.source == vinput::result::kSourceRaw) {
     return _("Original");
   }
   if (candidate.source == vinput::result::kSourceAsr) {
     return _("Voice Command");
   }
-  char buf[8];
-  std::snprintf(buf, sizeof(buf), "%zu", llm_index);
-  return buf;
+  return {};
 }
 
 std::string DecoratePagedMenuTitle(const std::string& base_title,
@@ -1120,22 +1117,19 @@ void VinputEngine::showResultMenu(fcitx::InputContext* ic, const vinput::result:
   result_candidates_ = payload.candidates;
 
   auto candidate_list = std::make_unique<fcitx::CommonCandidateList>();
-  candidate_list->setPageSize(kMenuPageSize);
+  candidate_list->setPageSize(instance_->globalConfig().defaultPageSize());
+  candidate_list->setSelectionKey(fcitx::Key::keyListFromString("1 2 3 4 5 6 7 8 9 0"));
   candidate_list->setLayoutHint(fcitx::CandidateLayoutHint::Vertical);
   candidate_list->setCursorPositionAfterPaging(fcitx::CursorPositionAfterPaging::ResetToFirst);
 
   int cursor_index = 0;
-  std::size_t llm_index = 0;
   for (std::size_t i = 0; i < result_candidates_.size(); ++i) {
     const auto& candidate = result_candidates_[i];
-    if (candidate.source == vinput::result::kSourceLlm) {
-      ++llm_index;
-    }
     if (candidate.text == payload.commitText) {
       cursor_index = static_cast<int>(i);
     }
     candidate_list->append<ResultCandidateWord>(this, i, candidate.text,
-                                                ResultCandidateComment(candidate, llm_index));
+                                                ResultCandidateComment(candidate));
   }
   MoveCursorToIndex(candidate_list.get(), cursor_index);
 
@@ -1202,9 +1196,8 @@ bool VinputEngine::handleResultMenuKeyEvent(fcitx::KeyEvent& keyEvent) {
   }
 
   const int digit = keyEvent.key().digitSelection();
-  const int digit_index = DigitSelectionIndex(candidate_list.get(), digit);
-  if (digit >= 0 && digit_index < static_cast<int>(result_candidates_.size())) {
-    selectResultCandidate(static_cast<std::size_t>(digit_index), result_menu_ic_);
+  if (digit >= 0 && digit < candidate_list->size()) {
+    candidate_list->candidate(digit).select(result_menu_ic_);
     keyEvent.filterAndAccept();
     return true;
   }
@@ -1224,12 +1217,12 @@ bool VinputEngine::handleResultMenuKeyEvent(fcitx::KeyEvent& keyEvent) {
   }
 
   if (keyEvent.key().check(FcitxKey_Return) || keyEvent.key().check(FcitxKey_KP_Enter)) {
-    int index = CurrentSelectionIndex(candidate_list.get());
+    int index = candidate_list->cursorIndex();
     if (index < 0) {
       index = 0;
     }
-    if (index >= 0 && index < static_cast<int>(result_candidates_.size())) {
-      selectResultCandidate(static_cast<std::size_t>(index), result_menu_ic_);
+    if (index >= 0 && index < candidate_list->size()) {
+      candidate_list->candidate(index).select(result_menu_ic_);
     } else {
       hideResultMenu();
     }
