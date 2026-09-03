@@ -1,0 +1,41 @@
+# Compilation Strategy & GitHub Actions Matrix
+
+Compilation strategy should adapt to the local machine's hardware capabilities, prioritizing GitHub Actions CI on modest hardware.
+
+---
+
+## 1. Hardware-Adaptive Principle
+
+- **Modest / Resource-Constrained Hardware (CI-First Strategy)**:
+  - Avoid heavy local builds, multi-arch cross-compilation, or container runs locally.
+  - Delegate compilation and tests to GitHub Actions (`ci.yml`, `release.yml`, `channels.yml`).
+  - Local tasks should stay light: code editing, static formatting/linting via `hk`, and json/i18n validation.
+- **High-Performance Hardware**:
+  - Local incremental debug builds: `mise run dev` -> `mise run build-debug`.
+  - Final release verification still uses `gh workflow run release.yml`.
+
+---
+
+## 2. GitHub Actions Workflows Matrix
+
+| Workflow | File | Trigger Command | Purpose |
+| :--- | :--- | :--- | :--- |
+| **CI Build & Test** | `.github/workflows/ci.yml` | `gh workflow run ci.yml` | Standard build and test verification on Ubuntu runners. |
+| **Release Pipeline (Dry/Formal)** | `.github/workflows/release.yml` | `gh workflow run release.yml` *(Dry)*<br>`mise run release <ver>` *(Formal tag)* | Full multi-arch (x86_64, aarch64 ARM) and multi-distro (Debian, Fedora RPM, openSUSE, Arch, Flatpak) matrix build. |
+| **Packaging Channels** | `.github/workflows/channels.yml` | `mise run channels` | Builds & publishes across distribution channels (PPA, COPR, Flatpak, Debian). |
+| **C++ Linter** | `.github/workflows/cpp-linter.yml` | `gh workflow run cpp-linter.yml` | PR formatting and review annotations. |
+| **Nix Cache Sync** | `.github/workflows/nix-cache.yml` | `gh workflow run nix-cache.yml` | Rebuilds and pushes binaries to Cachix. |
+
+---
+
+## 3. The Two Usages of `release.yml`
+
+### Mode 1: Remote Matrix Validation (Dry Run via `workflow_dispatch`)
+- **Command**: `gh workflow run release.yml && gh run watch`
+- **Behavior**: Compiles the code across the entire runner matrix (`ubuntu-24.04` x86_64, `ubuntu-24.04-arm` aarch64, Arch chroot, Fedora container, Flatpak builder). Uploads all build artifacts (`.deb`, `.rpm`, `.pkg.tar.zst`, `.flatpak`, source tarball) to GitHub Actions summary.
+- **Safety**: Does **NOT** publish a GitHub Release because the `publish-release` job requires a `refs/tags/v*` ref.
+- **When to use**: Whenever you want to test whether all architectures and packaging targets compile cleanly before tagging.
+
+### Mode 2: Official Release Publication (Git Tag `v*`)
+- **Command**: `mise run release <version>` (e.g. `mise run release 2.3.9`)
+- **Behavior**: Verifies that the `VERSION` file matches the git tag, runs the complete matrix build, extracts changelog notes via `git-cliff`, and automatically creates and publishes the official GitHub Release with all binary packages attached.

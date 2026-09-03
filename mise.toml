@@ -1,6 +1,7 @@
 [tools]
 pandoc = "latest"
 node = "22"
+hk = "1.57.0"
 
 [env]
 _.file = ".env"
@@ -8,6 +9,18 @@ _.file = ".env"
 [tasks.default]
 description = "List available tasks"
 run = "mise tasks"
+
+[tasks.hooks-install]
+description = "Install hk git hooks with mise integration"
+run = "hk install --mise"
+
+[tasks.check]
+description = "Run all hk checks across the repo"
+run = "hk check"
+
+[tasks.fix]
+description = "Run all hk fixers to format files"
+run = "hk fix"
 
 [tasks.fmt]
 description = "Format C++ source code with clang-format"
@@ -142,7 +155,12 @@ bash scripts/build-sherpa-onnx.sh "${1:-}" "${2:-/usr}" "${3:-}"
 
 [tasks.doctor]
 description = "Run full system diagnostic checks"
-depends = ["check-build-cache", "check-installed-binaries", "check-user-service", "check-stale-install"]
+depends = [
+  "check-build-cache",
+  "check-installed-binaries",
+  "check-user-service",
+  "check-stale-install",
+]
 
 [tasks.check-build-cache]
 description = "Inspect CMake build cache"

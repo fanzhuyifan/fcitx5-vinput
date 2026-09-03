@@ -1,0 +1,42 @@
+amends "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.57.0/hk@1.57.0#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+  ["clang-format"] = (Builtins.clang_format) {
+    glob = List("src/**/*.cpp", "src/**/*.h", "tests/**/*.cpp", "tests/**/*.h")
+  }
+
+  ["mise"] = Builtins.mise
+
+  ["check-i18n"] {
+    glob = List("po/**", "src/**", "scripts/check-i18n.py")
+    check = "python3 scripts/check-i18n.py"
+  }
+
+  ["json-validate"] {
+    glob = List("data/default-config.json", "notification.json")
+    check = "python3 -m json.tool {{files}} >/dev/null"
+  }
+
+  ["trailing-whitespace"] = Builtins.trailing_whitespace
+  ["newlines"] = Builtins.newlines
+  ["check-merge-conflict"] = Builtins.check_merge_conflict
+  ["detect-private-key"] = Builtins.detect_private_key
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "patch-file"
+    steps = linters
+  }
+
+  ["check"] {
+    steps = linters
+  }
+
+  ["fix"] {
+    fix = true
+    steps = linters
+  }
+}
