@@ -383,6 +383,7 @@ void VinputEngine::onCommitString(const std::string& text, fcitx::InputContext* 
 }
 
 fcitx::AddonInstance* VinputEngineFactory::create(fcitx::AddonManager* manager) {
+  vinput::i18n::Init();
   return new VinputEngine(manager->instance());
 }
 
