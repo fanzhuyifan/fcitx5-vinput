@@ -115,6 +115,9 @@ jobs:
 
       - name: Build
         run: |
+          if command -v sccache >/dev/null 2>&1; then
+            sccache --start-server 2>/dev/null || true
+          fi
           cd "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}"
           cmake --build --preset ci-clang-mold
 
@@ -193,6 +196,9 @@ jobs:
       - name: Build Debian package
         shell: bash
         run: |
+          if command -v sccache >/dev/null 2>&1; then
+            sccache --start-server 2>/dev/null || true
+          fi
           cd "fcitx5-vinput-${{ needs.source_archive.outputs.package_version }}"
           cmake --preset ci-clang-mold \
             -DCMAKE_PREFIX_PATH="${GITHUB_WORKSPACE}/runtime" \
