@@ -1,13 +1,13 @@
 {
-  "id": 11,
-  "timestamp": 1788484425,
+  "id": 12,
+  "timestamp": 1788519951,
   "title": {
-    "en_US": "Vinput 2.3.12 — Official Lite mode, GUI refactor, and shell completions",
-    "zh_CN": "Vinput 2.3.12 — 官方 Lite 模式、GUI 页面重构与 Shell 补全优化"
+    "en_US": "Vinput 2.3.13 — LLM Adapter autostart, Control page management, and CLI ps",
+    "zh_CN": "Vinput 2.3.13 — LLM 适配器自启动、控制页面管理与 CLI ps 进程查看"
   },
   "text": {
-    "en_US": "Added official Lite mode (zero local ONNX runtime); refactored GUI resource lifecycle with ASR provider and LLM adapter uninstallation; fixed Zsh/Bash interactive shell completions; updated bilingual documentation and man pages.",
-    "zh_CN": "新增官方 Lite 纯云端轻量模式（零 ONNX 依赖）；重构 GUI 资源生命周期管理（支持 ASR 提供商与 LLM 适配器直接卸载）；修复 Zsh/Bash 交互式自动补全；更新全平台安装文档与中英双语 man 手册。"
+    "en_US": "Added LLM adapter process lifecycle and autostart management in GUI Control page; added 'adapter ps', 'adapter status', 'enable/disable' CLI commands; autostart enabled adapters on daemon startup; updated shell completions and documentation.",
+    "zh_CN": "在 GUI 控制页面新增 LLM 适配器启停与随守护进程自启动管理；CLI 新增 'adapter ps' 进程查看、'adapter status' 详情与 'enable/disable' 自启动命令；守护进程启动时自动拉起自启适配器；同步优化三大 Shell 补全与中英文档。"
   },
-  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.12"
+  "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.13"
 }
