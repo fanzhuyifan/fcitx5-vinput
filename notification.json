@@ -1,13 +1,13 @@
 {
   "id": 11,
-  "timestamp": 1788453165,
+  "timestamp": 1788484425,
   "title": {
-    "en_US": "Vinput 2.3.12 — Official Lite mode, documentation, and man pages",
-    "zh_CN": "Vinput 2.3.12 — 官方 Lite 模式支持、文档与 Man 手册升级"
+    "en_US": "Vinput 2.3.12 — Official Lite mode, GUI refactor, and shell completions",
+    "zh_CN": "Vinput 2.3.12 — 官方 Lite 模式、GUI 页面重构与 Shell 补全优化"
   },
   "text": {
-    "en_US": "Added first-class Lite mode without local ONNX runtime for cloud-only deployments; updated documentation and bilingual man pages; published Full and Lite variants across all channels.",
-    "zh_CN": "新增官方 Lite 纯云端轻量模式（零 ONNX 运行时依赖）；更新网站安装文档与中英双语 man 手册；全渠道同时支持 Full 与 Lite 双变体发布。"
+    "en_US": "Added official Lite mode (zero local ONNX runtime); refactored GUI resource lifecycle with ASR provider and LLM adapter uninstallation; fixed Zsh/Bash interactive shell completions; updated bilingual documentation and man pages.",
+    "zh_CN": "新增官方 Lite 纯云端轻量模式（零 ONNX 依赖）；重构 GUI 资源生命周期管理（支持 ASR 提供商与 LLM 适配器直接卸载）；修复 Zsh/Bash 交互式自动补全；更新全平台安装文档与中英双语 man 手册。"
   },
   "url": "https://github.com/xifan2333/fcitx5-vinput/releases/tag/v2.3.12"
 }
