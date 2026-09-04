@@ -126,13 +126,18 @@ jobs:
             packaging/fedora/fcitx5-vinput.spec \
             > "${HOME}/rpmbuild/SPECS/fcitx5-vinput.spec"
 
+          sed \
+            -e "s/@VINPUT_VERSION@/${version}/g" \
+            packaging/fedora/fcitx5-vinput-lite.spec \
+            > "${HOME}/rpmbuild/SPECS/fcitx5-vinput-lite.spec"
+
           if [[ "${{ inputs.variant }}" == "all" || "${{ inputs.variant }}" == "full" ]]; then
             rpmbuild -bs "${HOME}/rpmbuild/SPECS/fcitx5-vinput.spec" \
               --define "_topdir $HOME/rpmbuild"
           fi
 
           if [[ "${{ inputs.variant }}" == "all" || "${{ inputs.variant }}" == "lite" ]]; then
-            rpmbuild -bs --without local_asr "${HOME}/rpmbuild/SPECS/fcitx5-vinput.spec" \
+            rpmbuild -bs "${HOME}/rpmbuild/SPECS/fcitx5-vinput-lite.spec" \
               --define "_topdir $HOME/rpmbuild"
           fi
 
@@ -236,12 +241,13 @@ jobs:
           pkg="fcitx5-vinput-lite_${version}-1ppa${ppa_revision}~noble1"
           orig_tar="fcitx5-vinput-lite_${version}.orig.tar.gz"
 
-          rm -rf "fcitx5-vinput-lite-${version}"
+          rm -rf "fcitx5-vinput-${version}" "fcitx5-vinput-lite-${version}"
           tar -xf "dist/${{ needs.source_archive.outputs.source_archive }}"
           mv "fcitx5-vinput-${version}" "fcitx5-vinput-lite-${version}"
           cp "dist/${{ needs.source_archive.outputs.source_archive }}" "${orig_tar}"
 
           cd "fcitx5-vinput-lite-${version}"
+          rm -rf debian
           cp -r packaging/debian-lite debian
           dch --create --package fcitx5-vinput-lite \
             --newversion "${version}-1ppa${ppa_revision}~noble1" \
