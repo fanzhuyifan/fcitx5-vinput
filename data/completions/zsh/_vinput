@@ -2,26 +2,42 @@
 
 _vinput_installed_models() {
     local -a models
-    models=(${(f)"$(vinput model list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
-    _describe -t models 'installed model' models
+    models=(${(f)"$(vinput -j model list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    if (( $#models )); then
+        _describe -t models 'installed model' models
+    fi
 }
 
 _vinput_installed_scenes() {
     local -a scenes
-    scenes=(${(f)"$(vinput scene list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
-    _describe -t scenes 'installed scene' scenes
+    scenes=(${(f)"$(vinput -j scene list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    if (( $#scenes )); then
+        _describe -t scenes 'installed scene' scenes
+    fi
 }
 
 _vinput_installed_providers() {
     local -a providers
-    providers=(${(f)"$(vinput provider list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
-    _describe -t providers 'installed provider' providers
+    providers=(${(f)"$(vinput -j provider list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    if (( $#providers )); then
+        _describe -t providers 'installed provider' providers
+    fi
 }
 
 _vinput_installed_llm_providers() {
     local -a llm_providers
-    llm_providers=(${(f)"$(vinput llm list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
-    _describe -t llm_providers 'configured llm provider' llm_providers
+    llm_providers=(${(f)"$(vinput -j llm list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    if (( $#llm_providers )); then
+        _describe -t llm_providers 'configured llm provider' llm_providers
+    fi
+}
+
+_vinput_installed_adapters() {
+    local -a adapters
+    adapters=(${(f)"$(vinput -j adapter list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)"})
+    if (( $#adapters )); then
+        _describe -t adapters 'configured adapter' adapters
+    fi
 }
 
 _vinput_subcommands() {
@@ -92,9 +108,14 @@ _vinput_adapter_cmds() {
     adapter_cmds=(
         'list:List local or remote adapters'
         'ls:List local or remote adapters'
+        'ps:List adapter processes and runtime status'
+        'status:Show adapter status'
         'add:Install an adapter script'
         'start:Start an adapter process'
         'stop:Stop an adapter process'
+        'restart:Restart an adapter process'
+        'enable:Enable adapter autostart with daemon'
+        'disable:Disable adapter autostart with daemon'
     )
     _describe -t adapter_cmds 'adapter command' adapter_cmds
 }
@@ -267,6 +288,10 @@ _vinput() {
                                     _arguments \
                                         '(-h --help)'{-h,--help}'[Print help message and exit]' \
                                         '(-a --available)'{-a,--available}'[List remote adapters]' ;;
+                                start|stop|restart|enable|disable|status)
+                                    _arguments \
+                                        '(-h --help)'{-h,--help}'[Print help message and exit]' \
+                                        '1:adapter:_vinput_installed_adapters' ;;
                             esac
                             ;;
                     esac
@@ -385,6 +410,8 @@ _vinput() {
     esac
 }
 
-if [[ -n "$CURRENT" ]]; then
+if [[ -n "$compstate[context]" ]]; then
     _vinput "$@"
+else
+    compdef _vinput vinput 2>/dev/null || true
 fi

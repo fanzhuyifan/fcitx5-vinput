@@ -1,19 +1,23 @@
 # bash completion for vinput
 
 _vinput_installed_models() {
-    vinput model list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+    vinput -j model list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
 }
 
 _vinput_installed_scenes() {
-    vinput scene list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+    vinput -j scene list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
 }
 
 _vinput_installed_providers() {
-    vinput provider list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+    vinput -j provider list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
 }
 
 _vinput_installed_llm_providers() {
-    vinput llm list -j 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+    vinput -j llm list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
+}
+
+_vinput_installed_adapters() {
+    vinput -j adapter list 2>/dev/null | grep -o '"id": *"[^"]*"' | cut -d'"' -f4
 }
 
 _vinput() {
@@ -121,12 +125,19 @@ _vinput() {
                 if [[ "$cur" == -* ]]; then
                     COMPREPLY=($(compgen -W "-h --help" -- "$cur"))
                 else
-                    COMPREPLY=($(compgen -W "list ls add start stop" -- "$cur"))
+                    COMPREPLY=($(compgen -W "list ls ps status add start stop restart enable disable" -- "$cur"))
                 fi
             else
                 case "${words[2]}" in
                     list|ls)
                         COMPREPLY=($(compgen -W "-a --available -h --help" -- "$cur"))
+                        ;;
+                    start|stop|restart|enable|disable|status)
+                        if [[ "$cur" == -* ]]; then
+                            COMPREPLY=($(compgen -W "-h --help" -- "$cur"))
+                        else
+                            COMPREPLY=($(compgen -W "$(_vinput_installed_adapters)" -- "$cur"))
+                        fi
                         ;;
                 esac
             fi

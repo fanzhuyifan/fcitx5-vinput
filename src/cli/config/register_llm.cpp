@@ -98,6 +98,22 @@ void RegisterAdapterCommands(CLI::App& app, CliAction* action) {
     };
   });
 
+  auto* ps = adapter->add_subcommand("ps", _("List adapter processes and runtime status"));
+  ps->callback([action]() {
+    *action = [](Formatter& fmt, const CliContext& ctx) {
+      return RunLlmConfigPsAdapters(fmt, ctx);
+    };
+  });
+
+  auto statusId = std::make_shared<std::string>();
+  auto* status = adapter->add_subcommand("status", _("Show adapter status"));
+  status->add_option("id", *statusId, _("Adapter short ID"))->required();
+  status->callback([action, statusId]() {
+    *action = [statusId](Formatter& fmt, const CliContext& ctx) {
+      return RunLlmConfigStatusAdapter(*statusId, fmt, ctx);
+    };
+  });
+
   auto selector = std::make_shared<std::string>();
   auto* add = adapter->add_subcommand("add", _("Add an adapter"));
   add->add_option("id", *selector, _("Adapter short ID"))->required();
@@ -122,6 +138,33 @@ void RegisterAdapterCommands(CLI::App& app, CliAction* action) {
   stop->callback([action, stopId]() {
     *action = [stopId](Formatter& fmt, const CliContext& ctx) {
       return RunLlmConfigStopAdapter(*stopId, fmt, ctx);
+    };
+  });
+
+  auto restartId = std::make_shared<std::string>();
+  auto* restart = adapter->add_subcommand("restart", _("Restart an adapter"));
+  restart->add_option("id", *restartId, _("Adapter short ID"))->required();
+  restart->callback([action, restartId]() {
+    *action = [restartId](Formatter& fmt, const CliContext& ctx) {
+      return RunLlmConfigRestartAdapter(*restartId, fmt, ctx);
+    };
+  });
+
+  auto enableId = std::make_shared<std::string>();
+  auto* enable = adapter->add_subcommand("enable", _("Enable adapter autostart with daemon"));
+  enable->add_option("id", *enableId, _("Adapter short ID"))->required();
+  enable->callback([action, enableId]() {
+    *action = [enableId](Formatter& fmt, const CliContext& ctx) {
+      return RunLlmConfigEnableAdapter(*enableId, fmt, ctx);
+    };
+  });
+
+  auto disableId = std::make_shared<std::string>();
+  auto* disable = adapter->add_subcommand("disable", _("Disable adapter autostart with daemon"));
+  disable->add_option("id", *disableId, _("Adapter short ID"))->required();
+  disable->callback([action, disableId]() {
+    *action = [disableId](Formatter& fmt, const CliContext& ctx) {
+      return RunLlmConfigDisableAdapter(*disableId, fmt, ctx);
     };
   });
 }

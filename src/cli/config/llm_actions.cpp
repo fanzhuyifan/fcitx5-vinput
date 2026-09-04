@@ -1,8 +1,11 @@
 #include "cli/config/llm_actions.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <string>
+#include <sys/types.h>
 
 #include "common/config/core_config.h"
 #include "common/i18n.h"
@@ -13,10 +16,49 @@
 #include "common/utils/string_utils.h"
 
 #include "cli/runtime/dbus_client.h"
+#include "cli/utils/cli_context.h"
 #include "cli/utils/cli_helpers.h"
+#include "cli/utils/formatter.h"
 #include "cli/utils/resource_utils.h"
 
 namespace {
+
+int SetAdapterAutostart(const std::string& id, bool enable, Formatter& fmt, const CliContext& ctx) {
+  CoreConfig config = LoadCoreConfig();
+  std::string error;
+  const std::string resolved_id =
+      vinput::cli::ResolveInstalledLlmAdapterSelector(config, id, &error);
+  if (resolved_id.empty()) {
+    fmt.PrintError(error);
+    return 1;
+  }
+
+  auto it = std::find_if(config.llm.adapters.begin(), config.llm.adapters.end(),
+                         [&resolved_id](const LlmAdapter& a) { return a.id == resolved_id; });
+  if (it == config.llm.adapters.end()) {
+    fmt.PrintError(vinput::str::FmtStr(_("Adapter '%s' not found."), id));
+    return 1;
+  }
+
+  it->autoStart = enable;
+  NormalizeCoreConfig(&config);
+  if (!SaveConfigOrFail(config, fmt)) {
+    return 1;
+  }
+
+  if (ctx.json_output) {
+    fmt.PrintJson({{"id", resolved_id}, {"auto_start", it->autoStart}});
+    return 0;
+  }
+
+  if (enable) {
+    fmt.PrintSuccess(vinput::str::FmtStr(_("Adapter '%s' enabled to autostart with daemon."), id));
+  } else {
+    fmt.PrintSuccess(
+        vinput::str::FmtStr(_("Adapter '%s' disabled from autostart with daemon."), id));
+  }
+  return 0;
+}
 
 std::string MaskApiKey(const std::string& key) {
   if (key.size() <= 8) {
@@ -92,14 +134,14 @@ int RunLlmConfigListAdapters(bool available, Formatter& fmt, const CliContext& c
             {"command", adapter.command},
             {"args", adapter.args},
             {"env", adapter.env},
-            {"running", vinput::adapter::IsRunning(adapter.id)},
+            {"auto_start", adapter.autoStart},
         });
       }
       fmt.PrintJson(arr);
       return 0;
     }
 
-    std::vector<std::string> headers = {_("ID"), _("TITLE"), _("README")};
+    const std::vector<std::string> headers = {_("ID"), _("TITLE"), _("AUTOSTART"), _("README")};
     std::vector<std::vector<std::string>> rows;
     rows.reserve(config.llm.adapters.size());
     for (const auto& adapter : config.llm.adapters) {
@@ -107,6 +149,7 @@ int RunLlmConfigListAdapters(bool available, Formatter& fmt, const CliContext& c
       rows.push_back(
           {vinput::cli::HumanizeResourceId(installed_display_map, adapter.id),
            has_entry ? installed_display_map.at(adapter.id).title : "",
+           adapter.autoStart ? _("enabled") : _("disabled"),
            has_entry ? vinput::cli::FormatTerminalLink(
                            ctx, _("Open README"), installed_display_map.at(adapter.id).readme_url)
                      : ""});
@@ -288,6 +331,146 @@ int RunLlmConfigStopAdapter(const std::string& id, Formatter& fmt, const CliCont
     return 1;
   }
   fmt.PrintSuccess(vinput::str::FmtStr(_("Adapter '%s' stopped."), id));
+  return 0;
+}
+
+int RunLlmConfigRestartAdapter(const std::string& id, Formatter& fmt, const CliContext& ctx) {
+  (void)ctx;
+  const CoreConfig config = LoadCoreConfig();
+  std::string error;
+  const std::string resolved_id =
+      vinput::cli::ResolveInstalledLlmAdapterSelector(config, id, &error);
+  if (resolved_id.empty()) {
+    fmt.PrintError(error);
+    return 1;
+  }
+  vinput::cli::DbusClient dbus;
+  if (vinput::adapter::IsRunning(resolved_id)) {
+    if (!dbus.StopAdapter(resolved_id, &error)) {
+      fmt.PrintError(error);
+      return 1;
+    }
+  }
+  if (!dbus.StartAdapter(resolved_id, &error)) {
+    fmt.PrintError(error);
+    return 1;
+  }
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Adapter '%s' restarted."), id));
+  return 0;
+}
+
+int RunLlmConfigEnableAdapter(const std::string& id, Formatter& fmt, const CliContext& ctx) {
+  return SetAdapterAutostart(id, true, fmt, ctx);
+}
+
+int RunLlmConfigDisableAdapter(const std::string& id, Formatter& fmt, const CliContext& ctx) {
+  return SetAdapterAutostart(id, false, fmt, ctx);
+}
+
+int RunLlmConfigPsAdapters(Formatter& fmt, const CliContext& ctx) {
+  const CoreConfig config = LoadCoreConfig();
+  const auto installed_display_map =
+      vinput::cli::FetchScriptDisplayMap(config, vinput::script::Kind::kLlmAdapter);
+
+  if (ctx.json_output) {
+    nlohmann::json arr = nlohmann::json::array();
+    for (const auto& adapter : config.llm.adapters) {
+      const auto it = installed_display_map.find(adapter.id);
+      const pid_t pid = vinput::adapter::GetPid(adapter.id);
+      const bool running = (pid > 0);
+      arr.push_back({
+          {"id", vinput::cli::HumanizeResourceId(installed_display_map, adapter.id)},
+          {"machine_id", adapter.id},
+          {"title", it == installed_display_map.end() ? "" : it->second.title},
+          {"status", running ? "running" : "stopped"},
+          {"running", running},
+          {"pid", running ? nlohmann::json(pid) : nullptr},
+          {"auto_start", adapter.autoStart},
+          {"command", adapter.command},
+      });
+    }
+    fmt.PrintJson(arr);
+    return 0;
+  }
+
+  const std::vector<std::string> headers = {_("ID"), _("STATUS"), _("PID"), _("AUTOSTART"),
+                                            _("COMMAND")};
+  std::vector<std::vector<std::string>> rows;
+  rows.reserve(config.llm.adapters.size());
+  for (const auto& adapter : config.llm.adapters) {
+    const pid_t pid = vinput::adapter::GetPid(adapter.id);
+    const bool running = (pid > 0);
+    rows.push_back({
+        vinput::cli::HumanizeResourceId(installed_display_map, adapter.id),
+        running ? _("running") : _("stopped"),
+        running ? std::to_string(pid) : "-",
+        adapter.autoStart ? _("enabled") : _("disabled"),
+        adapter.command,
+    });
+  }
+  fmt.PrintTable(headers, rows);
+  return 0;
+}
+
+int RunLlmConfigStatusAdapter(const std::string& id, Formatter& fmt, const CliContext& ctx) {
+  const CoreConfig config = LoadCoreConfig();
+  std::string error;
+  const std::string resolved_id =
+      vinput::cli::ResolveInstalledLlmAdapterSelector(config, id, &error);
+  if (resolved_id.empty()) {
+    fmt.PrintError(error);
+    return 1;
+  }
+
+  const auto* adapter = ResolveLlmAdapter(config, resolved_id);
+  if (adapter == nullptr) {
+    fmt.PrintError(vinput::str::FmtStr(_("Adapter '%s' not found."), id));
+    return 1;
+  }
+
+  const auto installed_display_map =
+      vinput::cli::FetchScriptDisplayMap(config, vinput::script::Kind::kLlmAdapter);
+  const auto it = installed_display_map.find(adapter->id);
+  const std::string title = (it == installed_display_map.end()) ? "" : it->second.title;
+  const pid_t pid = vinput::adapter::GetPid(adapter->id);
+  const bool running = (pid > 0);
+
+  if (ctx.json_output) {
+    fmt.PrintJson({
+        {"id", vinput::cli::HumanizeResourceId(installed_display_map, adapter->id)},
+        {"machine_id", adapter->id},
+        {"title", title},
+        {"status", running ? "running" : "stopped"},
+        {"running", running},
+        {"pid", running ? nlohmann::json(pid) : nullptr},
+        {"auto_start", adapter->autoStart},
+        {"command", adapter->command},
+        {"args", adapter->args},
+        {"env", adapter->env},
+    });
+    return 0;
+  }
+
+  const std::vector<std::string> headers = {_("PROPERTY"), _("VALUE")};
+  std::vector<std::vector<std::string>> rows = {
+      {_("ID"), vinput::cli::HumanizeResourceId(installed_display_map, adapter->id)},
+      {_("Title"), title},
+      {_("Status"), running ? _("running") : _("stopped")},
+      {_("PID"), running ? std::to_string(pid) : "-"},
+      {_("Autostart"), adapter->autoStart ? _("enabled") : _("disabled")},
+      {_("Command"), adapter->command},
+  };
+  if (!adapter->args.empty()) {
+    std::string args_joined;
+    for (size_t i = 0; i < adapter->args.size(); ++i) {
+      if (i > 0) {
+        args_joined += " ";
+      }
+      args_joined += adapter->args[i];
+    }
+    rows.push_back({_("Args"), args_joined});
+  }
+  fmt.PrintTable(headers, rows);
   return 0;
 }
 

@@ -9,14 +9,24 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
+#include <QListWidget>
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPointer>
+#include <QPushButton>
 #include <QSpinBox>
 #include <QThreadPool>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <QtWidgets/qcheckbox.h>
+#include <QtWidgets/qlistwidget.h>
+#include <QtWidgets/qpushbutton.h>
+#include <QtWidgets/qwidget.h>
+#include <algorithm>
 
 #include "common/audio/pipewire_device.h"
+#include "common/llm/adapter_manager.h"
+#include "common/registry/registry_i18n.h"
 #include "common/utils/sandbox.h"
 
 #include "cli/runtime/dbus_client.h"
@@ -87,9 +97,32 @@ template <typename Callback> void RunGetAsrBackendStateAsync(ControlPage* page, 
   });
 }
 
+template <typename Callback>
+void RunAdapterControlAsync(ControlPage* page, std::string adapter_id, bool start,
+                            Callback callback) {
+  const QPointer<ControlPage> self(page);
+  QThreadPool::globalInstance()->start(
+      [self, adapter_id = std::move(adapter_id), start, callback = std::move(callback)]() mutable {
+        vinput::cli::DbusClient dbus;
+        std::string err;
+        const bool ok =
+            start ? dbus.StartAdapter(adapter_id, &err) : dbus.StopAdapter(adapter_id, &err);
+        QMetaObject::invokeMethod(self, [self, callback = std::move(callback), ok, err]() mutable {
+          if (!self) {
+            return;
+          }
+          callback(ok, err);
+        });
+      });
+}
+
 } // namespace
 
-ControlPage::ControlPage(QWidget* parent) : QWidget(parent) {
+ControlPage::ControlPage(QWidget* parent)
+    : QWidget(parent), listAdapters_(new QListWidget(this)),
+      btnAdapterStart_(new QPushButton(tr("Start"), this)),
+      btnAdapterStop_(new QPushButton(tr("Stop"), this)),
+      chkAdapterAutostart_(new QCheckBox(tr("Start with daemon"), this)) {
   auto* layout = new QVBoxLayout(this);
 
   // Audio section: capture device + audio processing knobs.
@@ -169,6 +202,41 @@ ControlPage::ControlPage(QWidget* parent) : QWidget(parent) {
 
   connect(&I18nCache::Get(), &I18nCache::mapUpdated, this, &ControlPage::refreshAsrList);
 
+  layout->addSpacing(20);
+
+  // Adapters section
+  auto* adapterFrame = new QFrame();
+  adapterFrame->setFrameShape(QFrame::StyledPanel);
+  auto* adapterLayout = new QVBoxLayout(adapterFrame);
+
+  auto* adapterTitle = new QLabel(tr("<b>Adapters</b>"));
+  adapterLayout->addWidget(adapterTitle);
+
+  auto* adapterListLayout = new QHBoxLayout();
+  adapterListLayout->addWidget(listAdapters_);
+
+  auto* adapterBtnLayout = new QVBoxLayout();
+  chkAdapterAutostart_->setToolTip(
+      tr("Automatically start this adapter when vinput-daemon starts."));
+  adapterBtnLayout->addWidget(btnAdapterStart_);
+  adapterBtnLayout->addWidget(btnAdapterStop_);
+  adapterBtnLayout->addWidget(chkAdapterAutostart_);
+  adapterBtnLayout->addStretch();
+  adapterListLayout->addLayout(adapterBtnLayout);
+  adapterLayout->addLayout(adapterListLayout);
+  layout->addWidget(adapterFrame);
+
+  connect(btnAdapterStart_, &QPushButton::clicked, this, &ControlPage::onAdapterStart);
+  connect(btnAdapterStop_, &QPushButton::clicked, this, &ControlPage::onAdapterStop);
+  connect(chkAdapterAutostart_, &QCheckBox::toggled, this, &ControlPage::onAdapterAutostartToggled);
+  connect(listAdapters_, &QListWidget::itemSelectionChanged, this,
+          &ControlPage::updateAdapterButtons);
+  btnAdapterStart_->setEnabled(false);
+  btnAdapterStop_->setEnabled(false);
+  chkAdapterAutostart_->setEnabled(false);
+
+  connect(&I18nCache::Get(), &I18nCache::mapUpdated, this, &ControlPage::refreshAdapterList);
+
   // Daemon section
   auto* daemonFrame = new QFrame();
   daemonFrame->setFrameShape(QFrame::StyledPanel);
@@ -238,6 +306,7 @@ void ControlPage::reload() {
   }
 
   refreshAsrList();
+  refreshAdapterList();
 }
 
 QString ControlPage::currentDevice() const {
@@ -464,7 +533,155 @@ void ControlPage::onAsrSetActive() {
   });
 }
 
+void ControlPage::refreshAdapterList() {
+  const QString current_selection =
+      (listAdapters_->currentItem() != nullptr)
+          ? listAdapters_->currentItem()->data(Qt::UserRole).toString()
+          : QString{};
+
+  listAdapters_->clear();
+  const CoreConfig config = ConfigManager::Get().Load();
+  const auto i18n_map = I18nCache::Get().GetMap();
+
+  for (const auto& adapter : config.llm.adapters) {
+    const QString id = QString::fromStdString(adapter.id);
+    const QString title = QString::fromStdString(
+        vinput::registry::LookupI18n(i18n_map, adapter.id + ".title", adapter.id));
+    const bool running = vinput::adapter::IsRunning(adapter.id);
+
+    QString display = title + " · " + (running ? GuiTranslate("running") : GuiTranslate("stopped"));
+    display += " · " + (adapter.autoStart ? tr("autostart") : tr("manual"));
+    const QString command = QString::fromStdString(adapter.command);
+    if (!command.isEmpty()) {
+      display += " · " + command;
+    }
+
+    auto* item = new QListWidgetItem(display, listAdapters_);
+    item->setData(Qt::UserRole, id);
+    item->setData(Qt::UserRole + 1, running);
+    item->setData(Qt::UserRole + 2, title);
+    item->setData(Qt::UserRole + 3, adapter.autoStart);
+
+    QString tooltip;
+    if (!command.isEmpty()) {
+      tooltip += "\n" + tr("Command: %1").arg(command);
+    }
+    if (!adapter.args.empty()) {
+      QStringList argsList;
+      for (const auto& a : adapter.args) {
+        argsList << QString::fromStdString(a);
+      }
+      tooltip += "\n" + tr("Args: %1").arg(argsList.join(" "));
+    }
+    if (!adapter.env.empty()) {
+      QStringList envList;
+      for (const auto& [k, v] : adapter.env) {
+        envList << QString::fromStdString(k) + "=" + QString::fromStdString(v);
+      }
+      tooltip += "\n" + tr("Env: %1").arg(envList.join(" "));
+    }
+    item->setToolTip(tooltip.trimmed());
+
+    if (id == current_selection) {
+      listAdapters_->setCurrentItem(item);
+    }
+  }
+  updateAdapterButtons();
+}
+
+void ControlPage::updateAdapterButtons() {
+  auto* item = listAdapters_->currentItem();
+  if (item == nullptr) {
+    btnAdapterStart_->setEnabled(false);
+    btnAdapterStop_->setEnabled(false);
+    chkAdapterAutostart_->setEnabled(false);
+    chkAdapterAutostart_->blockSignals(true);
+    chkAdapterAutostart_->setChecked(false);
+    chkAdapterAutostart_->blockSignals(false);
+    return;
+  }
+  const bool running = item->data(Qt::UserRole + 1).toBool();
+  const bool autostart = item->data(Qt::UserRole + 3).toBool();
+  btnAdapterStart_->setEnabled(!running);
+  btnAdapterStop_->setEnabled(running);
+  chkAdapterAutostart_->setEnabled(true);
+  chkAdapterAutostart_->blockSignals(true);
+  chkAdapterAutostart_->setChecked(autostart);
+  chkAdapterAutostart_->blockSignals(false);
+}
+
+void ControlPage::onAdapterStart() {
+  auto* item = listAdapters_->currentItem();
+  if (item == nullptr) {
+    return;
+  }
+  const QString adapter_id = item->data(Qt::UserRole).toString();
+
+  btnAdapterStart_->setEnabled(false);
+  btnAdapterStop_->setEnabled(false);
+  RunAdapterControlAsync(this, adapter_id.toStdString(), true,
+                         [this](bool ok, const std::string& err) {
+                           btnAdapterStart_->setEnabled(true);
+                           btnAdapterStop_->setEnabled(true);
+                           if (!ok) {
+                             QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
+                             return;
+                           }
+                           refreshAdapterList();
+                         });
+}
+
+void ControlPage::onAdapterStop() {
+  auto* item = listAdapters_->currentItem();
+  if (item == nullptr) {
+    return;
+  }
+  const QString adapter_id = item->data(Qt::UserRole).toString();
+
+  btnAdapterStart_->setEnabled(false);
+  btnAdapterStop_->setEnabled(false);
+  RunAdapterControlAsync(this, adapter_id.toStdString(), false,
+                         [this](bool ok, const std::string& err) {
+                           btnAdapterStart_->setEnabled(true);
+                           btnAdapterStop_->setEnabled(true);
+                           if (!ok) {
+                             QMessageBox::warning(this, tr("Error"), QString::fromStdString(err));
+                             return;
+                           }
+                           refreshAdapterList();
+                         });
+}
+
+void ControlPage::onAdapterAutostartToggled(bool checked) {
+  auto* item = listAdapters_->currentItem();
+  if (item == nullptr) {
+    return;
+  }
+  const QString adapter_id = item->data(Qt::UserRole).toString();
+
+  CoreConfig config = ConfigManager::Get().Load();
+  auto it =
+      std::find_if(config.llm.adapters.begin(), config.llm.adapters.end(),
+                   [&adapter_id](const LlmAdapter& a) { return a.id == adapter_id.toStdString(); });
+  if (it == config.llm.adapters.end()) {
+    return;
+  }
+
+  if (it->autoStart == checked) {
+    return;
+  }
+
+  it->autoStart = checked;
+  if (!ConfigManager::Get().Save(config)) {
+    QMessageBox::critical(this, tr("Error"), tr("Failed to save config."));
+    return;
+  }
+  refreshAdapterList();
+  emit configChanged();
+}
+
 void ControlPage::refreshDaemonStatus() {
+  refreshAdapterList();
   vinput::cli::DbusClient dbus;
   std::string err;
   if (!dbus.IsDaemonRunning(&err)) {
