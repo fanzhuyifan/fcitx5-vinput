@@ -450,7 +450,7 @@
     </message>
     <message>
         <source>Candidate Count:</source>
-        <translation>候选词数量：</translation>
+        <translation>候选数量：</translation>
     </message>
     <message>
         <source>Timeout (ms):</source>

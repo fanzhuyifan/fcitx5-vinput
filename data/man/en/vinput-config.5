@@ -106,7 +106,7 @@ Defines prompt templates and candidate counts for text rewriting.
   \(dqdefinitions\(dq: [
     {
       \(dqid\(dq: \(dq__raw__\(dq,
-      \(dqcandidate_count\(dq: 0
+      \(dqcount\(dq: 0
     },
     {
       \(dqid\(dq: \(dqdefault\(dq,
@@ -115,7 +115,7 @@ Defines prompt templates and candidate counts for text rewriting.
       \(dqprovider_id\(dq: \(dqgroq\(dq,
       \(dqmodel\(dq: \(dqllama\-3.3\-70b\-versatile\(dq,
       \(dqcontext_lines\(dq: 3,
-      \(dqcandidate_count\(dq: 5
+      \(dqcount\(dq: 5
     }
   ]
 }
@@ -128,6 +128,14 @@ ID of the currently selected scene.
 \f[B]context_lines\f[R] (\f[I]integer\f[R])
 Number of preceding input lines sent to the LLM as conversational
 context.
+.TP
+\f[B]count\f[R] (\f[I]integer\f[R], \f[CR]0\f[R] \- \f[CR]9\f[R])
+Maximum number of rewritten candidates requested from the LLM (set to
+\f[CR]0\f[R] to disable LLM for this scene).
+Candidates are deduplicated with the raw ASR transcript.
+If only 1 distinct candidate remains, it commits directly to screen; if
+distinct choices exist, a candidate menu is shown with the primary LLM
+rewrite focused and the raw transcript preserved as option 1.
 .SH VINPUT.CONF STRUCTURE (FCITX5 ADDON)
 The Fcitx5 addon configuration file is stored in INI format at
 \f[I]\(ti/.config/fcitx5/conf/vinput.conf\f[R].

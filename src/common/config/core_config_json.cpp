@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "common/config/core_config_types.h"
+#include "common/scene/postprocess_scene.h"
 
 using json = nlohmann::ordered_json;
 
@@ -190,8 +191,8 @@ void to_json(json& j, const Definition& d) {
   if (!d.model.empty()) {
     j["model"] = d.model;
   }
-  if (d.candidate_count != vinput::scene::kDefaultCandidateCount) {
-    j["candidate_count"] = d.candidate_count;
+  if (d.llm_max_candidates != vinput::scene::kDefaultLlmMaxCandidates) {
+    j["count"] = d.llm_max_candidates;
   }
   if (d.timeout_ms != vinput::scene::kDefaultTimeoutMs) {
     j["timeout_ms"] = d.timeout_ms;
@@ -207,7 +208,7 @@ void from_json(const json& j, Definition& d) {
   d.prompt = j.value("prompt", std::string{});
   d.provider_id = j.value("provider_id", std::string{});
   d.model = j.value("model", std::string{});
-  d.candidate_count = j.value("candidate_count", vinput::scene::kDefaultCandidateCount);
+  d.llm_max_candidates = j.value("count", vinput::scene::kDefaultLlmMaxCandidates);
   d.timeout_ms = j.value("timeout_ms", vinput::scene::kDefaultTimeoutMs);
   d.context_lines = j.value("context_lines", vinput::scene::kDefaultContextLines);
 }

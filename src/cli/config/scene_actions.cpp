@@ -1,6 +1,8 @@
 #include "cli/config/scene_actions.h"
 
 #include <nlohmann/json.hpp>
+#include <string>
+#include <vector>
 
 #include "common/config/core_config.h"
 #include "common/i18n.h"
@@ -22,7 +24,7 @@ int RunSceneConfigList(Formatter& fmt, const CliContext& ctx) {
                      {"prompt", scene.prompt},
                      {"provider_id", scene.provider_id},
                      {"model", scene.model},
-                     {"candidate_count", scene.candidate_count},
+                     {"count", scene.llm_max_candidates},
                      {"timeout_ms", scene.timeout_ms},
                      {"context_lines", scene.context_lines},
                      {"builtin", scene.builtin},
@@ -32,8 +34,8 @@ int RunSceneConfigList(Formatter& fmt, const CliContext& ctx) {
     return 0;
   }
 
-  std::vector<std::string> headers = {_("ID"),    _("LABEL"),      _("PROVIDER"),
-                                      _("MODEL"), _("CANDIDATES"), _("STATUS")};
+  const std::vector<std::string> headers = {_("ID"),    _("LABEL"), _("PROVIDER"),
+                                            _("MODEL"), _("COUNT"), _("STATUS")};
   std::vector<std::vector<std::string>> rows;
   for (const auto& scene : scenes) {
     std::string label = vinput::scene::DisplayLabel(scene);
@@ -41,15 +43,16 @@ int RunSceneConfigList(Formatter& fmt, const CliContext& ctx) {
     std::string provider = scene.provider_id.empty() ? "-" : scene.provider_id;
     std::string model = scene.model.empty() ? "-" : scene.model;
     rows.push_back(
-        {scene.id, label, provider, model, std::to_string(scene.candidate_count), status});
+        {scene.id, label, provider, model, std::to_string(scene.llm_max_candidates), status});
   }
   fmt.PrintTable(headers, rows);
   return 0;
 }
 
 int RunSceneConfigAdd(const std::string& id, const std::string& label, const std::string& prompt,
-                      const std::string& provider_id, const std::string& model, int candidate_count,
-                      int timeout_ms, int context_lines, Formatter& fmt, const CliContext& ctx) {
+                      const std::string& provider_id, const std::string& model,
+                      int llm_max_candidates, int timeout_ms, int context_lines, Formatter& fmt,
+                      const CliContext& ctx) {
   (void)ctx;
   CoreConfig config = LoadCoreConfig();
 
@@ -59,7 +62,7 @@ int RunSceneConfigAdd(const std::string& id, const std::string& label, const std
   def.prompt = vinput::str::TrimAsciiWhitespace(prompt);
   def.provider_id = vinput::str::TrimAsciiWhitespace(provider_id);
   def.model = vinput::str::TrimAsciiWhitespace(model);
-  def.candidate_count = candidate_count;
+  def.llm_max_candidates = llm_max_candidates;
   def.timeout_ms = timeout_ms;
   def.context_lines = context_lines;
 
@@ -118,8 +121,8 @@ int RunSceneConfigRemove(const std::string& id, bool force, Formatter& fmt, cons
 
 int RunSceneConfigEdit(const std::string& id, const std::string& label, const std::string& prompt,
                        const std::string& provider_id, const std::string& model,
-                       int candidate_count, int timeout_ms, int context_lines, bool hasLabel,
-                       bool hasPrompt, bool hasProvider, bool hasModel, bool hasCandidates,
+                       int llm_max_candidates, int timeout_ms, int context_lines, bool hasLabel,
+                       bool hasPrompt, bool hasProvider, bool hasModel, bool hasLlmMaxCandidates,
                        bool hasTimeout, bool hasContextLines, Formatter& fmt,
                        const CliContext& ctx) {
   (void)ctx;
@@ -138,20 +141,27 @@ int RunSceneConfigEdit(const std::string& id, const std::string& label, const st
   }
 
   vinput::scene::Definition updated = *existing;
-  if (hasLabel)
+  if (hasLabel) {
     updated.label = vinput::str::TrimAsciiWhitespace(label);
-  if (hasPrompt)
+  }
+  if (hasPrompt) {
     updated.prompt = vinput::str::TrimAsciiWhitespace(prompt);
-  if (hasProvider)
+  }
+  if (hasProvider) {
     updated.provider_id = vinput::str::TrimAsciiWhitespace(provider_id);
-  if (hasModel)
+  }
+  if (hasModel) {
     updated.model = vinput::str::TrimAsciiWhitespace(model);
-  if (hasCandidates)
-    updated.candidate_count = candidate_count;
-  if (hasTimeout)
+  }
+  if (hasLlmMaxCandidates) {
+    updated.llm_max_candidates = llm_max_candidates;
+  }
+  if (hasTimeout) {
     updated.timeout_ms = timeout_ms;
-  if (hasContextLines)
+  }
+  if (hasContextLines) {
     updated.context_lines = context_lines;
+  }
 
   vinput::scene::Config scene_config = ToSceneConfig(config.scenes);
   std::string error;
@@ -161,8 +171,9 @@ int RunSceneConfigEdit(const std::string& id, const std::string& label, const st
   }
   FromSceneConfig(config.scenes, scene_config);
 
-  if (!SaveConfigOrFail(config, fmt))
+  if (!SaveConfigOrFail(config, fmt)) {
     return 1;
+  }
 
   fmt.PrintSuccess(vinput::str::FmtStr(_("Scene '%s' updated."), id));
   return 0;
