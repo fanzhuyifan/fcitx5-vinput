@@ -254,6 +254,9 @@ msgstr "当前："
 msgid "Recording is not active."
 msgstr "当前未在录音。"
 
+msgid "Requested post-processing action is not available."
+msgstr "请求的后处理操作当前不可用。"
+
 #, c-format
 msgid "Switched scene to '%s'."
 msgstr "已切换场景到 '%s'。"
