@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string>
@@ -35,9 +36,9 @@ class RecognitionPipeline {
 public:
   explicit RecognitionPipeline(PostProcessor* post_processor);
 
-  RecognitionPipelineResult
-  Process(const RecognitionOrder& order, const CoreConfig& settings,
-          const std::function<void()>& on_enter_postprocessing = {}) const;
+  RecognitionPipelineResult Process(const RecognitionOrder& order, const CoreConfig& settings,
+                                    const std::function<void()>& on_enter_postprocessing = {},
+                                    const std::atomic<bool>* cancel_flag = nullptr) const;
 
 private:
   PostProcessor* post_processor_ = nullptr;

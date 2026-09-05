@@ -26,7 +26,10 @@ msgstr ""
 msgid "... Recognizing ..."
 msgstr ""
 
-msgid "... Postprocessing ..."
+msgid "... Postprocessing ... (Esc: Cancel)"
+msgstr ""
+
+msgid "... Postprocessing ... (Enter: Use raw ASR text, Esc: Cancel)"
 msgstr ""
 
 msgid ""
@@ -250,6 +253,9 @@ msgid "Current: "
 msgstr ""
 
 msgid "Recording is not active."
+msgstr ""
+
+msgid "Requested post-processing action is not available."
 msgstr ""
 
 #, c-format

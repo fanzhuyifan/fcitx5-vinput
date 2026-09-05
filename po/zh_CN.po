@@ -25,8 +25,11 @@ msgstr "... 正在命令 ..."
 msgid "... Recognizing ..."
 msgstr "... 正在识别 ..."
 
-msgid "... Postprocessing ..."
-msgstr "... 正在后处理 ..."
+msgid "... Postprocessing ... (Esc: Cancel)"
+msgstr "... 正在后处理 ...（Esc：取消）"
+
+msgid "... Postprocessing ... (Enter: Use raw ASR text, Esc: Cancel)"
+msgstr "... 正在后处理 ...（Enter：使用原始 ASR 文本，Esc：取消）"
 
 msgid ""
 "Local ASR model configuration is missing. Please configure a model first."
@@ -253,6 +256,9 @@ msgstr "当前："
 
 msgid "Recording is not active."
 msgstr "当前未在录音。"
+
+msgid "Requested post-processing action is not available."
+msgstr "请求的后处理操作当前不可用。"
 
 #, c-format
 msgid "Switched scene to '%s'."
