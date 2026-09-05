@@ -1257,7 +1257,7 @@ void VinputEngine::selectResultCandidate(std::size_t index, fcitx::InputContext*
   }
 
   if (candidate.source == vinput::result::kSourceCancel) {
-    clearPreedit(ic);
+    clearVoicePresentation(ic);
     return;
   }
 
@@ -1277,7 +1277,7 @@ void VinputEngine::selectResultCandidate(std::size_t index, fcitx::InputContext*
       appendContextEntry(text, "llm");
     }
     suppressNextCommitContext(text);
-    clearPreedit(ic);
+    clearVoicePresentation(ic);
     ic->commitString(text);
   }
 }
