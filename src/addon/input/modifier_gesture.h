@@ -7,7 +7,7 @@
 #include <vector>
 
 // Recognizes complete modifier chords independently of recording/UI side effects.
-// Like KDE's modifier shortcuts, taps finish after all modifiers are released.
+// Like KDE's modifier shortcuts, taps fire on the first required release.
 // Fcitx bindings retain their explicit left/right keysym (e.g. Control+Shift_L).
 class ModifierGesture {
 public:
@@ -53,7 +53,6 @@ private:
   std::vector<PressedKey> consumed_;
   std::optional<Binding> binding_;
   Clock::time_point pressed_at_;
-  std::optional<Clock::time_point> first_release_;
   bool cancelled_ = false;
   bool fired_ = false;
 };

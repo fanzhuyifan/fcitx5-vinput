@@ -383,6 +383,21 @@ struct VinputCancellationTest {
       const char* extra_shortcut = nullptr;
     } cases[] = {
         {"Alt tap toggle", {down("Alt_L"), up("Alt_L"), down("Alt_L"), up("Alt_L")}, true},
+        {"first chord release starts and repeated chord stops recording",
+         {down("Control_L", Pass), down("Control+Alt_L", Pass), up("Control+Alt+Alt_L", Pass),
+          recording, down("Control+Alt_L", Pass), up("Control+Alt+Alt_L", Pass), finished,
+          up("Control+Control_L", Pass)},
+         true,
+         G::Mode::Tap,
+         false,
+         "Control+Alt_L"},
+        {"first chord release toggles while start is pending",
+         {down("Alt_L", Pass), down("Alt+Control_L", Pass), up("Control+Alt+Control_L", Pass),
+          down("Alt+Control_L", Pass), up("Control+Alt+Control_L", Pass), up("Alt+Alt_L", Pass)},
+         true,
+         G::Mode::Tap,
+         false,
+         "Control+Alt_L"},
         {"Alt hold", {down("Alt_L"), hold, up("Alt_L")}, true, G::Mode::Hold},
         {"Alt both hold", {down("Alt_L"), hold, up("Alt_L")}, true},
         {"hold consumes repeats", {down("Alt_L"), hold, down("Alt+Alt_L"), up("Alt_L")}, true},
@@ -460,7 +475,8 @@ struct VinputCancellationTest {
         return DbusService::MethodResult::Success();
       });
       server.SetStopHandler([&](const std::string&) {
-        expect(engine.session_->trigger_released && engine.session_->stop_on_release,
+        expect(engine.session_->trigger_released &&
+                   (row.mode == G::Mode::Tap || engine.session_->stop_on_release),
                "release or second tap requests recording completion");
         test.runtime.phase_ = Phase::Idle;
         server.EmitRecognitionResult(R"({"commit_text":"dictated text"})");

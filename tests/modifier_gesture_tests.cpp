@@ -188,16 +188,16 @@ std::size_t examples() {
                         {down("Control_L"), tick(299ms), tick(1ms, HoldStart),
                          up("Control_L", HoldRelease), tick()}});
   }
-  for (auto gap : {199ms, 200ms, 201ms}) {
-    run(scenarios_run, {"chord release deadline",
+  for (auto gap : {199ms, 200ms, 201ms, 5000ms}) {
+    run(scenarios_run, {"first release fires regardless of later release timing",
                         {binding("Control+Shift_L")},
                         {down("Control_L"),
                          down("Shift_L"),
                          elapse(299ms),
-                         up("Shift_L"),
+                         up("Shift_L", Tap),
                          {Step::NoTimer},
                          tick(gap),
-                         up("Control_L", gap <= 200ms ? Tap : None)}});
+                         up("Control_L")}});
   }
   for (auto reset : {Step::Reset, Step::Reload}) {
     run(scenarios_run, {"context/config reset",
@@ -206,10 +206,11 @@ std::size_t examples() {
   }
   for (const auto* control : {"Control_L", "Control_R"}) {
     for (const auto* shift : {"Shift_L", "Shift_R"}) {
-      run(scenarios_run, {"explicit modifier side",
-                          {binding("Control+Shift_L")},
-                          {down(control), down(shift), up(control),
-                           up(shift, std::string_view(shift) == "Shift_L" ? Tap : None)}});
+      run(scenarios_run,
+          {"explicit modifier side",
+           {binding("Control+Shift_L")},
+           {down(control), down(shift),
+            up(control, std::string_view(shift) == "Shift_L" ? Tap : None), up(shift)}});
     }
   }
   for (const auto& test : std::vector<Scenario>{
@@ -225,11 +226,11 @@ std::size_t examples() {
              up("Control_R")}},
            {"slow three-modifier release",
             {binding("Control+Alt+Shift_L")},
-            {down("Control_L"), down("Alt_L"), down("Shift_L"), elapse(50ms), up("Shift_L"),
+            {down("Control_L"), down("Alt_L"), down("Shift_L"), elapse(50ms), up("Shift_L", Tap),
              elapse(201ms), up("Alt_L"), up("Control_L")}},
            {"typing during release",
             {binding("Control+Shift_L")},
-            {down("Control_L"), down("Shift_L"), up("Shift_L"), down("c"), up("c"),
+            {down("Control_L"), down("Shift_L"), up("Shift_L", Tap), down("c"), up("c"),
              up("Control_L")}},
            {"extra modifier suppresses subset",
             {binding("Control_L")},
@@ -269,7 +270,7 @@ std::size_t examples() {
            {"larger chord takes over pending tap",
             {binding("Control_L"), binding("Control+Alt+Shift_L", Mode::Both, Action::Dictation)},
             {down("Control_L"), down("Alt_L"), tick(400ms), down("Shift_L"), elapse(50ms),
-             up("Control_L"), up("Alt_L"), up("Shift_L", Tap, 1)}},
+             up("Control_L", Tap, 1), up("Alt_L"), up("Shift_L")}},
            {"larger chord restarts hold delay",
             {binding("Control_L"), binding("Control+Alt+Shift_L", Mode::Hold, Action::Dictation)},
             {down("Control_L"), elapse(250ms), down("Alt_L"), tick(500ms), down("Shift_L"),
@@ -279,14 +280,40 @@ std::size_t examples() {
     run(scenarios_run, test);
   }
   for (auto action : {Action::Dictation, Action::Command, Action::Palette}) {
+    for (const auto* released : {"Control_L", "Shift_L"}) {
+      const auto* retained = std::string_view(released) == "Control_L" ? "Shift_L" : "Control_L";
+      run(scenarios_run, {"repeated taps with another modifier held",
+                          {binding("Control+Shift_L", Mode::Tap, action)},
+                          {down("Control_L"),
+                           down("Shift_L"),
+                           elapse(50ms),
+                           up(released, Tap),
+                           {Step::NoTimer},
+                           tick(5000ms),
+                           down(retained),
+                           down(released),
+                           elapse(50ms),
+                           up(released, Tap),
+                           up(retained)}});
+      run(scenarios_run, {"intervening typing prevents rearming until all keys are up",
+                          {binding("Control+Shift_L", Mode::Tap, action)},
+                          {down("Control_L"), down("Shift_L"), down("c"), up("c"), up(released),
+                           down(released), up(released), up(retained), down("Control_L"),
+                           down("Shift_L"), up(released, Tap), up(retained)}});
+    }
     run(scenarios_run,
         {"shared tap routing and recovery",
          {binding("Control+Alt+Shift_L", Mode::Tap, action)},
          {down("Shift_L"), down("Control_L"), down("Alt_L"), down("c"), up("c"), elapse(50ms),
           up("Control_L"), up("Shift_L"), up("Alt_L"), down("Shift_L"), down("Control_L"),
-          down("Alt_L"), elapse(50ms), up("Control_L"), up("Shift_L"), up("Alt_L", Tap)}});
+          down("Alt_L"), elapse(50ms), up("Control_L", Tap), up("Shift_L"), up("Alt_L")}});
     if (action != Action::Palette) {
       for (auto mode : {Mode::Hold, Mode::Both}) {
+        run(scenarios_run, {"repeated holds restart the delay with a modifier held",
+                            {binding("Control+Shift_L", mode, action)},
+                            {down("Control_L"), down("Shift_L"), tick(300ms, HoldStart),
+                             up("Shift_L", HoldRelease), tick(1000ms), down("Shift_L"), tick(299ms),
+                             tick(1ms, HoldStart), up("Control_L", HoldRelease), up("Shift_L")}});
         run(scenarios_run,
             {"shared hold routing",
              {binding("Control+Alt+Shift_L", mode, action)},
@@ -330,7 +357,7 @@ std::size_t permutations() {
               auto event = None;
               if (started && key == release.front()) {
                 event = HoldRelease;
-              } else if (!started && mode != Mode::Hold && key == release.back()) {
+              } else if (!started && mode != Mode::Hold && key == release.front()) {
                 event = Tap;
               }
               test.sequence.push_back(up(key, event));
@@ -360,8 +387,13 @@ std::size_t permutations() {
           for (const auto& key : keys) {
             test.sequence.push_back(down(key));
           }
-          for (auto step :
-               {tick(300ms, HoldStart), up(keys.front(), HoldRelease), down(extra), up(extra)}) {
+          // Replacing Ctrl_L with Ctrl_R completes a fresh chord when the
+          // binding's explicit Shift_L is still held. Its quick release taps
+          // in Both mode; ordinary typing still cannot cancel the ended hold.
+          const bool rearmed_tap =
+              keys.size() > 1 && mode == Mode::Both && std::string_view(extra) == "Control_R";
+          for (auto step : {tick(300ms, HoldStart), up(keys.front(), HoldRelease), down(extra),
+                            up(extra, rearmed_tap ? Tap : None)}) {
             test.sequence.push_back(step);
           }
           for (std::size_t i = 1; i < keys.size(); ++i) {

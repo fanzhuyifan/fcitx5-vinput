@@ -8,10 +8,6 @@
 #include <utility>
 #include <vector>
 
-namespace {
-constexpr auto kChordReleaseTimeout = std::chrono::milliseconds(200);
-}
-
 fcitx::KeyStates ModifierGesture::modifiers(const fcitx::Key& key) {
   // Ignore locks, repeat/handled flags, and pointer state. Pointer gestures are
   // outside this recognizer's scope.
@@ -30,7 +26,6 @@ void ModifierGesture::setBindings(std::vector<Binding> bindings) {
 
 void ModifierGesture::clearGesture() {
   binding_.reset();
-  first_release_.reset();
   fired_ = false;
 }
 
@@ -89,27 +84,22 @@ ModifierGesture::Result ModifierGesture::keyEvent(const fcitx::Key& event_key, b
   }
 
   if (release) {
-    if (binding_ && was_modifier) {
-      if (!first_release_ && (requiredModifiers(binding_->key) & own).toInteger() != 0) {
-        first_release_ = now;
-        if (fired_) {
-          result.event = Event::HoldRelease;
+    if (binding_ && was_modifier && (requiredModifiers(binding_->key) & own).toInteger() != 0) {
+      if (fired_) {
+        result.event = Event::HoldRelease;
+        result.binding = binding_;
+      } else if (!cancelled_) {
+        const auto held = now - pressed_at_;
+        if ((binding_->mode == Mode::Tap ||
+             (binding_->mode == Mode::Both && held < binding_->hold_delay)) &&
+            (!binding_->tap_timeout || held <= *binding_->tap_timeout)) {
+          result.event = Event::Tap;
           result.binding = binding_;
         }
       }
-      if (down.toInteger() == 0) {
-        if (!cancelled_ && !fired_ && first_release_ &&
-            now - *first_release_ <= kChordReleaseTimeout) {
-          const auto held = *first_release_ - pressed_at_;
-          if ((binding_->mode == Mode::Tap ||
-               (binding_->mode == Mode::Both && held < binding_->hold_delay)) &&
-              (!binding_->tap_timeout || held <= *binding_->tap_timeout)) {
-            result.event = Event::Tap;
-            result.binding = binding_;
-          }
-        }
-        clearGesture();
-      }
+      // Finish once, on the first required release. Retain pressed identities
+      // so a new press can complete another chord with the remaining modifiers.
+      clearGesture();
     }
     if (pressed_.empty() && down.toInteger() == 0) {
       clearGesture();
@@ -121,16 +111,14 @@ ModifierGesture::Result ModifierGesture::keyEvent(const fcitx::Key& event_key, b
   // An extra press aborts an active hold. Its first required release has
   // already ended the gesture, so later typing must not discard that recording.
   if (fired_) {
-    if (!first_release_) {
-      result = {Event::HoldCancel, binding_, false};
-      clearGesture();
-      cancelled_ = true;
-    }
+    result = {Event::HoldCancel, binding_, false};
+    clearGesture();
+    cancelled_ = true;
     return result;
   }
-  if (first_release_ || !was_modifier ||
-      std::any_of(pressed_.begin(), pressed_.end(),
-                  [](const auto& pressed) { return pressed.modifier.toInteger() == 0; })) {
+  if (!was_modifier || std::any_of(pressed_.begin(), pressed_.end(), [](const auto& pressed) {
+        return pressed.modifier.toInteger() == 0;
+      })) {
     cancelled_ = true;
   }
   if (cancelled_) {
@@ -168,7 +156,7 @@ ModifierGesture::Result ModifierGesture::keyEvent(const fcitx::Key& event_key, b
 }
 
 std::optional<ModifierGesture::Clock::time_point> ModifierGesture::deadline() const {
-  if (!binding_ || cancelled_ || fired_ || first_release_ || binding_->mode == Mode::Tap) {
+  if (!binding_ || cancelled_ || fired_ || binding_->mode == Mode::Tap) {
     return std::nullopt;
   }
   return pressed_at_ + binding_->hold_delay;

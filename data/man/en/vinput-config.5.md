@@ -164,7 +164,7 @@ MaxStreamingDisplayWidth=60
 **TriggerMode** (*enum: Tap, Hold, Both*)
 :   `Tap` toggles recording; `Hold` records while the shortcut is held; `Both` supports either.
 
-    Single- and multi-modifier shortcuts, such as `Control_R` or `Control+Shift_L`, activate taps when all bound keys are released. Pressing another key while holding a modifier shortcut cancels it and discards any recording started by that hold.
+    Single- and multi-modifier shortcuts, such as `Control_R` or `Control+Shift_L`, activate taps when the first bound key is released. Pressing another key while holding a modifier shortcut cancels it and discards any recording started by that hold.
 
     A single-modifier binding reserves that key's presses and releases; multi-modifier chords leave their key events available to apps, which may also respond to the chord. Other keys retain modifier state (such as `Ctrl+C`); mouse clicks do not cancel shortcuts.
 
