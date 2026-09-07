@@ -44,6 +44,7 @@ case "${target}" in
             bzip2 \
             clang \
             cmake \
+            dbus-daemon \
             file \
             git \
             jq \
@@ -79,6 +80,7 @@ case "${target}" in
             bzip2 \
             clang \
             cmake \
+            dbus-daemon \
             make \
             mold \
             ninja-build \
