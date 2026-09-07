@@ -212,7 +212,8 @@ DaemonRuntimeController::StartCommandRecording(const std::string& selected_text)
   return StartRecordingInternal(true, selected_text);
 }
 
-DbusService::MethodResult DaemonRuntimeController::CancelPostprocessing(bool commit_raw_text) {
+DbusService::MethodResult
+DaemonRuntimeController::RequestPostprocessingCancellation(bool commit_raw_text) {
   bool accepted = false;
   {
     const std::scoped_lock lock(state_mutex_);
@@ -555,6 +556,34 @@ void DaemonRuntimeController::ScheduleCaptureStopOnMainThread() {
     uint64_t value = 1;
     (void)write(notify_fd_, &value, sizeof(value));
   }
+}
+
+DbusService::MethodResult DaemonRuntimeController::CancelOperation(bool commit_raw_text) {
+  // D-Bus recording methods run serially on the main thread. The addon sends
+  // cancellation only after its Start request succeeds, including a late reply.
+  std::shared_ptr<vinput::daemon::asr::RecognitionSession> session;
+  bool discard_recording = false;
+  {
+    const std::lock_guard lock(state_mutex_);
+    discard_recording = !commit_raw_text && (phase_ == vinput::dbus::Status::Recording ||
+                                             phase_ == vinput::dbus::Status::Idle);
+    if (discard_recording) {
+      accepting_chunks_.store(false, std::memory_order_relaxed);
+      session = ReleaseActiveSessionLocked();
+    }
+  }
+  if (!discard_recording) {
+    return RequestPostprocessingCancellation(commit_raw_text);
+  }
+  // Discard capture and ASR buffers without creating a recognition order.
+  capture_->StopAndGetBuffer();
+  capture_->SetChunkCallback({});
+  if (session) {
+    const std::lock_guard lock(session_io_mutex_);
+    session->Cancel();
+  }
+  ResetToIdle();
+  return DbusService::MethodResult::Success();
 }
 
 DbusService::MethodResult DaemonRuntimeController::StopRecording(const std::string& scene_id) {

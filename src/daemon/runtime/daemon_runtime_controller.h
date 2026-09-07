@@ -19,6 +19,8 @@
 #include "daemon/runtime/dbus_service.h"
 #include "daemon/runtime/recognition_pipeline.h"
 
+struct VinputCancellationTest;
+
 namespace vinput::daemon::remote {
 class RemoteTextService;
 }
@@ -36,7 +38,7 @@ public:
   DbusService::MethodResult StartRecording();
   DbusService::MethodResult StartCommandRecording(const std::string& selected_text);
   DbusService::MethodResult StopRecording(const std::string& scene_id);
-  DbusService::MethodResult CancelPostprocessing(bool commit_raw_text);
+  DbusService::MethodResult CancelOperation(bool commit_raw_text);
   DbusService::MethodResult ReloadAsrBackend();
   std::string GetStatus() const;
   vinput::dbus::AsrBackendState GetAsrBackendState() const;
@@ -47,6 +49,7 @@ public:
   void Shutdown();
 
 private:
+  friend struct ::VinputCancellationTest;
   enum class PostprocessingState : std::uint8_t {
     Inactive,
     Dictation,
@@ -63,6 +66,7 @@ private:
   void ScheduleCaptureStopOnMainThread();
   void RestoreOutputIfDucked();
   std::shared_ptr<vinput::daemon::asr::RecognitionSession> ReleaseActiveSessionLocked();
+  DbusService::MethodResult RequestPostprocessingCancellation(bool commit_raw_text);
   void EnterPostprocessing(bool command_mode);
   PostprocessingState TakePostprocessingState();
   void ResetToIdle();
