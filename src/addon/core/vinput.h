@@ -32,8 +32,11 @@
 
 class VinputNotifierDBusObject;
 
+class VinputTestAccessor;
+
 class VinputEngine : public fcitx::AddonInstance {
 public:
+  friend class VinputTestAccessor;
   VinputEngine(fcitx::Instance* instance);
   ~VinputEngine() override;
   void selectPaletteItem(std::size_t index, fcitx::InputContext* ic);
@@ -77,6 +80,7 @@ private:
   bool callStopAdapter(const std::string& adapter_id, std::string* error = nullptr);
   void onRecognitionResult(fcitx::dbus::Message& msg);
   void onRecognitionPartial(fcitx::dbus::Message& msg);
+  void handleRecognitionPartial(const std::string& transcript_text);
   void onStatusChanged(fcitx::dbus::Message& msg);
   void onDaemonNotification(fcitx::dbus::Message& msg);
   void showDaemonNotification(const vinput::dbus::ErrorInfo& notification);
@@ -96,7 +100,7 @@ private:
                               bool command_mode);
   void enterRecordingState(fcitx::InputContext* ic, const fcitx::Key& trigger, bool command_mode);
   void enterBusyState(fcitx::InputContext* ic, bool command_mode, const std::string& preedit_text,
-                      bool postprocessing = false, bool raw_prev = true);
+                      bool postprocessing = false, std::optional<bool> raw_prev = std::nullopt);
   void finishFrontendSession(fcitx::InputContext* fallback_ic = nullptr);
   void syncFrontendWithDaemonStatus(fcitx::InputContext* fallback_ic = nullptr,
                                     bool prefer_command_mode = false);
