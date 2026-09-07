@@ -117,8 +117,20 @@ VinputEngine::VinputEngine(fcitx::Instance* instance) : instance_(instance) {
                               auto& icEvent = static_cast<fcitx::InputContextEvent&>(event);
                               auto* ic = icEvent.inputContext();
                               if (session_ && session_->ic == ic) {
+                                if (session_->phase == Session::Phase::PendingStart ||
+                                    session_->phase == Session::Phase::Recording ||
+                                    session_->phase == Session::Phase::Postprocessing) {
+                                  callCancelOperation(false);
+                                }
                                 session_.reset();
                                 polled_idle_since_.reset();
+                              }
+                              if (pending_modifier_.ic == ic) {
+                                if (modifier_hold_event_ && modifier_hold_event_->isEnabled()) {
+                                  modifier_hold_event_->setEnabled(false);
+                                }
+                                pending_modifier_.reset();
+                                modifier_hold_active_ = false;
                               }
                               if (status_ic_ == ic) {
                                 status_ic_ = nullptr;
@@ -167,6 +179,7 @@ VinputEngine::~VinputEngine() {
   status_sync_event_.reset();
   pending_stop_event_.reset();
   pending_start_event_.reset();
+  modifier_hold_event_.reset();
 
   pending_stop_call_slot_.reset();
   pending_start_call_slot_.reset();
@@ -209,6 +222,7 @@ void VinputEngine::applySettings() {
   page_next_keys_ = config_.pageNextKeys.value();
   trigger_mode_ = config_.triggerMode.value();
   max_streaming_display_width_ = config_.maxStreamingDisplayWidth.value();
+  hold_activation_delay_ = std::chrono::milliseconds(config_.holdActivationDelay.value());
   reloadSceneConfig();
   reloadPaletteItems();
 }

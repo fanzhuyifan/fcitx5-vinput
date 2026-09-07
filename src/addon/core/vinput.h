@@ -4,7 +4,9 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <fcitx-utils/dbus/bus.h>
+#include <fcitx-utils/event.h>
 #include <fcitx-utils/eventdispatcher.h>
 #include <fcitx-utils/handlertable.h>
 #include <fcitx-utils/key.h>
@@ -13,6 +15,7 @@
 #include <fcitx/addonfactory.h>
 #include <fcitx/addoninstance.h>
 #include <fcitx/addonmanager.h>
+#include <fcitx/event.h>
 #include <fcitx/instance.h>
 #include <memory>
 #include <optional>
@@ -40,12 +43,12 @@ public:
   void save() override;
   const fcitx::Configuration* getConfig() const override;
   void setConfig(const fcitx::RawConfig& config) override;
+  void handleKeyEvent(fcitx::Event& event);
 
 private:
   void applySettings();
   void reloadSceneConfig();
   void initializePaletteRegistry();
-  void handleKeyEvent(fcitx::Event& event);
   void showPaletteMenu(fcitx::InputContext* ic, const std::string& initial_query = {});
   void hidePaletteMenu();
   void resetPaletteMenuState();
@@ -68,7 +71,7 @@ private:
   bool callStartRecording();
   bool callStartCommandRecording(const std::string& selected_text);
   bool callStopRecording(const std::string& scene_id);
-  void callCancelPostprocessing(bool commit_raw_text);
+  void callCancelOperation(bool commit_raw_text);
   bool callReloadAsrBackend(std::string* error = nullptr);
   bool callStartAdapter(const std::string& adapter_id, std::string* error = nullptr);
   bool callStopAdapter(const std::string& adapter_id, std::string* error = nullptr);
@@ -131,6 +134,7 @@ private:
     bool trigger_released = false;
     bool raw_prev = true;
     std::string transcript_text;
+    bool stop_on_release = false;
   };
   std::optional<Session> session_;
   fcitx::InputContext* status_ic_ = nullptr;
@@ -140,9 +144,28 @@ private:
   fcitx::KeyList trigger_keys_{fcitx::Key(FcitxKey_Alt_R)};
   fcitx::KeyList command_keys_{fcitx::Key(FcitxKey_Control_R)};
   fcitx::KeyList menu_keys_{fcitx::Key(FcitxKey_Shift_R)};
-  bool menu_hotkey_armed_ = false;
-  fcitx::Key menu_hotkey_pressed_;
-  std::chrono::steady_clock::time_point menu_hotkey_pressed_time_;
+  enum class ModifierAction : std::uint8_t { None, Dictation, Command, Menu };
+  struct PendingModifier {
+    ModifierAction action = ModifierAction::None;
+    fcitx::Key key;
+    std::chrono::steady_clock::time_point press_time;
+    fcitx::InputContext* ic = nullptr;
+
+    void reset() {
+      action = ModifierAction::None;
+      key = fcitx::Key();
+      press_time = {};
+      ic = nullptr;
+    }
+  };
+  PendingModifier pending_modifier_;
+  std::unique_ptr<fcitx::EventSourceTime> modifier_hold_event_;
+  bool modifier_hold_active_ = false;
+  std::chrono::milliseconds hold_activation_delay_{300};
+
+  void cancelInterruptedRecording();
+  void startVoiceRecording(fcitx::InputContext* ic, const fcitx::Key& trigger, bool is_command);
+
   fcitx::KeyList page_prev_keys_{
       fcitx::Key(FcitxKey_Page_Up),
       fcitx::Key(FcitxKey_KP_Page_Up),

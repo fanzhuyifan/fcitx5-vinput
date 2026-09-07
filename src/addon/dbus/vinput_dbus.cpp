@@ -439,12 +439,12 @@ bool VinputEngine::callStopRecording(const std::string& scene_id) {
   return true;
 }
 
-void VinputEngine::callCancelPostprocessing(bool commit_raw_text) {
+void VinputEngine::callCancelOperation(bool commit_raw_text) {
   if (bus_ == nullptr) {
     return;
   }
 
-  auto msg = bus_->createMethodCall(kBusName, kObjectPath, kInterface, kMethodCancelPostprocessing);
+  auto msg = bus_->createMethodCall(kBusName, kObjectPath, kInterface, kMethodCancelOperation);
   msg << commit_raw_text;
   msg.send();
 }
@@ -495,8 +495,10 @@ void VinputEngine::enterPendingStartState(fcitx::InputContext* ic, const fcitx::
                              trigger,
                              std::chrono::steady_clock::now(),
                              command_mode,
+                             false,
+                             true,
                              {},
-                             {}});
+                             false});
   } else {
     session_->phase = Session::Phase::PendingStart;
     session_->ic = ic;
@@ -518,17 +520,19 @@ void VinputEngine::enterRecordingState(fcitx::InputContext* ic, const fcitx::Key
   if (status_ic_ && status_ic_ != ic) {
     clearVoicePresentation(status_ic_);
   }
-  const bool stop_after_start = trigger_mode_ == TriggerMode::Hold && session_ &&
-                                session_->phase == Session::Phase::PendingStart &&
-                                session_->trigger_released;
+  const bool stop_after_start =
+      (trigger_mode_ == TriggerMode::Hold || (session_ && session_->stop_on_release)) && session_ &&
+      session_->phase == Session::Phase::PendingStart && session_->trigger_released;
   if (!session_) {
     session_.emplace(Session{Session::Phase::Recording,
                              ic,
                              trigger,
                              std::chrono::steady_clock::now(),
                              command_mode,
+                             false,
+                             true,
                              {},
-                             {}});
+                             false});
   } else {
     session_->phase = Session::Phase::Recording;
     session_->ic = ic;
